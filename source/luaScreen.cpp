@@ -36,6 +36,9 @@
 #include "include/luaplayer.h"
 #include "include/luaGraphics.h"
 
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+
 static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -87,4 +90,8 @@ void luaScreen_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Screen_functions, 0);
 	lua_setglobal(L, "Screen");
+	int TOP_SCREEN = 0;
+	int BOTTOM_SCREEN = 1;
+	VariableRegister(L,TOP_SCREEN);
+	VariableRegister(L,BOTTOM_SCREEN);
 }
