@@ -32,3 +32,4 @@
 void DrawPixel(int x,int y,u32 color);
 void DrawText(int x, int y, char* str, u32 color,int screen);
 void RefreshScreen();
+void DebugOutput(char* str);

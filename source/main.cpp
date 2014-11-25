@@ -27,6 +27,7 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -58,15 +59,9 @@ int main()
 		luaL_loadstring(L,"while true do Screen.debugPrint(0,0,\"Hello World\",0xFFFFFF,1) end");
 	while(aptMainLoop())
 	{
-		gspWaitForVBlank();
-		hidScanInput();
-		restore=0;
-		
-
-		
-		
-		// Load main script
-		
+		restore=0;		
+		char error[256];
+		// Load main script		
 		FS_path filePath=FS_makePath(PATH_CHAR, "/index.lua");
 		FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 		FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
@@ -79,25 +74,27 @@ int main()
 		free(buffer);
 		
 		if (errMsg != NULL);
-                {
-				char error[256];
+                {			
 				strcpy(error,"\nError: ");
 				strcat(error,errMsg);
 				strcat(error,"\n\nPress A to restart\nPress B to exit\n");
-                DrawText(0,0,error, 0xFFFFFF, 1);
 				}
 						while (restore==0){
+							gspWaitForVBlank();
+							RefreshScreen();
+							DebugOutput(error);
+							hidScanInput();
 							if(hidKeysDown() & KEY_A){
 								restore=1;
 							}else if(hidKeysDown() & KEY_B){
 								restore=2;
 							}
+							gfxFlushBuffers();
+							gfxSwapBuffers();
 						}
 						if (restore==2){
-						break;
+							break;
 						}
-		gfxFlushBuffers();
-		gfxSwapBuffers();
 	}
 	
 	svcCloseHandle(fileHandle);

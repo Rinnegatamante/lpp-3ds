@@ -27,6 +27,7 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
@@ -86,6 +87,54 @@ for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
 DrawPixel(x+cx, y+cy, color, screen);
+}
+}
+x += glyphsize;
+x++;
+}
+}
+
+void DebugOutput(char* str){
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+int x=0;
+int y=0;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] == 0x0A){
+x=0;
+y=y+15;
+continue;
+}else if(str[i] == 0x0D){
+continue;
+}
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if ((x+cx) >= 320){
+x=0;
+y=y+15;
+}
+if (val & (1 << cx))
+DrawPixel(x+cx, y+cy, 0xFFFFFF, 1);
 }
 }
 x += glyphsize;
