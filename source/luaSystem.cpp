@@ -30,25 +30,27 @@
 #- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-#ifndef __LUAPLAYER_H
-#define __LUAPLAYER_H
-
 #include <stdlib.h>
-//#include <tdefs.h> //Not needed for compilation via Ubuntu (complains it's missing)
-#include "lua/lua.hpp"
+#include <string.h>
+#include <unistd.h>
+#include <3ds.h>
+#include "include/luaplayer.h"
 
-extern void luaC_collectgarbage (lua_State *L);
+static int lua_exit(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	return luaL_error(L, "lpp_exit_0456432"); // NOTE: This is a fake error
+}
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+//Register our Screen Functions
+static const luaL_Reg System_functions[] = {
+  {"exit",					lua_exit},
+  {0, 0}
+};
 
-const char *runScript(const char* script, bool isStringBuffer);
-void luaC_collectgarbage (lua_State *L);
-
-void luaScreen_init(lua_State *L);
-void luaControls_init(lua_State *L);
-void luaSystem_init(lua_State *L);
-
-void stackDump (lua_State *L);
-
-#endif
+void luaSystem_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, System_functions, 0);
+	lua_setglobal(L, "System");
+}
