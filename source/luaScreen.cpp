@@ -128,7 +128,7 @@ static int lua_getB(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     int color = luaL_checkint(L, 1);
-    u32 colour = (color >> 16) & 0xFF;
+    u32 colour = color & 0xFF;
     lua_pushnumber(L,colour);
     return 1;
 }
@@ -146,7 +146,7 @@ static int lua_getR(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     int color = luaL_checkint(L, 1);
-    u32 colour = color & 0xFF;
+    u32 colour = (color >> 16) & 0xFF;
     lua_pushnumber(L,colour);
     return 1;
 }
