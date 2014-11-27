@@ -40,29 +40,40 @@
 const char *errMsg;
 unsigned char *buffer;
 
-int main()
+int main(int argc, char **argv)
 {
 	srvInit();	
 	aptInit();
 	gfxInit();
 	hidInit(NULL);
+	irrstInit(NULL);
 	fsInit();
 	Handle fileHandle;
 	u64 size;
 	u32 bytesRead;
 	int restore;
-			// This is only for testing purposes
-		static lua_State *L;
-		L = luaL_newstate();
-		luaL_openlibs(L);
-		luaScreen_init(L);
-		luaL_loadstring(L,"while true do Screen.debugPrint(0,0,\"Hello World\",0xFFFFFF,1) end");
+	
+	// Set main script
+		char path[256];
+		int latest_slash = 0;
+		int i=5;
+		while (argv[0][i]  != '\0'){
+		if (argv[0][i] == '/'){
+		latest_slash = i;
+		}
+		i++;
+		}
+		strcpy(path,&argv[0][5]);
+		path[latest_slash-5] = 0;
+		strcat(path,"/index.lua");
+		
 	while(aptMainLoop())
 	{
 		restore=0;		
 		char error[256];
-		// Load main script		
-		FS_path filePath=FS_makePath(PATH_CHAR, "/index.lua");
+		
+		// Load main script
+		FS_path filePath=FS_makePath(PATH_CHAR, path);
 		FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 		FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 		FSFILE_GetSize(fileHandle, &size);
@@ -74,14 +85,22 @@ int main()
 		free(buffer);
 		
 		if (errMsg != NULL);
-                {			
-				strcpy(error,"\nError: ");
-				strcat(error,errMsg);
-				strcat(error,"\n\nPress A to restart\nPress B to exit\n");
+                {
+				// Fake error to force interpreter shutdown
+				if (strstr(errMsg, "lpp_exit_0456432")){
+					break;
 				}
+				
+				strcpy(error,"Error: ");
+				strcat(error,errMsg);
+				strcat(error,"\n\nPress A to restart\nPress B to exit");
+				}
+
 						while (restore==0){
 							gspWaitForVBlank();
 							RefreshScreen();
+							ClearScreen(0);
+							ClearScreen(1);
 							DebugOutput(error);
 							hidScanInput();
 							if(hidKeysDown() & KEY_A){
@@ -99,6 +118,7 @@ int main()
 	
 	svcCloseHandle(fileHandle);
 	fsExit();
+	irrstExit();
 	hidExit();
 	gfxExit();
 	aptExit();
