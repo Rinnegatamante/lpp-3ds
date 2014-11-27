@@ -141,3 +141,33 @@ x += glyphsize;
 x++;
 }
 }
+
+void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+	int base_y = y1;
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	while (x1 <= x2){
+		while (y1 <= y2){
+			DrawPixel(x1,y1,color,screen);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
+void ClearScreen(int screen){
+	if (screen==1){
+		FillRect(0,319,0,239,0x000000,1);
+	}else{
+		FillRect(0,399,0,239,0x000000,0);
+	}
+}

@@ -29,7 +29,9 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-void DrawPixel(int x,int y,u32 color);
+void DrawPixel(int x,int y,u32 color,int screen);
 void DrawText(int x, int y, char* str, u32 color,int screen);
 void RefreshScreen();
 void DebugOutput(char* str);
+void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen);
+void ClearScreen(int screen);
