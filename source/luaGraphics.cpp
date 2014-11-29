@@ -143,7 +143,6 @@ x++;
 }
 
 void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
-	int base_y = y1;
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -154,6 +153,7 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	y1 = y2;
 	y2 = temp_y;
 	}
+	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
 			DrawPixel(x1,y1,color,screen);

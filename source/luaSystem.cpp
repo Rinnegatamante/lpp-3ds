@@ -43,7 +43,7 @@ static int lua_exit(lua_State *L)
 	return luaL_error(L, "lpp_exit_0456432"); // NOTE: This is a fake error
 }
 
-//Register our Screen Functions
+//Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {0, 0}
