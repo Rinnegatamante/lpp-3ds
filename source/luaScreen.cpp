@@ -101,6 +101,20 @@ static int lua_fillRect(lua_State *L)
 	return 0;
 }
 
+static int lua_fillEmptyRect(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 6) return luaL_error(L, "wrong number of arguments");
+	int x1 = luaL_checkint(L,1);
+	int x2 = luaL_checkint(L,2);
+	int y1 = luaL_checkint(L,3);
+	int y2 = luaL_checkint(L,4);
+	u32 color = luaL_checknumber(L,5);
+	int screen = luaL_checkint(L,6);
+	FillEmptyRect(x1,x2,y1,y2,color,screen);
+	return 0;
+}
+
 static int lua_pixel(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -169,6 +183,7 @@ static const luaL_Reg Screen_functions[] = {
   {"refresh",						lua_refresh},
   {"clear",							lua_clearScreen},
   {"fillRect",						lua_fillRect},
+  {"fillEmptyRect",					lua_fillEmptyRect},
   {"pixel",							lua_pixel},
   {0, 0}
 };
