@@ -43,9 +43,27 @@ static int lua_exit(lua_State *L)
 	return luaL_error(L, "lpp_exit_0456432"); // NOTE: This is a fake error
 }
 
-//Register our System Functions
+static int lua_getFW(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushnumber(L,osGetFirmVersion());
+    return 1;
+}
+
+static int lua_getK(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushnumber(L,osGetKernelVersion());
+    return 1;
+}
+
+//Register our Screen Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
+  {"getFirmware",			lua_getFW},
+  {"getKernel",				lua_getK},
   {0, 0}
 };
 
