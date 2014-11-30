@@ -30,26 +30,38 @@
 #- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-#ifndef __LUAPLAYER_H
-#define __LUAPLAYER_H
-
 #include <stdlib.h>
-//#include <tdefs.h> //Not needed for compilation via Ubuntu (complains it's missing)
-#include "lua/lua.hpp"
+#include <string.h>
+#include <unistd.h>
+#include <3ds.h>
+#include "include/luaplayer.h"
+#include "include/luaGraphics.h"
 
-extern void luaC_collectgarbage (lua_State *L);
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+static int lua_newT(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    lua_pushnumber(L,osGetTime());
+    return 1;
+}
 
-const char *runScript(const char* script, bool isStringBuffer);
-void luaC_collectgarbage (lua_State *L);
+static int lua_time(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    u64 timer = luaL_checknumber(L,1);
+	lua_pushnumber(L,(osGetTime()-timer));
+    return 1;
+}
 
-void luaScreen_init(lua_State *L);
-void luaControls_init(lua_State *L);
-void luaSystem_init(lua_State *L);
-void luaTimer_init(lua_State *L);
+//Register our Timer Functions
+static const luaL_Reg Timer_functions[] = {
+  {"new",							lua_newT},
+  {"getTime",						lua_time},
+  {0, 0}
+};
 
-void stackDump (lua_State *L);
-
-#endif
+void luaTimer_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Timer_functions, 0);
+	lua_setglobal(L, "Timer");
+}
