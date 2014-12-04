@@ -35,7 +35,6 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/luaGraphics.h"
 
 
 static int lua_newT(lua_State *L) {
