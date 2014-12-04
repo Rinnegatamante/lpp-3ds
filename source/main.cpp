@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <3ds.h>
-#include <3ds/services/fs.h>
 #include "include/luaplayer.h"
 #include "include/luaGraphics.h"
 
@@ -81,13 +80,14 @@ int main(int argc, char **argv)
 		FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
 		buffer[size]=0;
 		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
 		errMsg = runScript((const char*)buffer, true);
 		free(buffer);
 		
 		if (errMsg != NULL);
                 {
 				// Fake error to force interpreter shutdown
-				if (strstr(errMsg, "lpp_exit_0456432")){
+				if (strstr(errMsg, "lpp_exit_04")){
 					break;
 				}
 				
@@ -116,7 +116,6 @@ int main(int argc, char **argv)
 						}
 	}
 	
-	svcCloseHandle(fileHandle);
 	fsExit();
 	irrstExit();
 	hidExit();
