@@ -52,6 +52,31 @@ static int lua_exit(lua_State *L)
 	return luaL_error(L, string); // NOTE: This is a fake error
 }
 
+static int lua_dofile (lua_State *L) {
+  int argc = lua_gettop(L);
+  if (argc != 1) return luaL_error(L, "wrong number of arguments");
+  const char *fname = luaL_checkstring(L, 1);
+  Handle fileHandle;
+  u64 size;
+  u32 bytesRead;
+  unsigned char *buffer;
+  FS_path filePath=FS_makePath(PATH_CHAR, fname);
+  FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+  FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+  FSFILE_GetSize(fileHandle, &size);
+  buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
+  FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
+  buffer[size]=0;
+  FSFILE_Close(fileHandle);
+  svcCloseHandle(fileHandle);
+  lua_settop(L, 1);
+  if (luaL_loadbuffer(L, (const char*)buffer, strlen((const char*)buffer), NULL) != LUA_OK)
+    return lua_error(L);
+  lua_CFunction dofilecont = (lua_CFunction)(lua_gettop(L) - 1);
+  lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
+  return (int)dofilecont;
+}
+
 static int lua_openfile(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -213,6 +238,7 @@ static const luaL_Reg System_functions[] = {
   {"readFile",				lua_readfile},
   {"writeFile",				lua_writefile},
   {"takeScreenshot",		lua_screenshot},
+  {"dofile",				lua_dofile},
   {0, 0}
 };
 
