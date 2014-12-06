@@ -78,6 +78,59 @@ static int lua_openfile(lua_State *L)
 	return 1;
 }
 
+static int lua_screenshot(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *screenpath = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	int x, y;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, screenpath);
+	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	if(ret) return luaL_error(L, "error opening file");
+	u32 bytesWritten;
+	u8* tempbuf = (u8*)malloc(0x36+576000);
+	tempbuf[0x36+576000]=0;
+	FSFILE_SetSize(fileHandle, (u16)(0x36+576000));
+	*(u16*)&tempbuf[0x0] = 0x4D42;
+	*(u32*)&tempbuf[0x2] = 0x36 + 576000;
+	*(u32*)&tempbuf[0xA] = 0x36;
+	*(u32*)&tempbuf[0xE] = 0x28;
+	*(u32*)&tempbuf[0x12] = 400;
+	*(u32*)&tempbuf[0x16] = 480;
+	*(u32*)&tempbuf[0x1A] = 0x00180001;
+	*(u32*)&tempbuf[0x22] = 576000;
+	u8* framebuf = (u8*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+	for (y = 0; y < 240; y++)
+	{
+		for (x = 0; x < 400; x++)
+		{
+			int si = ((239 - y) + (x * 240)) * 3;
+			int di = 0x36 + (x + ((479 - y) * 400)) * 3;
+			tempbuf[di++] = framebuf[si++];
+			tempbuf[di++] = framebuf[si++];
+			tempbuf[di++] = framebuf[si++];
+		}
+	}
+	framebuf = (u8*)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+	for (y = 0; y < 240; y++)
+	{
+		for (x = 0; x < 320; x++)
+		{
+		int si = ((239 - y) + (x * 240)) * 3;
+		int di = 0x36 + ((x+40) + ((239 - y) * 400)) * 3;
+		tempbuf[di++] = framebuf[si++];
+		tempbuf[di++] = framebuf[si++];
+		tempbuf[di++] = framebuf[si++];
+		}
+	}
+	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + 576000, 0x10001);
+	FSFILE_Close(fileHandle);
+	free(tempbuf);
+	return 0;
+}
+
 static int lua_getsize(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -158,6 +211,7 @@ static const luaL_Reg System_functions[] = {
   {"closeFile",				lua_closefile},
   {"readFile",				lua_readfile},
   {"writeFile",				lua_writefile},
+  {"takeScreenshot",		lua_screenshot},
   {0, 0}
 };
 
