@@ -127,6 +127,7 @@ static int lua_screenshot(lua_State *L)
 	}
 	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + 576000, 0x10001);
 	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
 	free(tempbuf);
 	return 0;
 }
