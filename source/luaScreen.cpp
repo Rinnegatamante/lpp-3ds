@@ -58,35 +58,103 @@ static int lua_bitmap(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	char* text = (char*)(luaL_checkstring(L, 1));
-	Bitmap file = LoadBitmap(text);
-	int i=1;
-	lua_newtable(L);
-	lua_pushstring(L, "offset");
-    lua_pushnumber(L, (u32)(file.pixels));
-    lua_settable(L, -3);
-	lua_pushstring(L, "width");
-    lua_pushnumber(L, file.width);
-    lua_settable(L, -3);
-	lua_pushstring(L, "height");
-    lua_pushnumber(L, file.height);
-    lua_settable(L, -3);
+	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
+	*bitmap = LoadBitmap(text);
+    lua_pushnumber(L, (u32)(bitmap));
 	return 1;
 }
 
 static int lua_pbitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 5) return luaL_error(L, "wrong number of arguments");
-	int i=1;
-	Bitmap file;
+    if (argc != 4) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
-	file.pixels = (u8*)luaL_checkint(L, 3);
-	file.width = luaL_checkint(L, 4);
-	file.height= luaL_checkint(L, 5);
-	int screen= luaL_checkint(L, 6);
-	PrintBitmap(x,y,file,screen);
+	Bitmap* file = (Bitmap*)luaL_checkint(L, 3);
+	int screen= luaL_checkint(L, 4);
+	PrintBitmap(x,y,*file,screen);
 	return 0;
+}
+
+static int lua_flipBitmap(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	u8* not_flipped;
+	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	Bitmap* dst = (Bitmap*)luaL_checkint(L, 2);
+	not_flipped = dst->pixels;
+	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
+	dst->pixels = flipBitmap(flip_pixels, *src);
+	dst->width = src->width;
+	dst->height = src->height;
+	free(not_flipped);
+	return 0;
+}
+
+static int lua_saveimg(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	char* text = (char*)(luaL_checkstring(L, 2));
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, text);
+	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	if(ret) return luaL_error(L, "error opening file");
+	u32 bytesWritten;
+	u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*3);
+	tempbuf[0x36+(src->width)*(src->height)*3]=0;
+	FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*3));
+	*(u16*)&tempbuf[0x0] = 0x4D42;
+	*(u32*)&tempbuf[0x2] = 0x36 + (src->width)*(src->height)*3;
+	*(u32*)&tempbuf[0xA] = 0x36;
+	*(u32*)&tempbuf[0xE] = 0x28;
+	*(u32*)&tempbuf[0x12] = src->width;
+	*(u32*)&tempbuf[0x16] = src->height;
+	*(u32*)&tempbuf[0x1A] = 0x00180001;
+	*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*3;
+	int i=0;
+	while (i<((src->width)*(src->height)*3)){
+	tempbuf[0x36+i] = src->pixels[i];
+	i++;
+	}
+	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + (src->width)*(src->height)*3, 0x10001);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	free(tempbuf);
+	return 0;
+}
+
+
+static int lua_newBitmap(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	int width_new = luaL_checkint(L, 1);
+	int height_new = luaL_checkint(L, 2);
+	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
+	bitmap->width = width_new;
+	bitmap->height = height_new;
+	u8* pixels_new = (u8*)malloc(width_new*height_new*3);
+	int i=0;
+	while (i < (width_new*height_new*3)){
+	pixels_new[i] = 0;
+	i++;
+	}
+	bitmap->pixels = pixels_new;
+	lua_pushnumber(L, (u32)(bitmap));
+	return 1;
+}
+
+static int lua_free(lua_State *L)
+{
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	free(src->pixels);
+	free(src);
 }
 
 static int lua_flip(lua_State *L)
@@ -159,7 +227,11 @@ static int lua_pixel(lua_State *L)
 	int y = luaL_checknumber(L,2);
 	u32 color = luaL_checknumber(L,3);
 	int screen = luaL_checknumber(L,4);
+	if (screen > 1){
+	DrawImagePixel(x,y,color,(Bitmap*)screen);
+	}else{
 	DrawPixel(x,y,color,screen);
+	}
 	return 0;
 }
 
@@ -222,7 +294,11 @@ static const luaL_Reg Screen_functions[] = {
   {"fillEmptyRect",					lua_fillEmptyRect},
   {"pixel",							lua_pixel},
   {"loadBitmap",					lua_bitmap},
-  {"lpp_secret_0452",				lua_pbitmap},
+  {"drawImage",						lua_pbitmap},
+  {"freeImage",						lua_free},
+  {"flipImage",						lua_flipBitmap},
+  {"createImage",					lua_newBitmap},
+  {"saveBitmap",					lua_saveimg},
   {0, 0}
 };
 

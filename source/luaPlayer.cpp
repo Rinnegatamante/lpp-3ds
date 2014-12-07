@@ -63,10 +63,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 			 io.write = System.writeFile\n\
 			 io.close = System.closeFile\n\
 			 io.read = System.readFile\n\
-			 io.size = System.getFileSize\n\
-			 function Screen.printBitmap(x,y,f,s)\n\
-			 Screen.lpp_secret_0452(x,y,f[\"offset\"],f[\"width\"],f[\"height\"],s)\n\
-			 end";
+			 io.size = System.getFileSize\n";
 	luaL_loadbuffer(L, patch, strlen(patch), NULL); 
 	lua_CFunction dofilecont = (lua_CFunction)(lua_gettop(L) - 1);
 	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);

@@ -44,7 +44,6 @@ Bitmap LoadBitmap(char* fname){
 Handle fileHandle;
   u64 size;
   u32 bytesRead;
-  unsigned char *buffer;
   FS_path filePath=FS_makePath(PATH_CHAR, fname);
   FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
   FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
@@ -67,25 +66,50 @@ void PrintBitmap(int xp,int yp, Bitmap result,int screen){
 int x, y;
 	for (y = 0; y < result.height; y++){
 		for (x = 0; x < result.width; x++){
-			u8 B = result.pixels[(x + (result.height - y) * result.width)*3];
-			u8 G = result.pixels[(x + (result.height - y) * result.width)*3 + 1];
-			u8 R = result.pixels[(x + (result.height - y) * result.width)*3 + 2];
+			u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
+			u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
+			u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
 			u32 color = B + G*256 + R*256*256;
-			DrawPixel(xp+x,yp+y,color,screen);
+			if (screen > 1){
+				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
+			}else{
+				DrawPixel(xp+x,yp+y,color,screen);
+			}
 		}
 	}
 }
 
+u8* flipBitmap(u8* flip_bitmap, Bitmap result){
+int x, y;
+	for (y = 0; y < result.height; y++){
+		for (x = 0; x < result.width; x++){
+			flip_bitmap[(x + y * result.width)*3] = result.pixels[(x + (result.height - y - 1) * result.width)*3];
+			flip_bitmap[(x + y * result.width)*3 + 1] = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
+			flip_bitmap[(x + y * result.width)*3 + 2] = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+		}
+	}
+	return flip_bitmap;
+}
+
 void DrawPixel(int x,int y,u32 color,int screen){
 int idx = ((x)*240) + (239-(y));
-if (screen == 0){
+if ((screen == 0) && (x < 400) && (y < 240) && (x > 0) && (y > 0)){
 TopFB[idx*3+0] = (color);
 TopFB[idx*3+1] = (color) >> 8;
 TopFB[idx*3+2] = (color) >> 16;
-}else{
+}else if((screen == 1) && (x < 320) && (y < 240) && (x > 0) && (y > 0)){
 BottomFB[idx*3+0] = (color);
 BottomFB[idx*3+1] = (color) >> 8;
 BottomFB[idx*3+2] = (color) >> 16;
+}
+}
+
+void DrawImagePixel(int x,int y,u32 color,Bitmap* screen){
+if ((x < screen->width) && (y < screen->height) && (x > 0) && (y > 0)){
+int idx = (x + (screen->height - y) * screen->width);
+screen->pixels[idx*3+0] = (color);
+screen->pixels[idx*3+1] = (color) >> 8;
+screen->pixels[idx*3+2] = (color) >> 16;
 }
 }
 
@@ -121,7 +145,11 @@ unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
+if (screen > 1){
+DrawImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
+}else{
 DrawPixel(x+cx, y+cy, color, screen);
+}
 }
 }
 x += glyphsize;
@@ -191,7 +219,11 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
-			DrawPixel(x1,y1,color,screen);
+			if (screen > 1){
+				DrawImagePixel(x1,y1,color,(Bitmap*)screen);
+			}else{
+				DrawPixel(x1,y1,color,screen);
+			}
 			y1++;
 		}
 		y1 = base_y;
@@ -212,14 +244,24 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 	int base_y = y1;
 	while (y1 <= y2){
+		if (screen > 1){
+			DrawImagePixel(x1,y1,color,(Bitmap*)screen);
+			DrawImagePixel(x2,y1,color,(Bitmap*)screen);
+		}else{
 			DrawPixel(x1,y1,color,screen);
 			DrawPixel(x2,y1,color,screen);
+		}
 			y1++;
 		}
 	while (x1 <= x2){
-		DrawPixel(x1,base_y,color,screen);
-		DrawPixel(x1,y2,color,screen);
-		x1++;
+		if (screen > 1){
+			DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
+			DrawImagePixel(x1,y2,color,(Bitmap*)screen);
+		}else{
+			DrawPixel(x1,base_y,color,screen);
+			DrawPixel(x1,y2,color,screen);
+			x1++;
+		}
 	}
 }
 
