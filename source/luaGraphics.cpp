@@ -40,6 +40,41 @@
 typedef unsigned short u16;
 u8* TopFB;
 u8* BottomFB;
+Bitmap LoadBitmap(char* fname){
+Handle fileHandle;
+  u64 size;
+  u32 bytesRead;
+  unsigned char *buffer;
+  FS_path filePath=FS_makePath(PATH_CHAR, fname);
+  FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+  FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+  FSFILE_GetSize(fileHandle, &size);
+  Bitmap result;
+  result.pixels = (u8*)malloc(size-0x36);
+  u16 header;
+  FSFILE_Read(fileHandle, &bytesRead, 0, &header, 2);
+  if (header == 0x4D42){
+  FSFILE_Read(fileHandle, &bytesRead, 0x36, result.pixels, size-0x36);
+  FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result.width), 4);
+  FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result.height), 4);
+  }
+FSFILE_Close(fileHandle);
+svcCloseHandle(fileHandle);
+return result;
+}
+
+void PrintBitmap(int xp,int yp, Bitmap result,int screen){
+int x, y;
+	for (y = 0; y < result.height; y++){
+		for (x = 0; x < result.width; x++){
+			u8 B = result.pixels[(x + (result.height - y) * result.width)*3];
+			u8 G = result.pixels[(x + (result.height - y) * result.width)*3 + 1];
+			u8 R = result.pixels[(x + (result.height - y) * result.width)*3 + 2];
+			u32 color = B + G*256 + R*256*256;
+			DrawPixel(xp+x,yp+y,color,screen);
+		}
+	}
+}
 
 void DrawPixel(int x,int y,u32 color,int screen){
 int idx = ((x)*240) + (239-(y));

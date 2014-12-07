@@ -28,7 +28,13 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
-
+struct Bitmap{
+	u8* pixels;
+	int width;
+	int height;
+};
+Bitmap LoadBitmap(char* fname);
+void PrintBitmap(int xp,int yp, Bitmap result,int screen);
 void DrawPixel(int x,int y,u32 color,int screen);
 void DrawText(int x, int y, char* str, u32 color,int screen);
 void RefreshScreen();

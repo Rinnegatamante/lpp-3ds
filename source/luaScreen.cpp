@@ -53,6 +53,42 @@ static int lua_print(lua_State *L)
 	return 0;
 }
 
+static int lua_bitmap(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	char* text = (char*)(luaL_checkstring(L, 1));
+	Bitmap file = LoadBitmap(text);
+	int i=1;
+	lua_newtable(L);
+	lua_pushstring(L, "offset");
+    lua_pushnumber(L, (u32)(file.pixels));
+    lua_settable(L, -3);
+	lua_pushstring(L, "width");
+    lua_pushnumber(L, file.width);
+    lua_settable(L, -3);
+	lua_pushstring(L, "height");
+    lua_pushnumber(L, file.height);
+    lua_settable(L, -3);
+	return 1;
+}
+
+static int lua_pbitmap(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	int i=1;
+	Bitmap file;
+	int x = luaL_checkint(L, 1);
+    int y = luaL_checkint(L, 2);
+	file.pixels = (u8*)luaL_checkint(L, 3);
+	file.width = luaL_checkint(L, 4);
+	file.height= luaL_checkint(L, 5);
+	int screen= luaL_checkint(L, 6);
+	PrintBitmap(x,y,file,screen);
+	return 0;
+}
+
 static int lua_flip(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -185,6 +221,8 @@ static const luaL_Reg Screen_functions[] = {
   {"fillRect",						lua_fillRect},
   {"fillEmptyRect",					lua_fillEmptyRect},
   {"pixel",							lua_pixel},
+  {"loadBitmap",					lua_bitmap},
+  {"lpp_secret_0452",				lua_pbitmap},
   {0, 0}
 };
 
