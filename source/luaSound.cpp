@@ -64,13 +64,13 @@ static int lua_openwav(lua_State *L)
 	pos=pos+4;
 	}
 	FSFILE_GetSize(fileHandle, &size);
-	u8* audiobuf = (u8*)linearAlloc(size-(pos+8));
+	u8* audiobuf = (u8*)linearAlloc(size-(pos+4));
 	FSFILE_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
-	FSFILE_Read(fileHandle, &bytesRead, pos+8, audiobuf, size-(pos+8));
+	FSFILE_Read(fileHandle, &bytesRead, pos+4, audiobuf, size-(pos+4));
 	wav *wav_file = (wav*)malloc(sizeof(wav));
 	wav_file->audiobuf = audiobuf;
 	wav_file->samplerate = samplerate;
-	wav_file->size = size-(pos+8);
+	wav_file->size = size-(pos+4);
 	lua_pushnumber(L,(u32)wav_file);
 	}
 	FSFILE_Close(fileHandle);
