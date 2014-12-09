@@ -27,7 +27,7 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
-#- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
+#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
@@ -93,11 +93,11 @@ int x, y;
 
 void DrawPixel(int x,int y,u32 color,int screen){
 int idx = ((x)*240) + (239-(y));
-if ((screen == 0) && (x < 400) && (y < 240) && (x > 0) && (y > 0)){
+if ((screen == 0) && (x < 400) && (y < 240) && (x >= 0) && (y >= 0)){
 TopFB[idx*3+0] = (color);
 TopFB[idx*3+1] = (color) >> 8;
 TopFB[idx*3+2] = (color) >> 16;
-}else if((screen == 1) && (x < 320) && (y < 240) && (x > 0) && (y > 0)){
+}else if((screen == 1) && (x < 320) && (y < 240) && (x >= 0) && (y >= 0)){
 BottomFB[idx*3+0] = (color);
 BottomFB[idx*3+1] = (color) >> 8;
 BottomFB[idx*3+2] = (color) >> 16;
@@ -105,7 +105,7 @@ BottomFB[idx*3+2] = (color) >> 16;
 }
 
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen){
-if ((x < screen->width) && (y < screen->height) && (x > 0) && (y > 0)){
+if ((x < screen->width) && (y < screen->height) && (x >= 0) && (y >= 0)){
 int idx = (x + (screen->height - y) * screen->width);
 screen->pixels[idx*3+0] = (color);
 screen->pixels[idx*3+1] = (color) >> 8;
