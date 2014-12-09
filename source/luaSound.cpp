@@ -52,13 +52,16 @@ static int lua_openwav(lua_State *L)
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	if(ret) return luaL_error(L, "error opening file");
-	u32 samplerate,bytesRead,jump,chunk=0x00000000;
+	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
+	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	if (magic == 0x46464952){
 	u64 size;
 	u32 pos = 16;
 	while (chunk != 0x61746164){
 	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
 	pos=pos+jump;
 	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+	pos=pos+4;
 	}
 	FSFILE_GetSize(fileHandle, &size);
 	u8* audiobuf = (u8*)linearAlloc(size-(pos+8));
@@ -68,9 +71,10 @@ static int lua_openwav(lua_State *L)
 	wav_file->audiobuf = audiobuf;
 	wav_file->samplerate = samplerate;
 	wav_file->size = size-(pos+8);
+	lua_pushnumber(L,(u32)wav_file);
+	}
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
-	lua_pushnumber(L,(u32)wav_file);
 	return 1;
 }
 
