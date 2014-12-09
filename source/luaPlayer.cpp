@@ -27,7 +27,7 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
-#- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
+#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <ctype.h>
@@ -53,6 +53,8 @@ const char *runScript(const char* script, bool isStringBuffer)
 	luaScreen_init(L);
 	luaControls_init(L);
 	luaTimer_init(L);
+	luaSound_init(L);
+	luaVideo_init(L);
 	
 	int s = 0;
 	const char *errMsg = NULL;

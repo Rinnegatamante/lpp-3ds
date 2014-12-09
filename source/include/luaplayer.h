@@ -27,7 +27,7 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
-#- Aurelio for testing & bug-fixing ------------------------------------------------------------------------------------#
+#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #ifndef __LUAPLAYER_H
@@ -49,6 +49,8 @@ void luaScreen_init(lua_State *L);
 void luaControls_init(lua_State *L);
 void luaSystem_init(lua_State *L);
 void luaTimer_init(lua_State *L);
+void luaSound_init(lua_State *L);
+void luaVideo_init(lua_State *L);
 
 void stackDump (lua_State *L);
 
