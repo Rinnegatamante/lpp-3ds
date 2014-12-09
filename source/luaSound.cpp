@@ -79,11 +79,16 @@ static int lua_soundinit(lua_State *L)
 static int lua_playWav(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+    if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkint(L, 1);
 	u32 ch = luaL_checkint(L, 2);
+	int loop = luaL_checkint(L, 3);
 	GSPGPU_FlushDataCache(NULL, src->audiobuf, src->size);
-	CSND_playsound(ch, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, NULL, src->size, 2, 0);
+	if (loop == 1){
+		CSND_playsound(ch, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, NULL, src->size, 2, 0);
+	}else{
+		CSND_playsound(ch, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, NULL, src->size, 2, 0);	
+	}
 	return 0;
 }
 
