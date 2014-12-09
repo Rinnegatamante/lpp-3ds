@@ -207,6 +207,14 @@ int argc = lua_gettop(L);
 	return 1;
 }
 
+static int lua_getSrate(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->samplerate);
+	return 1;
+}
+
 static int lua_isPlaying(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -272,6 +280,7 @@ static const luaL_Reg BMPV_functions[] = {
   {"getFPS",			lua_getFPS},
   {"getFrame",			lua_getCF},
   {"getSize",			lua_getSize},
+  {"getSrate",			lua_getSrate},
   {"isPlaying",			lua_isPlaying},
   {"stop",				lua_stopBMPV},
   {"resume",			lua_resumeBMPV},
