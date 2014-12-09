@@ -52,16 +52,22 @@ static int lua_openwav(lua_State *L)
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	if(ret) return luaL_error(L, "error opening file");
-	u32 samplerate,bytesRead;
+	u32 samplerate,bytesRead,jump,chunk=0x00000000;
 	u64 size;
+	u32 pos = 16;
+	while (chunk != 0x61746164){
+	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
+	pos=pos+jump;
+	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+	}
 	FSFILE_GetSize(fileHandle, &size);
-	u8* audiobuf = (u8*)linearAlloc(size-44);
+	u8* audiobuf = (u8*)linearAlloc(size-(pos+8));
 	FSFILE_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
-	FSFILE_Read(fileHandle, &bytesRead, 44, audiobuf, size-44);
+	FSFILE_Read(fileHandle, &bytesRead, pos+8, audiobuf, size-(pos+8));
 	wav *wav_file = (wav*)malloc(sizeof(wav));
 	wav_file->audiobuf = audiobuf;
 	wav_file->samplerate = samplerate;
-	wav_file->size = size-44;
+	wav_file->size = size-(pos+8);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	lua_pushnumber(L,(u32)wav_file);
