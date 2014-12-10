@@ -103,6 +103,14 @@ static int lua_openfile(lua_State *L)
 	return 1;
 }
 
+static int lua_isGW(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushboolean(L,GW_MODE);
+	return 1;
+}
+
 static int lua_screenshot(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -228,18 +236,21 @@ static int lua_getK(lua_State *L)
     return 1;
 }
 
-//Register our Screen Functions
+//Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {"getFirmware",			lua_getFW},
+  {"isGWMode",				lua_isGW},
   {"getKernel",				lua_getK},
+  {"takeScreenshot",		lua_screenshot},
+// I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
   {"closeFile",				lua_closefile},
   {"readFile",				lua_readfile},
   {"writeFile",				lua_writefile},
-  {"takeScreenshot",		lua_screenshot},
   {"dofile",				lua_dofile},
+// End I/O Module and Dofile Patch
   {0, 0}
 };
 
