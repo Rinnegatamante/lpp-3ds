@@ -37,9 +37,28 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <3ds.h>
 #include "include/luaplayer.h"
 
 static lua_State *L;
+bool GW_MODE;
+
+// Fake Sound Module for GW Mode to prevent interpreter error with generic scripts
+static int nil_func(lua_State *L){ return 0; }
+static const luaL_Reg Fake_Sound_functions[] = {
+	{"openWav",				nil_func},
+	{"playWav",				nil_func},
+	{"init",				nil_func},
+	{"term",				nil_func},
+	{"pause",				nil_func},
+	{"resume",				nil_func},
+	{0, 0}
+	};
+void luaFakeSound_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Fake_Sound_functions, 0);
+	lua_setglobal(L, "Sound");
+}
 
 const char *runScript(const char* script, bool isStringBuffer)
 {
@@ -48,12 +67,24 @@ const char *runScript(const char* script, bool isStringBuffer)
 	// Standard libraries
 	luaL_openlibs(L);
 	
+	// Check if user is in GW mode
+	if (CSND_initialize(NULL)==0){
+	CSND_shutdown();
+	GW_MODE = false;
+	}else{
+	GW_MODE = true;
+	}
+	
 	// Modules
 	luaSystem_init(L);
 	luaScreen_init(L);
 	luaControls_init(L);
 	luaTimer_init(L);
+	if (!GW_MODE){
 	luaSound_init(L);
+	}else{
+	luaFakeSound_init(L);
+	}
 	luaVideo_init(L);
 	
 	int s = 0;

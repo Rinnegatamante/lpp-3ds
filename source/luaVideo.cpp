@@ -121,7 +121,7 @@ int argc = lua_gettop(L);
 	src->isPlaying = true;
 	src->currentFrame = 0;
 	u32 bytesRead;
-	if (src->samplerate != 0 && src->audio_size != 0){
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	u8* audiobuf = (u8*)linearAlloc(src->audio_size);
 	FSFILE_Read(src->sourceFile, &bytesRead, 24, audiobuf, src->audio_size);
 	src->audiobuf = audiobuf;
@@ -227,7 +227,7 @@ static int lua_unloadBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	if (src->samplerate != 0 && src->audio_size != 0){
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	linearFree(src->audiobuf);
 	}
 	FSFILE_Close(src->sourceFile);
@@ -251,7 +251,7 @@ int argc = lua_gettop(L);
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0){
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	CSND_setchannel_playbackstate(0x08, 0);
 	CSND_sharedmemtype0_cmdupdatestate(0);
 	}
@@ -264,7 +264,7 @@ int argc = lua_gettop(L);
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0){
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	CSND_setchannel_playbackstate(0x08, 1);
 	CSND_sharedmemtype0_cmdupdatestate(0);
 	}
