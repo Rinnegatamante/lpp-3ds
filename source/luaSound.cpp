@@ -102,6 +102,16 @@ static int lua_playWav(lua_State *L)
 	return 0;
 }
 
+static int lua_closeWav(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	linearFree(src->audiobuf);
+	free(src);
+	return 0;
+}
+
 static int lua_pause(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -133,6 +143,7 @@ static int lua_soundend(lua_State *L)
 //Register our Sound Functions
 static const luaL_Reg Sound_functions[] = {
   {"openWav",				lua_openwav},
+  {"closeWav",				lua_closeWav},
   {"playWav",				lua_playWav},
   {"init",					lua_soundinit},
   {"term",					lua_soundend},
