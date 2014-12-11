@@ -55,5 +55,6 @@ void luaVideo_init(lua_State *L);
 void stackDump (lua_State *L);
 
 extern bool GW_MODE;
+extern char cur_dir[256];
 
 #endif

@@ -236,6 +236,27 @@ static int lua_getK(lua_State *L)
     return 1;
 }
 
+static int lua_getCurrentDirectory(lua_State *L)
+{
+    lua_pushstring(L, cur_dir);
+    return 1;
+}
+
+static int lua_setCurrentDirectory(lua_State *L)
+{
+    const char *path = luaL_checkstring(L, 1);
+    if(!path) return luaL_error(L, "System.currentDirectory(file) takes a filename as a string argument.");
+    strcpy(cur_dir,path);
+    return 1;
+}
+
+static int lua_curdir(lua_State *L) {
+    int argc = lua_gettop(L);
+    if(argc == 0) return lua_getCurrentDirectory(L);
+    if(argc == 1) return lua_setCurrentDirectory(L);
+    return luaL_error(L, "System.currentDirectory([file]) takes zero or one argument");
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -243,6 +264,7 @@ static const luaL_Reg System_functions[] = {
   {"isGWMode",				lua_isGW},
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
+  {"currentDirectory",		lua_curdir},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},

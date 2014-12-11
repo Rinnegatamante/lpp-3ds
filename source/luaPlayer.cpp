@@ -96,7 +96,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 			 io.write = System.writeFile\n\
 			 io.close = System.closeFile\n\
 			 io.read = System.readFile\n\
-			 io.size = System.getFileSize\n";
+			 io.size = System.getFileSize";
 	luaL_loadbuffer(L, patch, strlen(patch), NULL); 
 	lua_CFunction dofilecont = (lua_CFunction)(lua_gettop(L) - 1);
 	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);

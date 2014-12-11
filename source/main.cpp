@@ -38,6 +38,7 @@
 
 const char *errMsg;
 unsigned char *buffer;
+char cur_dir[256];
 
 int main(int argc, char **argv)
 {
@@ -53,7 +54,8 @@ int main(int argc, char **argv)
 	int restore;
 	
 	// Set main script
-		char path[256];
+	char path[256];
+	if (argc > 0){	
 		int latest_slash = 0;
 		int i=5;
 		while (argv[0][i]  != '\0'){
@@ -64,7 +66,12 @@ int main(int argc, char **argv)
 		}
 		strcpy(path,&argv[0][5]);
 		path[latest_slash-5] = 0;
+		strcpy(cur_dir,path); // Set current dir
 		strcat(path,"/index.lua");
+	}else{
+		strcpy(cur_dir,"/"); // Set current dir for GW Mode
+		strcpy(path,"/index.lua");
+	}
 		
 	while(aptMainLoop())
 	{
