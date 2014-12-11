@@ -37,8 +37,11 @@
 #include "include/luaGraphics.h"
 #include "include/font.h"
 
+#define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
+
 typedef unsigned short u16;
-u8* TopFB;
+u8* TopLFB;
+u8* TopRFB;
 u8* BottomFB;
 Bitmap LoadBitmap(char* fname){
 Handle fileHandle;
@@ -62,7 +65,7 @@ svcCloseHandle(fileHandle);
 return result;
 }
 
-void PrintBitmap(int xp,int yp, Bitmap result,int screen){
+void PrintBitmap(int xp,int yp, Bitmap result,int screen,int side){
 int x, y;
 	for (y = 0; y < result.height; y++){
 		for (x = 0; x < result.width; x++){
@@ -72,8 +75,9 @@ int x, y;
 			u32 color = B + G*256 + R*256*256;
 			if (screen > 1){
 				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
+				
 			}else{
-				DrawPixel(xp+x,yp+y,color,screen);
+				DrawPixel(xp+x,yp+y,color,screen,side);
 			}
 		}
 	}
@@ -91,12 +95,18 @@ int x, y;
 	return flip_bitmap;
 }
 
-void DrawPixel(int x,int y,u32 color,int screen){
+void DrawPixel(int x,int y,u32 color,int screen, int side){
 int idx = ((x)*240) + (239-(y));
 if ((screen == 0) && (x < 400) && (y < 240) && (x >= 0) && (y >= 0)){
-TopFB[idx*3+0] = (color);
-TopFB[idx*3+1] = (color) >> 8;
-TopFB[idx*3+2] = (color) >> 16;
+if (side == 0){
+TopLFB[idx*3+0] = (color);
+TopLFB[idx*3+1] = (color) >> 8;
+TopLFB[idx*3+2] = (color) >> 16;
+}else{
+TopRFB[idx*3+0] = (color);
+TopRFB[idx*3+1] = (color) >> 8;
+TopRFB[idx*3+2] = (color) >> 16;
+}
 }else if((screen == 1) && (x < 320) && (y < 240) && (x >= 0) && (y >= 0)){
 BottomFB[idx*3+0] = (color);
 BottomFB[idx*3+1] = (color) >> 8;
@@ -114,11 +124,14 @@ screen->pixels[idx*3+2] = (color) >> 16;
 }
 
 void RefreshScreen(){
-TopFB = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+TopLFB = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+if (CONFIG_3D_SLIDERSTATE != 0){
+TopRFB = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
+}
 BottomFB = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 }
 
-void DrawText(int x, int y, char* str, u32 color, int screen){
+void DrawText(int x, int y, char* str, u32 color, int screen,int side){
 unsigned short* ptr;
 unsigned short glyphsize;
 int i, cx, cy;
@@ -148,7 +161,7 @@ if (val & (1 << cx))
 if (screen > 1){
 DrawImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
 }else{
-DrawPixel(x+cx, y+cy, color, screen);
+DrawPixel(x+cx, y+cy, color, screen, side);
 }
 }
 }
@@ -197,7 +210,7 @@ x=0;
 y=y+15;
 }
 if (val & (1 << cx))
-DrawPixel(x+cx, y+cy, 0xFFFFFF, 1);
+DrawPixel(x+cx, y+cy, 0xFFFFFF, 1, 0);
 }
 }
 x += glyphsize;
@@ -205,7 +218,7 @@ x++;
 }
 }
 
-void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -222,7 +235,7 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 			if (screen > 1){
 				DrawImagePixel(x1,y1,color,(Bitmap*)screen);
 			}else{
-				DrawPixel(x1,y1,color,screen);
+				DrawPixel(x1,y1,color,screen,side);
 			}
 			y1++;
 		}
@@ -231,7 +244,7 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
-void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -248,8 +261,8 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 			DrawImagePixel(x1,y1,color,(Bitmap*)screen);
 			DrawImagePixel(x2,y1,color,(Bitmap*)screen);
 		}else{
-			DrawPixel(x1,y1,color,screen);
-			DrawPixel(x2,y1,color,screen);
+			DrawPixel(x1,y1,color,screen,side);
+			DrawPixel(x2,y1,color,screen,side);
 		}
 			y1++;
 		}
@@ -258,8 +271,8 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 			DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
 			DrawImagePixel(x1,y2,color,(Bitmap*)screen);
 		}else{
-			DrawPixel(x1,base_y,color,screen);
-			DrawPixel(x1,y2,color,screen);
+			DrawPixel(x1,base_y,color,screen,side);
+			DrawPixel(x1,y2,color,screen,side);
 			x1++;
 		}
 	}
@@ -267,8 +280,9 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 
 void ClearScreen(int screen){
 	if (screen==1){
-		FillRect(0,319,0,239,0x000000,1);
+		FillRect(0,319,0,239,0x000000,1,0);
+		FillRect(0,319,0,239,0x000000,1,1);
 	}else{
-		FillRect(0,399,0,239,0x000000,0);
+		FillRect(0,399,0,239,0x000000,0,0);
 	}
 }

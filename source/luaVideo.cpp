@@ -51,6 +51,7 @@ struct BMPV{
 	u32 audio_size;
 	u32 samplerate;
 	u8* audiobuf;
+	u8* framebuf;
 	bool isPlaying;
 	int loop;
 };
@@ -87,6 +88,8 @@ static int lua_loadBMPV(lua_State *L)
 	BMPV_file->audiobuf = NULL;
 	BMPV_file->samplerate = samplerate;
 	frame_size = width*height*3;
+	u8* framebuf = (u8*)(malloc(frame_size));
+	BMPV_file->framebuf = framebuf;
 	int tot_frame = (size-24-audio_size)/frame_size;
 	BMPV_file->tot_frame = tot_frame;
 	lua_pushnumber(L, (u32)BMPV_file);
@@ -127,9 +130,9 @@ int argc = lua_gettop(L);
 	src->audiobuf = audiobuf;
 	GSPGPU_FlushDataCache(NULL, audiobuf, src->audio_size);
 	if (src->loop == 1){
-		My_CSND_playsound(0x8, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)audiobuf, NULL, src->audio_size, 2, 0);
+		My_CSND_playsound(0x08, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)audiobuf, NULL, src->audio_size, 2, 0);
 	}else{
-		My_CSND_playsound(0x8, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)audiobuf, NULL, src->audio_size, 2, 0);		
+		My_CSND_playsound(0x08, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)audiobuf, NULL, src->audio_size, 2, 0);		
 	}
 	src->tick = osGetTime();
 	CSND_setchannel_playbackstate(0x08, 1);
@@ -140,11 +143,17 @@ int argc = lua_gettop(L);
 
 static int lua_drawBMPV(lua_State *L){
 int argc = lua_gettop(L);
-    if (argc != 4) return luaL_error(L, "wrong number of arguments");
+    if (argc < 4) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
 	int y = luaL_checkint(L, 2);
 	BMPV* src = (BMPV*)luaL_checkint(L, 3);
 	int screen = luaL_checkint(L, 4);
+	int side;
+	if (argc == 5){
+	side = luaL_checkint(L,5);
+	}else{
+	side = 0;
+	}
 	if (src->isPlaying){
 		if (src->currentFrame >= src->tot_frame){
 			if (src->loop == 1){
@@ -159,12 +168,10 @@ int argc = lua_gettop(L);
 			bitmap.width = src->width;
 			bitmap.height = src->height;
 			u32 frame_size = src->width * src->height * 3;
-			u8* framebuf = (u8*)(malloc(frame_size));
 			u32 bytesRead;
-			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*frame_size), framebuf, frame_size);
-			bitmap.pixels = framebuf;
-			PrintBitmap(x,y,bitmap,screen);
-			free(framebuf);
+			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
+			bitmap.pixels = src->framebuf;
+			PrintBitmap(x,y,bitmap,screen,side);
 		}
 	}else{
 		if (src->tick != 0){
@@ -172,12 +179,10 @@ int argc = lua_gettop(L);
 			bitmap.width = src->width;
 			bitmap.height = src->height;
 			u32 frame_size = src->width * src->height * 3;
-			u8* framebuf = (u8*)(malloc(frame_size));
 			u32 bytesRead;
-			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*frame_size), framebuf, frame_size);
-			bitmap.pixels = framebuf;
-			PrintBitmap(x,y,bitmap,screen);
-			free(framebuf);
+			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
+			bitmap.pixels = src->framebuf;
+			PrintBitmap(x,y,bitmap,screen,side);
 		}
 	}
 	return 0;
@@ -232,6 +237,7 @@ int argc = lua_gettop(L);
 	}
 	FSFILE_Close(src->sourceFile);
 	svcCloseHandle(src->sourceFile);
+	free(src->framebuf);
 	free(src);
 	return 0;
 }

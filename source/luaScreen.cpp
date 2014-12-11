@@ -39,18 +39,49 @@
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+#define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
 static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+    if (argc < 5) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	char* text = (char*)(luaL_checkstring(L, 3));
 	u32 color = luaL_checknumber(L,4);
 	int screen = luaL_checknumber(L,5);
-	DrawText(x,y,text,color,screen);
+	int side;
+	if (argc == 5){
+	side = luaL_checkint(L,5);
+	}else{
+	side = 0;
+	}
+	DrawText(x,y,text,color,screen,side);
 	return 0;
+}
+
+static int lua_enable3D(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	gfxSet3D(true);
+	return 0;
+}
+
+static int lua_disable3D(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	gfxSet3D(false);
+	return 0;
+}
+
+static int lua_get3D(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushnumber(L, CONFIG_3D_SLIDERSTATE);
+	return 1;
 }
 
 static int lua_bitmap(lua_State *L)
@@ -67,12 +98,18 @@ static int lua_bitmap(lua_State *L)
 static int lua_pbitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 4) return luaL_error(L, "wrong number of arguments");
+    if (argc < 4) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	Bitmap* file = (Bitmap*)luaL_checkint(L, 3);
 	int screen= luaL_checkint(L, 4);
-	PrintBitmap(x,y,*file,screen);
+	int side;
+	if (argc == 5){
+	side = luaL_checkint(L,5);
+	}else{
+	side = 0;
+	}
+	PrintBitmap(x,y,*file,screen,side);
 	return 0;
 }
 
@@ -195,43 +232,61 @@ static int lua_clearScreen(lua_State *L)
 static int lua_fillRect(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 6) return luaL_error(L, "wrong number of arguments");
+    if (argc < 6) return luaL_error(L, "wrong number of arguments");
 	int x1 = luaL_checkint(L,1);
 	int x2 = luaL_checkint(L,2);
 	int y1 = luaL_checkint(L,3);
 	int y2 = luaL_checkint(L,4);
 	u32 color = luaL_checknumber(L,5);
 	int screen = luaL_checkint(L,6);
-	FillRect(x1,x2,y1,y2,color,screen);
+	int side;
+	if (argc == 7){
+	side = luaL_checkint(L,7);
+	}else{
+	side = 0;
+	}
+	FillRect(x1,x2,y1,y2,color,screen,side);
 	return 0;
 }
 
 static int lua_fillEmptyRect(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 6) return luaL_error(L, "wrong number of arguments");
+    if (argc < 6) return luaL_error(L, "wrong number of arguments");
 	int x1 = luaL_checkint(L,1);
 	int x2 = luaL_checkint(L,2);
 	int y1 = luaL_checkint(L,3);
 	int y2 = luaL_checkint(L,4);
 	u32 color = luaL_checknumber(L,5);
 	int screen = luaL_checkint(L,6);
-	FillEmptyRect(x1,x2,y1,y2,color,screen);
+	int side;
+	if (argc == 7){
+	side = luaL_checkint(L,7);
+	}else{
+	side = 0;
+	}
+	FillEmptyRect(x1,x2,y1,y2,color,screen,side);
 	return 0;
 }
 
 static int lua_pixel(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 4) return luaL_error(L, "wrong number of arguments");
+    if (argc < 4) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checknumber(L,1);
 	int y = luaL_checknumber(L,2);
 	u32 color = luaL_checknumber(L,3);
 	int screen = luaL_checknumber(L,4);
+	int side;
+	if (argc == 5){
+	side = luaL_checkint(L,5);
+	}else{
+	side = 0;
+	}
 	if (screen > 1){
 	DrawImagePixel(x,y,color,(Bitmap*)screen);
 	}else{
-	DrawPixel(x,y,color,screen);
+	DrawPixel(x,y,color,screen,side);
 	}
 	return 0;
 }
@@ -294,6 +349,9 @@ static const luaL_Reg Screen_functions[] = {
   {"fillRect",						lua_fillRect},
   {"fillEmptyRect",					lua_fillEmptyRect},
   {"pixel",							lua_pixel},
+  {"enable3D",						lua_enable3D},
+  {"get3DLevel",					lua_get3D},
+  {"disable3D",						lua_disable3D},
   {"loadBitmap",					lua_bitmap},
   {"drawImage",						lua_pbitmap},
   {"freeImage",						lua_free},
@@ -312,6 +370,10 @@ void luaScreen_init(lua_State *L) {
 	lua_setglobal(L, "Color");
 	int TOP_SCREEN = 0;
 	int BOTTOM_SCREEN = 1;
+	int LEFT_EYE = 0;
+	int RIGHT_EYE = 1;
 	VariableRegister(L,TOP_SCREEN);
 	VariableRegister(L,BOTTOM_SCREEN);
+	VariableRegister(L,LEFT_EYE);
+	VariableRegister(L,RIGHT_EYE);
 }

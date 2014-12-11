@@ -35,13 +35,13 @@ struct Bitmap{
 	int height;
 };
 Bitmap LoadBitmap(char* fname);
-void PrintBitmap(int xp,int yp, Bitmap result,int screen);
+void PrintBitmap(int xp,int yp, Bitmap result,int screen,int side);
 u8* flipBitmap(u8* flip_bitmap, Bitmap result);
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen);
-void DrawPixel(int x,int y,u32 color,int screen);
-void DrawText(int x, int y, char* str, u32 color,int screen);
+void DrawPixel(int x,int y,u32 color,int screen,int side);
+void DrawText(int x, int y, char* str, u32 color,int screen,int side);
 void RefreshScreen();
 void DebugOutput(char* str);
-void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen);
-void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen);
+void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side);
+void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side);
 void ClearScreen(int screen);
