@@ -36,16 +36,26 @@ You can find a simple converter from various video format to BMPV in this folder
 </tr>
 <tr>
 <td>0x10</td>
-<td>4</td>
-<td>Audio buffer samplerate</td>
+<td>2</td>
+<td>Audio type (1 = Mono, 2 = Stereo)</td>
+</tr>
+<tr>
+<td>0x12</td>
+<td>2</td>
+<td>Audio buffer bytepersample</td>
 </tr>
 <tr>
 <td>0x14</td>
 <td>4</td>
-<td>Audio buffer size</td>
+<td>Audio buffer samplerate</td>
 </tr>
 <tr>
 <td>0x18</td>
+<td>4</td>
+<td>Audio buffer size</td>
+</tr>
+<tr>
+<td>0x1C</td>
 <td>X</td>
 <td>Audio buffer</td>
 </tr>
