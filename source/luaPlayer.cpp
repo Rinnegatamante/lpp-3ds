@@ -47,6 +47,7 @@ bool GW_MODE;
 static int nil_func(lua_State *L){ return 0; }
 static const luaL_Reg Fake_Sound_functions[] = {
 	{"openWav",				nil_func},
+	{"closeWav",			nil_func},
 	{"playWav",				nil_func},
 	{"init",				nil_func},
 	{"term",				nil_func},

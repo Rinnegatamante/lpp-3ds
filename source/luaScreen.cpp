@@ -44,15 +44,15 @@
 static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc < 5) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	char* text = (char*)(luaL_checkstring(L, 3));
 	u32 color = luaL_checknumber(L,4);
 	int screen = luaL_checknumber(L,5);
 	int side;
-	if (argc == 5){
-	side = luaL_checkint(L,5);
+	if (argc == 6){
+	side = luaL_checkint(L,6);
 	}else{
 	side = 0;
 	}
@@ -98,7 +98,7 @@ static int lua_bitmap(lua_State *L)
 static int lua_pbitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc < 4) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	Bitmap* file = (Bitmap*)luaL_checkint(L, 3);
@@ -232,7 +232,7 @@ static int lua_clearScreen(lua_State *L)
 static int lua_fillRect(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc < 6) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
 	int x1 = luaL_checkint(L,1);
 	int x2 = luaL_checkint(L,2);
 	int y1 = luaL_checkint(L,3);
@@ -252,7 +252,7 @@ static int lua_fillRect(lua_State *L)
 static int lua_fillEmptyRect(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc < 6) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
 	int x1 = luaL_checkint(L,1);
 	int x2 = luaL_checkint(L,2);
 	int y1 = luaL_checkint(L,3);
@@ -272,7 +272,7 @@ static int lua_fillEmptyRect(lua_State *L)
 static int lua_pixel(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc < 4) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checknumber(L,1);
 	int y = luaL_checknumber(L,2);
 	u32 color = luaL_checknumber(L,3);
