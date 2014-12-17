@@ -257,6 +257,70 @@ static int lua_curdir(lua_State *L) {
     return luaL_error(L, "System.currentDirectory([file]) takes zero or one argument");
 }
 
+static int lua_rendir(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	const char *path2 = luaL_checkstring(L, 2);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
+	FSUSER_RenameDirectory(&fileHandle,sdmcArchive,filePath,sdmcArchive,filePath2);
+	svcCloseHandle(fileHandle);
+    return 0;
+}
+
+static int lua_createdir(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FSUSER_CreateDirectory(&fileHandle,sdmcArchive,filePath);
+	svcCloseHandle(fileHandle);
+    return 0;
+}
+
+static int lua_deldir(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FSUSER_DeleteDirectory(&fileHandle,sdmcArchive,filePath);
+	svcCloseHandle(fileHandle);
+    return 0;
+}
+
+static int lua_delfile(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FSUSER_DeleteFile(&fileHandle,sdmcArchive,filePath);
+	svcCloseHandle(fileHandle);
+    return 0;
+}
+
+static int lua_renfile(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	const char *path2 = luaL_checkstring(L, 2);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
+	FSUSER_RenameFile(&fileHandle,sdmcArchive,filePath,sdmcArchive,filePath2);
+	svcCloseHandle(fileHandle);
+    return 0;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -265,6 +329,11 @@ static const luaL_Reg System_functions[] = {
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
   {"currentDirectory",		lua_curdir},
+  {"renameDirectory",		lua_rendir},
+  {"createDirectory",		lua_createdir},
+  {"deleteDirectory",		lua_deldir},
+  {"renameFile",			lua_renfile},
+  {"deleteFile",			lua_delfile},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
