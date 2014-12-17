@@ -2,7 +2,7 @@
 BMPV (Bitmap Video) video format is a RAW video format ideated with only one purpose: make the video loading the easiest possible.<br>
 In the future i'll add various compression algorithm for audio and video buffers but, for now, they will be in RAW format.<br>
 The bad thing is the eccessive size of a BMPV video (i suggest to use them only for very short videos).<br>
-Actually, audio buffer is coded in WAV mono format with PCM16 codec and video buffer is a sequence of BMP for every frame.<br>
+Actually, audio buffer is coded in WAV format with PCM16 codec and video buffer is a sequence of BMP for every frame.<br>
 Headers from WAV and BMPs original files are deleted.<br>
 You can find a simple converter from various video format to BMPV in this folder.<br>
 <br>
