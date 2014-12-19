@@ -103,6 +103,19 @@ static int lua_openfile(lua_State *L)
 	return 1;
 }
 
+static int lua_checkexist(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *file_tbo = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	lua_pushboolean(L,ret);
+	return 1;
+}
+
 static int lua_isGW(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -334,6 +347,7 @@ static const luaL_Reg System_functions[] = {
   {"deleteDirectory",		lua_deldir},
   {"renameFile",			lua_renfile},
   {"deleteFile",			lua_delfile},
+  {"doesFileExist",			lua_checkexist},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
