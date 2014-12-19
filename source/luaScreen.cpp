@@ -291,6 +291,27 @@ static int lua_pixel(lua_State *L)
 	return 0;
 }
 
+static int lua_pixel2(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkint(L,1);
+	int y = luaL_checkint(L,2);
+	int screen = luaL_checkint(L,3);
+	int side;
+	if (argc == 4){
+	side = luaL_checkint(L,4);
+	}else{
+	side = 0;
+	}
+	if (screen > 1){
+	lua_pushnumber(L,GetImagePixel(x,y,(Bitmap*)screen));
+	}else{
+	lua_pushnumber(L,GetPixel(x,y,screen,side));
+	}
+	return 1;
+}
+
 static int lua_color(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 3) return luaL_error(L, "wrong number of arguments");
@@ -348,7 +369,8 @@ static const luaL_Reg Screen_functions[] = {
   {"clear",							lua_clearScreen},
   {"fillRect",						lua_fillRect},
   {"fillEmptyRect",					lua_fillEmptyRect},
-  {"pixel",							lua_pixel},
+  {"drawPixel",						lua_pixel},
+  {"getPixel",						lua_pixel2},
   {"enable3D",						lua_enable3D},
   {"get3DLevel",					lua_get3D},
   {"disable3D",						lua_disable3D},

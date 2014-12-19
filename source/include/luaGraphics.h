@@ -46,3 +46,5 @@ void DebugOutput(char* str);
 void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side);
 void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side);
 void ClearScreen(int screen);
+u32 GetPixel(int x,int y,int screen,int side);
+u32 GetImagePixel(int x,int y,Bitmap* screen);
