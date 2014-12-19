@@ -33,6 +33,7 @@ struct Bitmap{
 	u8* pixels;
 	int width;
 	int height;
+	u16 bitperpixel;
 };
 Bitmap LoadBitmap(char* fname);
 void PrintBitmap(int xp,int yp, Bitmap result,int screen,int side);

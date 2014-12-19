@@ -59,6 +59,7 @@ Handle fileHandle;
   FSFILE_Read(fileHandle, &bytesRead, 0x36, result.pixels, size-0x36);
   FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result.width), 4);
   FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result.height), 4);
+  FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result.bitperpixel), 2);
   }
 FSFILE_Close(fileHandle);
 svcCloseHandle(fileHandle);
@@ -69,10 +70,18 @@ void PrintBitmap(int xp,int yp, Bitmap result,int screen,int side){
 int x, y;
 	for (y = 0; y < result.height; y++){
 		for (x = 0; x < result.width; x++){
+			u32 color;
+			if (result.bitperpixel == 24){
 			u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
 			u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
 			u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
-			u32 color = B + G*256 + R*256*256;
+			color = B + G*256 + R*256*256;
+			}else if (result.bitperpixel == 32){
+			u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
+			u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
+			u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
+			color = B + G*256 + R*256*256;
+			}		
 			if (screen > 1){
 				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 				
@@ -281,8 +290,10 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 void ClearScreen(int screen){
 	if (screen==1){
 		FillRect(0,319,0,239,0x000000,1,0);
-		FillRect(0,319,0,239,0x000000,1,1);
 	}else{
 		FillRect(0,399,0,239,0x000000,0,0);
+	if (CONFIG_3D_SLIDERSTATE != 0){
+		FillRect(0,399,0,239,0x000000,0,1);
+	}
 	}
 }
