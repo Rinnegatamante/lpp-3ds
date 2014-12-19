@@ -260,6 +260,9 @@ int argc = lua_gettop(L);
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	linearFree(src->audiobuf);
+	if (src->audiotype == 2){
+		linearFree(src->audiobuf2);
+	}
 	}
 	FSFILE_Close(src->sourceFile);
 	svcCloseHandle(src->sourceFile);
@@ -274,6 +277,13 @@ int argc = lua_gettop(L);
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
 	src->isPlaying = false;
 	src->currentFrame = 0;
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	CSND_setchannel_playbackstate(src->ch1, 0);
+	if (src->audiotype == 2){
+	CSND_setchannel_playbackstate(src->ch2, 0);
+	}
+	CSND_sharedmemtype0_cmdupdatestate(0);
+	}
 	return 0;
 }
 
