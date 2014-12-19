@@ -48,8 +48,8 @@ static int lua_print(lua_State *L)
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	char* text = (char*)(luaL_checkstring(L, 3));
-	u32 color = luaL_checknumber(L,4);
-	int screen = luaL_checknumber(L,5);
+	u32 color = luaL_checkint(L,4);
+	int screen = luaL_checkint(L,5);
 	int side;
 	if (argc == 6){
 	side = luaL_checkint(L,6);
@@ -273,10 +273,10 @@ static int lua_pixel(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checknumber(L,1);
-	int y = luaL_checknumber(L,2);
-	u32 color = luaL_checknumber(L,3);
-	int screen = luaL_checknumber(L,4);
+	int x = luaL_checkint(L,1);
+	int y = luaL_checkint(L,2);
+	u32 color = luaL_checkint(L,3);
+	int screen = luaL_checkint(L,4);
 	int side;
 	if (argc == 5){
 	side = luaL_checkint(L,5);
