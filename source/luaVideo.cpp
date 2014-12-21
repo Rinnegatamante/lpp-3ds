@@ -193,22 +193,26 @@ int argc = lua_gettop(L);
 			Bitmap bitmap;
 			bitmap.width = src->width;
 			bitmap.height = src->height;
+			bitmap.bitperpixel = 24;
 			u32 frame_size = src->width * src->height * 3;
 			u32 bytesRead;
 			FSFILE_Read(src->sourceFile, &bytesRead, 28+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
 			bitmap.pixels = src->framebuf;
-			PrintBitmap(x,y,bitmap,screen,side);
+			if (screen > 1) PrintImageBitmap(x,y,bitmap,screen);
+			else PrintScreenBitmap(x,y,bitmap,screen,side);
 		}
 	}else{
 		if (src->tick != 0){
 			Bitmap bitmap;
 			bitmap.width = src->width;
 			bitmap.height = src->height;
+			bitmap.bitperpixel = 24;
 			u32 frame_size = src->width * src->height * 3;
 			u32 bytesRead;
 			FSFILE_Read(src->sourceFile, &bytesRead, 28+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
 			bitmap.pixels = src->framebuf;
-			PrintBitmap(x,y,bitmap,screen,side);
+			if (screen > 1) PrintImageBitmap(x,y,bitmap,screen);
+			else PrintScreenBitmap(x,y,bitmap,screen,side);
 		}
 	}
 	return 0;

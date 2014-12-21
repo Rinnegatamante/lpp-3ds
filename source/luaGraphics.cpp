@@ -43,51 +43,73 @@ typedef unsigned short u16;
 u8* TopLFB;
 u8* TopRFB;
 u8* BottomFB;
+
 Bitmap LoadBitmap(char* fname){
-Handle fileHandle;
-  u64 size;
-  u32 bytesRead;
-  FS_path filePath=FS_makePath(PATH_CHAR, fname);
-  FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-  FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-  FSFILE_GetSize(fileHandle, &size);
-  Bitmap result;
-  result.pixels = (u8*)malloc(size-0x36);
-  u16 header;
-  FSFILE_Read(fileHandle, &bytesRead, 0, &header, 2);
-  if (header == 0x4D42){
-  FSFILE_Read(fileHandle, &bytesRead, 0x36, result.pixels, size-0x36);
-  FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result.width), 4);
-  FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result.height), 4);
-  FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result.bitperpixel), 2);
-  }
-FSFILE_Close(fileHandle);
-svcCloseHandle(fileHandle);
-return result;
+	Handle fileHandle;
+	u64 size;
+	u32 bytesRead;
+	FS_path filePath=FS_makePath(PATH_CHAR, fname);
+	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSFILE_GetSize(fileHandle, &size);
+	Bitmap result;
+	result.pixels = (u8*)malloc(size-0x36);
+	u16 header;
+	FSFILE_Read(fileHandle, &bytesRead, 0, &header, 2);
+	if (header == 0x4D42){
+		FSFILE_Read(fileHandle, &bytesRead, 0x36, result.pixels, size-0x36);
+		FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result.width), 4);
+		FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result.height), 4);
+		FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result.bitperpixel), 2);
+	}
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	return result;
 }
 
-void PrintBitmap(int xp,int yp, Bitmap result,int screen,int side){
+void PrintImageBitmap(int xp,int yp, Bitmap result,int screen){
 int x, y;
 	for (y = 0; y < result.height; y++){
 		for (x = 0; x < result.width; x++){
 			u32 color;
 			if (result.bitperpixel == 24){
-			u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
-			u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
-			u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
-			color = B + G*256 + R*256*256;
+				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
+				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
+				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+				color = B + G*256 + R*256*256;
 			}else if (result.bitperpixel == 32){
-			u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
-			u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
-			u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
-			color = B + G*256 + R*256*256;
+				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
+				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
+				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
+				color = B + G*256 + R*256*256;
 			}		
-			if (screen > 1){
-				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
-				
-			}else{
-				DrawPixel(xp+x,yp+y,color,screen,side);
-			}
+				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);				
+		}
+	}
+}
+
+void PrintScreenBitmap(int xp,int yp, Bitmap result,int screen,int side){
+u8* buffer;
+if (screen == 0){
+if (side == 0) buffer = TopLFB;
+else buffer = TopRFB;
+}else if (screen == 1) buffer = BottomFB;
+int x, y;
+	for (y = 0; y < result.height; y++){
+		for (x = 0; x < result.width; x++){
+			u32 color;
+			if (result.bitperpixel == 24){
+				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
+				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
+				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+				color = B + G*256 + R*256*256;
+			}else if (result.bitperpixel == 32){
+				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
+				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
+				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
+				color = B + G*256 + R*256*256;
+			}		
+				DrawPixel(buffer,xp+x,yp+y,color);
 		}
 	}
 }
@@ -104,23 +126,11 @@ int x, y;
 	return flip_bitmap;
 }
 
-void DrawPixel(int x,int y,u32 color,int screen, int side){
-int idx = ((x)*240) + (239-(y));
-if ((screen == 0) && (x < 400) && (y < 240) && (x >= 0) && (y >= 0)){
-if (side == 0){
-TopLFB[idx*3+0] = (color);
-TopLFB[idx*3+1] = (color) >> 8;
-TopLFB[idx*3+2] = (color) >> 16;
-}else{
-TopRFB[idx*3+0] = (color);
-TopRFB[idx*3+1] = (color) >> 8;
-TopRFB[idx*3+2] = (color) >> 16;
-}
-}else if((screen == 1) && (x < 320) && (y < 240) && (x >= 0) && (y >= 0)){
-BottomFB[idx*3+0] = (color);
-BottomFB[idx*3+1] = (color) >> 8;
-BottomFB[idx*3+2] = (color) >> 16;
-}
+void DrawPixel(u8* screen, int x,int y, u32 color){
+	int idx = ((x)*240) + (239-(y));
+	screen[idx*3+0] = (color);
+	screen[idx*3+1] = (color) >> 8;
+	screen[idx*3+2] = (color) >> 16;
 }
 
 u32 GetPixel(int x,int y,int screen,int side){
@@ -155,13 +165,16 @@ screen->pixels[idx*3+2] = (color) >> 16;
 
 void RefreshScreen(){
 TopLFB = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-if (CONFIG_3D_SLIDERSTATE != 0){
-TopRFB = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-}
+if (CONFIG_3D_SLIDERSTATE != 0) TopRFB = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
 BottomFB = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 }
 
-void DrawText(int x, int y, char* str, u32 color, int screen,int side){
+void DrawScreenText(int x, int y, char* str, u32 color, int screen,int side){
+u8* buffer;
+if (screen == 0){
+if (side == 0) buffer = TopLFB;
+else buffer = TopRFB;
+}else if (screen == 1) buffer = BottomFB;
 unsigned short* ptr;
 unsigned short glyphsize;
 int i, cx, cy;
@@ -188,11 +201,42 @@ unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
-if (screen > 1){
-DrawImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
-}else{
-DrawPixel(x+cx, y+cy, color, screen, side);
+DrawPixel(buffer, x+cx, y+cy, color);
 }
+}
+x += glyphsize;
+x++;
+}
+}
+
+void DrawImageText(int x, int y, char* str, u32 color, int screen){
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if (val & (1 << cx))
+DrawImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
 }
 }
 x += glyphsize;
@@ -240,7 +284,7 @@ x=0;
 y=y+15;
 }
 if (val & (1 << cx))
-DrawPixel(x+cx, y+cy, 0xFFFFFF, 1, 0);
+DrawPixel(TopLFB, x+cx, y+cy, 0xFFFFFF);
 }
 }
 x += glyphsize;
@@ -248,7 +292,7 @@ x++;
 }
 }
 
-void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
+void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -262,11 +306,7 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
-			if (screen > 1){
-				DrawImagePixel(x1,y1,color,(Bitmap*)screen);
-			}else{
-				DrawPixel(x1,y1,color,screen,side);
-			}
+			DrawImagePixel(x1,y1,color,(Bitmap*)screen);
 			y1++;
 		}
 		y1 = base_y;
@@ -274,7 +314,34 @@ void FillRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	}
 }
 
-void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
+void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (x1 <= x2){
+		while (y1 <= y2){
+			DrawPixel(buffer,x1,y1,color);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
+void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -287,34 +354,52 @@ void FillEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	}
 	int base_y = y1;
 	while (y1 <= y2){
-		if (screen > 1){
 			DrawImagePixel(x1,y1,color,(Bitmap*)screen);
 			DrawImagePixel(x2,y1,color,(Bitmap*)screen);
-		}else{
-			DrawPixel(x1,y1,color,screen,side);
-			DrawPixel(x2,y1,color,screen,side);
-		}
 			y1++;
 		}
 	while (x1 <= x2){
-		if (screen > 1){
-			DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
-			DrawImagePixel(x1,y2,color,(Bitmap*)screen);
-		}else{
-			DrawPixel(x1,base_y,color,screen,side);
-			DrawPixel(x1,y2,color,screen,side);
-			x1++;
-		}
+		DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
+		DrawImagePixel(x1,y2,color,(Bitmap*)screen);
+	}
+}
+
+void FillScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (y1 <= y2){
+		DrawPixel(buffer,x1,y1,color);
+		DrawPixel(buffer,x2,y1,color);
+		y1++;
+	}
+	while (x1 <= x2){
+		DrawPixel(buffer,x1,base_y,color);
+		DrawPixel(buffer,x1,y2,color);
+		x1++;
 	}
 }
 
 void ClearScreen(int screen){
 	if (screen==1){
-		FillRect(0,319,0,239,0x000000,1,0);
+		FillScreenRect(0,319,0,239,0x000000,1,0);
 	}else{
-		FillRect(0,399,0,239,0x000000,0,0);
+		FillScreenRect(0,399,0,239,0x000000,0,0);
 	if (CONFIG_3D_SLIDERSTATE != 0){
-		FillRect(0,399,0,239,0x000000,0,1);
+		FillScreenRect(0,399,0,239,0x000000,0,1);
 	}
 	}
 }

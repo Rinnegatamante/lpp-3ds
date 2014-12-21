@@ -56,7 +56,8 @@ static int lua_print(lua_State *L)
 	}else{
 	side = 0;
 	}
-	DrawText(x,y,text,color,screen,side);
+	if (screen > 1) DrawImageText(x,y,text,color,screen);
+	else DrawScreenText(x,y,text,color,screen,side);
 	return 0;
 }
 
@@ -109,7 +110,8 @@ static int lua_pbitmap(lua_State *L)
 	}else{
 	side = 0;
 	}
-	PrintBitmap(x,y,*file,screen,side);
+	if (screen > 1) PrintImageBitmap(x,y,*file,screen);
+	else PrintScreenBitmap(x,y,*file,screen,side);
 	return 0;
 }
 
@@ -245,7 +247,8 @@ static int lua_fillRect(lua_State *L)
 	}else{
 	side = 0;
 	}
-	FillRect(x1,x2,y1,y2,color,screen,side);
+	if (screen > 1) FillImageRect(x1,x2,y1,y2,color,screen);
+	else FillScreenRect(x1,x2,y1,y2,color,screen,side);
 	return 0;
 }
 
@@ -265,7 +268,8 @@ static int lua_fillEmptyRect(lua_State *L)
 	}else{
 	side = 0;
 	}
-	FillEmptyRect(x1,x2,y1,y2,color,screen,side);
+	if (screen > 1) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
+	else FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
 	return 0;
 }
 
@@ -283,10 +287,14 @@ static int lua_pixel(lua_State *L)
 	}else{
 	side = 0;
 	}
-	if (screen > 1){
-	DrawImagePixel(x,y,color,(Bitmap*)screen);
-	}else{
-	DrawPixel(x,y,color,screen,side);
+	if (screen > 1) DrawImagePixel(x,y,color,(Bitmap*)screen);
+	else{
+	u8* buffer;
+	if (screen == 0){
+	if (side == 0) buffer = TopLFB;
+	else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	DrawPixel(buffer,x,y,color);
 	}
 	return 0;
 }
