@@ -45,6 +45,8 @@ int main(int argc, char **argv)
 	srvInit();	
 	aptInit();
 	gfxInit();
+	acInit();
+	ptmInit();
 	hidInit(NULL);
 	irrstInit(NULL);
 	fsInit();
@@ -126,6 +128,8 @@ int main(int argc, char **argv)
 	fsExit();
 	irrstExit();
 	hidExit();
+	ptmExit();
+	acExit();
 	gfxExit();
 	aptExit();
 	srvExit();

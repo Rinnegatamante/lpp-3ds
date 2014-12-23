@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
+#include "include/luaGraphics.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
@@ -42,6 +43,13 @@
 int FREAD = 0;
 int FWRITE = 1;
 int FCREATE = 2;
+
+void unicodeToChar(char* dst, u16* src)
+{
+if(!src || !dst)return;
+while(*src)*(dst++)=(*(src++))&0xFF;
+*dst=0x00;
+}
 
 static int lua_exit(lua_State *L)
 {
@@ -334,6 +342,70 @@ static int lua_renfile(lua_State *L) {
     return 0;
 }
 
+static int lua_listdir(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	Handle dirHandle;
+	FS_dirent entry;
+	FS_path dirPath=FS_makePath(PATH_CHAR, path);
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, dirPath);
+	u32 entriesRead;
+	lua_newtable(L);
+	int i = 0;
+	static char name[1024];
+	for (;;){
+		entriesRead=0;
+		FSDIR_Read(dirHandle, &entriesRead, 1, &entry);
+		if (entriesRead){
+			lua_pushnumber(L, i++);
+			lua_newtable(L);
+			lua_pushstring(L, "name");
+			unicodeToChar(&name[0],entry.name);
+			lua_pushstring(L, name);
+			lua_settable(L, -3);
+			lua_pushstring(L, "size");
+			lua_pushnumber(L, entry.fileSize);
+			lua_settable(L, -3);
+			lua_pushstring(L, "directory");
+			lua_pushboolean(L, entry.isDirectory);
+			lua_settable(L, -3);
+			lua_settable(L, -3);
+		}else break;
+	}
+	FSDIR_Close(dirHandle);
+	return 1;
+}
+
+static int lua_batterylv(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8 batteryLevel;
+	PTMU_GetBatteryLevel(NULL, &batteryLevel);
+	lua_pushnumber(L,batteryLevel);
+	return 1;
+}
+
+static int lua_batterycharge(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8 batteryLevel;
+	PTMU_GetBatteryChargeState(NULL, &batteryLevel);
+	lua_pushboolean(L,batteryLevel);
+	return 1;
+}
+
+static int lua_wifistat(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u32 wifiStatus;
+	ACU_GetWifiStatus(NULL, &wifiStatus);
+	lua_pushboolean(L,wifiStatus);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -348,6 +420,10 @@ static const luaL_Reg System_functions[] = {
   {"renameFile",			lua_renfile},
   {"deleteFile",			lua_delfile},
   {"doesFileExist",			lua_checkexist},
+  {"listDirectory",			lua_listdir},
+  {"getBatteryLife",		lua_batterylv},
+  {"isBatteryCharging",		lua_batterycharge},
+  {"isWifiEnabled",			lua_wifistat},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
