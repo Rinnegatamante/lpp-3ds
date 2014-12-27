@@ -85,13 +85,31 @@ static int lua_get3D(lua_State *L)
 	return 1;
 }
 
-static int lua_bitmap(lua_State *L)
+static int lua_loadimg(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	char* text = (char*)(luaL_checkstring(L, 1));
-	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
-	*bitmap = LoadBitmap(text);
+	Handle fileHandle;
+	u32 bytesRead;
+	u16 magic;
+	u64 long_magic;
+	FS_path filePath=FS_makePath(PATH_CHAR, text);
+	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
+	Bitmap *bitmap;
+	if (magic == 0x5089){
+		FSFILE_Read(fileHandle, &bytesRead, 0, &long_magic, 8);
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		if (long_magic == 0x0A1A0A0D474E5089) bitmap = loadPng(text);
+	}else if (magic == 0x4D42){
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		bitmap = LoadBitmap(text);
+	}
+	if(!bitmap) return luaL_error(L, "Error loading image");
     lua_pushnumber(L, (u32)(bitmap));
 	return 1;
 }
@@ -110,8 +128,8 @@ static int lua_pbitmap(lua_State *L)
 	}else{
 	side = 0;
 	}
-	if (screen > 1) PrintImageBitmap(x,y,*file,screen);
-	else PrintScreenBitmap(x,y,*file,screen,side);
+	if (screen > 1) PrintImageBitmap(x,y,file,screen);
+	else PrintScreenBitmap(x,y,file,screen,side);
 	return 0;
 }
 
@@ -124,7 +142,7 @@ static int lua_flipBitmap(lua_State *L)
 	Bitmap* dst = (Bitmap*)luaL_checkint(L, 2);
 	not_flipped = dst->pixels;
 	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
-	dst->pixels = flipBitmap(flip_pixels, *src);
+	dst->pixels = flipBitmap(flip_pixels, src);
 	dst->width = src->width;
 	dst->height = src->height;
 	free(not_flipped);
@@ -165,7 +183,6 @@ static int lua_saveimg(lua_State *L)
 	free(tempbuf);
 	return 0;
 }
-
 
 static int lua_newBitmap(lua_State *L)
 {
@@ -382,7 +399,7 @@ static const luaL_Reg Screen_functions[] = {
   {"enable3D",						lua_enable3D},
   {"get3DLevel",					lua_get3D},
   {"disable3D",						lua_disable3D},
-  {"loadBitmap",					lua_bitmap},
+  {"loadImage",						lua_loadimg},
   {"drawImage",						lua_pbitmap},
   {"freeImage",						lua_free},
   {"flipImage",						lua_flipBitmap},

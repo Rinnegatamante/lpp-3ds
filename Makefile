@@ -33,13 +33,13 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/include/lua	source	
+SOURCES		:=	source/include/lua	source	source/include/lodepng/
 DATA		:=	data
 INCLUDES	:=	include
 
-APP_TITLE	:=	Lua Player Plus
+APP_TITLE	:=	Lua Player Plus 3DS
 APP_AUTHOR	:=	Rinnegatamante & NaNNi
-APP_DESCRIPTION	:=	LUA interpreter for 3DS
+APP_DESCRIPTION	:=	Lua interpreter for 3DS
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------

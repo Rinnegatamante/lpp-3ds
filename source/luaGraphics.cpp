@@ -36,6 +36,8 @@
 #include <3ds.h>
 #include "include/luaGraphics.h"
 #include "include/font.h"
+#define LODEPNG_COMPILE_PNG
+#include "include/lodepng/lodepng.h"
 
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
@@ -44,7 +46,7 @@ u8* TopLFB;
 u8* TopRFB;
 u8* BottomFB;
 
-Bitmap LoadBitmap(char* fname){
+Bitmap* LoadBitmap(char* fname){
 	Handle fileHandle;
 	u64 size;
 	u32 bytesRead;
@@ -52,77 +54,102 @@ Bitmap LoadBitmap(char* fname){
 	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	FSFILE_GetSize(fileHandle, &size);
-	Bitmap result;
-	result.pixels = (u8*)malloc(size-0x36);
-	u16 header;
-	FSFILE_Read(fileHandle, &bytesRead, 0, &header, 2);
-	if (header == 0x4D42){
-		FSFILE_Read(fileHandle, &bytesRead, 0x36, result.pixels, size-0x36);
-		FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result.width), 4);
-		FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result.height), 4);
-		FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result.bitperpixel), 2);
+	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+	
+	if(!result) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
 	}
+	
+	result->pixels = (u8*)malloc(size-0x36);
+	FSFILE_Read(fileHandle, &bytesRead, 0x36, result->pixels, size-0x36);
+	FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result->width), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result->height), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
+	
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
+	
 	return result;
 }
 
-void PrintImageBitmap(int xp,int yp, Bitmap result,int screen){
-int x, y;
-	for (y = 0; y < result.height; y++){
-		for (x = 0; x < result.width; x++){
+void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen){
+	if(!result)
+		return;
+	int x, y;
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
 			u32 color;
-			if (result.bitperpixel == 24){
-				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
-				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
-				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+			if (result->bitperpixel == 24){
+				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
 				color = B + G*256 + R*256*256;
-			}else if (result.bitperpixel == 32){
-				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
-				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
-				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
+			}else if (result->bitperpixel == 32){
+				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
+				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
+				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
 				color = B + G*256 + R*256*256;
-			}		
-				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);				
+			}
+			
+			DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 		}
 	}
 }
 
-void PrintScreenBitmap(int xp,int yp, Bitmap result,int screen,int side){
-u8* buffer;
+void PrintScreenBitmap(int xp,int yp, Bitmap* result,int screen,int side){
+if(!result)
+	return;
+u8* buffer = 0;
 if (screen == 0){
 if (side == 0) buffer = TopLFB;
 else buffer = TopRFB;
 }else if (screen == 1) buffer = BottomFB;
 int x, y;
-	for (y = 0; y < result.height; y++){
-		for (x = 0; x < result.width; x++){
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
 			u32 color;
-			if (result.bitperpixel == 24){
-				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*3];
-				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
-				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+			if (result->bitperpixel == 24){
+				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
 				color = B + G*256 + R*256*256;
-			}else if (result.bitperpixel == 32){
-				u8 B = result.pixels[(x + (result.height - y - 1) * result.width)*4];
-				u8 G = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 1];
-				u8 R = result.pixels[(x + (result.height - y - 1) * result.width)*4 + 2];
-				color = B + G*256 + R*256*256;
-			}		
 				DrawPixel(buffer,xp+x,yp+y,color);
+			}else if (result->bitperpixel == 32){
+				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
+				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
+				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
+				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
+				color = B + G*256 + R*256*256;
+				DrawAlphaPixel(buffer,xp+x,yp+y,color,A);
+			}			
 		}
 	}
 }
 
-u8* flipBitmap(u8* flip_bitmap, Bitmap result){
+u8* flipBitmap(u8* flip_bitmap, Bitmap* result){
+if(!result)
+	return 0;
 int x, y;
-	for (y = 0; y < result.height; y++){
-		for (x = 0; x < result.width; x++){
-			flip_bitmap[(x + y * result.width)*3] = result.pixels[(x + (result.height - y - 1) * result.width)*3];
-			flip_bitmap[(x + y * result.width)*3 + 1] = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 1];
-			flip_bitmap[(x + y * result.width)*3 + 2] = result.pixels[(x + (result.height - y - 1) * result.width)*3 + 2];
+if (result->bitperpixel == 24){
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+			flip_bitmap[(x + y * result->width)*3] = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+			flip_bitmap[(x + y * result->width)*3 + 1] = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+			flip_bitmap[(x + y * result->width)*3 + 2] = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
 		}
 	}
+}else if(result->bitperpixel == 32){
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+			flip_bitmap[(x + y * result->width)*4] = result->pixels[(x + (result->height - y - 1) * result->width)*4];
+			flip_bitmap[(x + y * result->width)*4 + 1] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
+			flip_bitmap[(x + y * result->width)*4 + 2] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
+			flip_bitmap[(x + y * result->width)*4 + 3] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
+		}
+	}
+}
 	return flip_bitmap;
 }
 
@@ -131,6 +158,14 @@ void DrawPixel(u8* screen, int x,int y, u32 color){
 	screen[idx*3+0] = (color);
 	screen[idx*3+1] = (color) >> 8;
 	screen[idx*3+2] = (color) >> 16;
+}
+
+void DrawAlphaPixel(u8* screen, int x,int y, u32 color, u8 alpha){
+	int idx = ((x)*240) + (239-(y));
+	float ratio = alpha / 255.0f;
+	screen[idx*3+0] = ((color) * ratio) + (screen[idx*3+0] * (1.0 - ratio));
+	screen[idx*3+1] = (((color) >> 8) * ratio) + (screen[idx*3+1] * (1.0 - ratio));
+	screen[idx*3+2] = (((color) >> 16) * ratio) + (screen[idx*3+2] * (1.0 - ratio));
 }
 
 u32 GetPixel(int x,int y,int screen,int side){
@@ -284,7 +319,7 @@ x=0;
 y=y+15;
 }
 if (val & (1 << cx))
-DrawPixel(TopLFB, x+cx, y+cy, 0xFFFFFF);
+DrawPixel(BottomFB, x+cx, y+cy, 0xFFFFFF);
 }
 }
 x += glyphsize;
@@ -402,4 +437,64 @@ void ClearScreen(int screen){
 		FillScreenRect(0,399,0,239,0x000000,0,1);
 	}
 	}
+}
+
+Bitmap* loadPng(const char* filename)
+{
+	Handle fileHandle;
+	Bitmap* result;
+	u64 size;
+	u32 bytesRead;
+	unsigned char* out;
+	unsigned char* in;
+	unsigned int w, h;
+	
+	FS_path filePath = FS_makePath(PATH_CHAR, filename);
+	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	
+	FSFILE_GetSize(fileHandle, &size);
+	
+	in = (unsigned char*)malloc(size);
+	
+	if(!in) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
+	}
+	
+	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+		
+		if(lodepng_decode32(&out, &w, &h, in, size) != 0) {
+			free(in);
+			return 0;
+		}
+	
+	free(in);
+	
+	result = (Bitmap*)malloc(sizeof(Bitmap));
+	if(!result) {
+		free(out);
+	}
+	
+	result->pixels = out;
+	result->width = w;
+	result->height = h;
+	result->bitperpixel = 32;
+	
+	u8* flipped = (u8*)malloc(w*h*4);
+	flipped = flipBitmap(flipped, result);
+	u32 i = 0;
+	while (i < (w*h*4)){
+	u8 tmp = flipped[i];
+	flipped[i] = flipped[i+2];
+	flipped[i+2] = tmp;
+	i=i+4;
+	}
+	free(out);
+	result->pixels = flipped;
+	
+	return result;
 }

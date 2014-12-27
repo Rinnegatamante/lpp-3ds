@@ -198,8 +198,8 @@ int argc = lua_gettop(L);
 			u32 bytesRead;
 			FSFILE_Read(src->sourceFile, &bytesRead, 28+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
 			bitmap.pixels = src->framebuf;
-			if (screen > 1) PrintImageBitmap(x,y,bitmap,screen);
-			else PrintScreenBitmap(x,y,bitmap,screen,side);
+			if (screen > 1) PrintImageBitmap(x,y,&bitmap,screen);
+			else PrintScreenBitmap(x,y,&bitmap,screen,side);
 		}
 	}else{
 		if (src->tick != 0){
@@ -211,8 +211,8 @@ int argc = lua_gettop(L);
 			u32 bytesRead;
 			FSFILE_Read(src->sourceFile, &bytesRead, 28+src->audio_size+(src->currentFrame*frame_size), src->framebuf, frame_size);
 			bitmap.pixels = src->framebuf;
-			if (screen > 1) PrintImageBitmap(x,y,bitmap,screen);
-			else PrintScreenBitmap(x,y,bitmap,screen,side);
+			if (screen > 1) PrintImageBitmap(x,y,&bitmap,screen);
+			else PrintScreenBitmap(x,y,&bitmap,screen,side);
 		}
 	}
 	return 0;
