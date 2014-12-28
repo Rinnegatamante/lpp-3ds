@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <malloc.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/luaAudio.h"
@@ -84,9 +85,9 @@ static int lua_openwav(lua_State *L)
 	wav *wav_file = (wav*)malloc(sizeof(wav));
 	wav_file->mem_size = mem_size;
 	wav_file->samplerate = samplerate;
+	FSFILE_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
 	if (audiotype == 1){
 	if (mem_size > 0){
-	FSFILE_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
 	wav_file->moltiplier = 1;
 	wav_file->isPlaying = false;
 	wav_file->mem_size = (size-(pos+4))/mem_size;
@@ -107,9 +108,7 @@ static int lua_openwav(lua_State *L)
 	u16 bytepersample;
 	u32 size_tbp;
 	u8* tmp_buffer;
-	FSFILE_Read(fileHandle, &bytesRead, 32, &bytepersample, 2);
 	if (mem_size > 0){
-	wav_file->bytepersample = bytepersample;
 	wav_file->moltiplier = 1;
 	wav_file->sourceFile = fileHandle;
 	wav_file->startRead = (pos+4);
@@ -169,7 +168,7 @@ static int lua_playWav(lua_State *L)
 	int loop = luaL_checkint(L, 2);
 	u32 ch = luaL_checkint(L, 3);
 	u32 ch2;
-	if (argc == 4) u32 ch2 = luaL_checkint(L, 4);
+	if (argc == 4) ch2 = luaL_checkint(L, 4);
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
 		if (loop == 0) src->streamLoop = false;
@@ -376,17 +375,91 @@ static int lua_soundend(lua_State *L)
 	return 0;
 }
 
+static int lua_regsound(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	u32 time = luaL_checkint(L, 1);
+	u32 mem_size = (time + 1) * 32000; // time + 1 because first second is mute
+	u8* audiobuf = (u8*)linearAlloc(mem_size);
+	u32 audiobuf_pos = 0;
+	u32* sharedmem = (u32*)memalign(0x1000, (0x8000) * (time + 1));
+	MIC_Initialize(sharedmem, (0x8000) * (time + 1), 0x40, 0, 3, 1, 1);
+	MIC_SetRecording(1);
+	u64 startRegister = osGetTime();
+	while ((osGetTime() - startRegister) <= ((time + 1) * 1000)){
+	audiobuf_pos+= MIC_ReadAudioData(&audiobuf[audiobuf_pos], mem_size-audiobuf_pos, 1);
+	}
+	MIC_SetRecording(0);
+	MIC_Shutdown();
+	free(sharedmem);
+	
+	//Prevent first mute second to be allocated in wav struct
+	u8* nomute_audiobuf =  (u8*)linearAlloc(mem_size - 32000);
+	memcpy(nomute_audiobuf,&audiobuf[32000],mem_size - 32000);
+	linearFree(audiobuf);
+	
+	wav* wav_file = (wav*)malloc(sizeof(wav));
+	wav_file->audiobuf = nomute_audiobuf;
+	wav_file->audiobuf2 = NULL;
+	wav_file->mem_size = 0;
+	wav_file->size = mem_size - 32000;
+	wav_file->samplerate = 16000;
+	wav_file->isPlaying = false;
+	wav_file->bytepersample = 2;
+	lua_pushnumber(L,(u32)wav_file);
+	return 1;
+}
+
+static int lua_savemono(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	const char* file = luaL_checkstring(L, 2);
+	Handle fileHandle;
+	u32 bytesWritten;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file);
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	u32 four_bytes;
+	u16 two_bytes;
+	FSFILE_Write(fileHandle, &bytesWritten, 0, "RIFF", 4, FS_WRITE_FLUSH);
+	four_bytes = src->size + 36;
+	FSFILE_Write(fileHandle, &bytesWritten, 4, &four_bytes, 8, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 8, "WAVEfmt ", 8, FS_WRITE_FLUSH);
+	four_bytes = 16;
+	FSFILE_Write(fileHandle, &bytesWritten, 16, &four_bytes, 4, FS_WRITE_FLUSH);
+	two_bytes = 1;
+	FSFILE_Write(fileHandle, &bytesWritten, 20, &two_bytes, 2, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 22, &two_bytes, 2, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 24, &(src->samplerate), 4, FS_WRITE_FLUSH);
+	four_bytes = src->samplerate * src->bytepersample;
+	FSFILE_Write(fileHandle, &bytesWritten, 28, &four_bytes, 4, FS_WRITE_FLUSH);
+	two_bytes = src->bytepersample*8;
+	FSFILE_Write(fileHandle, &bytesWritten, 32, &(src->bytepersample), 2, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 34, &two_bytes, 2, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 36, "data", 4, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 40, &(src->size), 4, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 44, src->audiobuf, src->size, FS_WRITE_FLUSH);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	return 0;
+}
+
 //Register our Sound Functions
 static const luaL_Reg Sound_functions[] = {
   {"openWav",				lua_openwav},
   {"closeWav",				lua_closeWav},
-  {"playWav",				lua_playWav},
+  {"play",					lua_playWav},
   {"init",					lua_soundinit},
   {"term",					lua_soundend},
   {"pause",					lua_pause},
   {"resume",				lua_resume},
   {"isPlaying",				lua_wisPlaying},
   {"updateStream",			lua_streamWav},
+  {"register",				lua_regsound},
+  {"saveWav",				lua_savemono},
   {0, 0}
 };
 
