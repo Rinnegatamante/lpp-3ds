@@ -105,7 +105,6 @@ static int lua_openwav(lua_State *L)
 	}
 	}else{
 	// I must reordinate my buffer in order to play stereo sound (Thanks CSND/FS libraries .-.)
-	u16 bytepersample;
 	u32 size_tbp;
 	u8* tmp_buffer;
 	if (mem_size > 0){
@@ -132,14 +131,14 @@ static int lua_openwav(lua_State *L)
 	u16 z;
 	while (i < size_tbp){
 	z=0;
-	while (z < (bytepersample/2)){
+	while (z < (wav_file->bytepersample/2)){
 	wav_file->audiobuf[off+z] = tmp_buffer[i+z];
-	wav_file->audiobuf2[off+z] = tmp_buffer[i+z+(bytepersample/2)];
+	wav_file->audiobuf2[off+z] = tmp_buffer[i+z+(wav_file->bytepersample/2)];
 	z++;
 	}
 	z=0;
-	i=i+bytepersample;
-	off=off+(bytepersample/2);
+	i=i+wav_file->bytepersample;
+	off=off+(wav_file->bytepersample/2);
 	}
 	linearFree(tmp_buffer);
 	}
