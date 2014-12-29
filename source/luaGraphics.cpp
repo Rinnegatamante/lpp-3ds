@@ -27,6 +27,8 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -189,13 +191,19 @@ u32 color = screen->pixels[idx*3+0] + screen->pixels[idx*3+1] * 256 + screen->pi
 return color;
 }
 
+void DrawAlphaImagePixel(int x,int y,u32 color,Bitmap* screen, u8 alpha){
+int idx = (x + (screen->height - y) * screen->width);
+float ratio = alpha / 255.0f;
+screen->pixels[idx*3+0] = ((color) * ratio) + (screen->pixels[idx*3+0] * (1.0 - ratio));
+screen->pixels[idx*3+1] = (((color) >> 8) * ratio) + (screen->pixels[idx*3+1] * (1.0 - ratio));
+screen->pixels[idx*3+2] = (((color) >> 16) * ratio) + (screen->pixels[idx*3+2] * (1.0 - ratio));
+}
+
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen){
-if ((x < screen->width) && (y < screen->height) && (x >= 0) && (y >= 0)){
 int idx = (x + (screen->height - y) * screen->width);
 screen->pixels[idx*3+0] = (color);
 screen->pixels[idx*3+1] = (color) >> 8;
 screen->pixels[idx*3+2] = (color) >> 16;
-}
 }
 
 void RefreshScreen(){
@@ -349,6 +357,28 @@ void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
+void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (x1 <= x2){
+		while (y1 <= y2){
+			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
 void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	u8* buffer;
 	if (screen == 0){
@@ -369,6 +399,33 @@ void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	while (x1 <= x2){
 		while (y1 <= y2){
 			DrawPixel(buffer,x1,y1,color);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
+void FillAlphaScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side,u8 alpha){
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (x1 <= x2){
+		while (y1 <= y2){
+			DrawAlphaPixel(buffer,x1,y1,color,alpha);
 			y1++;
 		}
 		y1 = base_y;
@@ -399,6 +456,29 @@ void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
+void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (y1 <= y2){
+			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+			DrawAlphaImagePixel(x2,y1,color,(Bitmap*)screen,alpha);
+			y1++;
+		}
+	while (x1 <= x2){
+		DrawAlphaImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
+		DrawAlphaImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
+	}
+}
+
 void FillScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	u8* buffer;
 	if (screen == 0){
@@ -424,6 +504,35 @@ void FillScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int si
 	while (x1 <= x2){
 		DrawPixel(buffer,x1,base_y,color);
 		DrawPixel(buffer,x1,y2,color);
+		x1++;
+	}
+}
+
+void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side,u8 alpha){
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (y1 <= y2){
+		DrawAlphaPixel(buffer,x1,y1,color,alpha);
+		DrawAlphaPixel(buffer,x2,y1,color,alpha);
+		y1++;
+	}
+	while (x1 <= x2){
+		DrawAlphaPixel(buffer,x1,base_y,color,alpha);
+		DrawAlphaPixel(buffer,x1,y2,color,alpha);
 		x1++;
 	}
 }

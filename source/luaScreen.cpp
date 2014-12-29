@@ -27,6 +27,8 @@
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -161,23 +163,24 @@ static int lua_saveimg(lua_State *L)
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 	if(ret) return luaL_error(L, "error opening file");
 	u32 bytesWritten;
-	u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*3);
-	tempbuf[0x36+(src->width)*(src->height)*3]=0;
-	FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*3));
+	u8 moltiplier = src->bitperpixel / 8;
+	u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*moltiplier);
+	tempbuf[0x36+(src->width)*(src->height)*moltiplier]=0;
+	FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*moltiplier));
 	*(u16*)&tempbuf[0x0] = 0x4D42;
-	*(u32*)&tempbuf[0x2] = 0x36 + (src->width)*(src->height)*3;
+	*(u32*)&tempbuf[0x2] = 0x36 + (src->width)*(src->height)*moltiplier;
 	*(u32*)&tempbuf[0xA] = 0x36;
 	*(u32*)&tempbuf[0xE] = 0x28;
 	*(u32*)&tempbuf[0x12] = src->width;
 	*(u32*)&tempbuf[0x16] = src->height;
 	*(u32*)&tempbuf[0x1A] = 0x00180001;
-	*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*3;
+	*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*moltiplier;
 	int i=0;
-	while (i<((src->width)*(src->height)*3)){
+	while (i<((src->width)*(src->height)*moltiplier)){
 	tempbuf[0x36+i] = src->pixels[i];
 	i++;
 	}
-	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + (src->width)*(src->height)*3, 0x10001);
+	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + (src->width)*(src->height)*moltiplier, 0x10001);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	free(tempbuf);
@@ -257,6 +260,7 @@ static int lua_fillRect(lua_State *L)
 	int y1 = luaL_checkint(L,3);
 	int y2 = luaL_checkint(L,4);
 	u32 color = luaL_checknumber(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,6);
 	int side;
 	if (argc == 7){
@@ -264,8 +268,13 @@ static int lua_fillRect(lua_State *L)
 	}else{
 	side = 0;
 	}
-	if (screen > 1) FillImageRect(x1,x2,y1,y2,color,screen);
-	else FillScreenRect(x1,x2,y1,y2,color,screen,side);
+	if (screen > 1){
+	if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
+	else FillAlphaImageRect(x1,x2,y1,y2,color,screen,alpha);
+	}else{
+	if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
+	else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side,alpha);
+	}
 	return 0;
 }
 
@@ -278,6 +287,7 @@ static int lua_fillEmptyRect(lua_State *L)
 	int y1 = luaL_checkint(L,3);
 	int y2 = luaL_checkint(L,4);
 	u32 color = luaL_checknumber(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,6);
 	int side;
 	if (argc == 7){
@@ -285,8 +295,13 @@ static int lua_fillEmptyRect(lua_State *L)
 	}else{
 	side = 0;
 	}
-	if (screen > 1) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
-	else FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
+	if (screen > 1){ 
+	if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
+	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
+	}else{
+	if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
+	else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side,alpha);
+	}
 	return 0;
 }
 
@@ -297,6 +312,7 @@ static int lua_pixel(lua_State *L)
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	u32 color = luaL_checkint(L,3);
+	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,4);
 	int side;
 	if (argc == 5){
@@ -304,14 +320,17 @@ static int lua_pixel(lua_State *L)
 	}else{
 	side = 0;
 	}
-	if (screen > 1) DrawImagePixel(x,y,color,(Bitmap*)screen);
-	else{
+	if (screen > 1){
+	if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
+	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen,alpha);
+	}else{
 	u8* buffer;
 	if (screen == 0){
 	if (side == 0) buffer = TopLFB;
 	else buffer = TopRFB;
 	}else if (screen == 1) buffer = BottomFB;
-	DrawPixel(buffer,x,y,color);
+	if (alpha == 255) DrawPixel(buffer,x,y,color);
+	else DrawAlphaPixel(buffer,x,y,color,alpha);
 	}
 	return 0;
 }
@@ -339,11 +358,13 @@ static int lua_pixel2(lua_State *L)
 
 static int lua_color(lua_State *L) {
     int argc = lua_gettop(L);
-    if (argc != 3) return luaL_error(L, "wrong number of arguments");
+    if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
     int r = luaL_checkint(L, 1);
     int g = luaL_checkint(L, 2);
 	int b = luaL_checkint(L, 3);
-    u32 color = b | (g << 8) | (r << 16);
+	int a = 255;
+	if (argc==4) int a = luaL_checkint(L, 4);
+    u32 color = b | (g << 8) | (r << 16) | (a << 24);
     lua_pushnumber(L,color);
     return 1;
 }
@@ -375,6 +396,15 @@ static int lua_getR(lua_State *L) {
     return 1;
 }
 
+static int lua_getA(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    int color = luaL_checkint(L, 1);
+    u32 colour = (color >> 24) & 0xFF;
+    lua_pushnumber(L,colour);
+    return 1;
+}
+
 
 //Register our Color Functions
 static const luaL_Reg Color_functions[] = {
@@ -382,6 +412,7 @@ static const luaL_Reg Color_functions[] = {
   {"getR",								lua_getR},
   {"getG",								lua_getG},
   {"getB",								lua_getB},
+  {"getA",								lua_getA},
   {0, 0}
 };
 
