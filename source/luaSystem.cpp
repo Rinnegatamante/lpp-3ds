@@ -22,11 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -249,6 +250,16 @@ static int lua_getFW(lua_State *L)
     return 1;
 }
 
+static int lua_getLang(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8 language;
+	CFGU_GetSystemLanguage(&language);
+	lua_pushnumber(L,language);
+    return 1;
+}
+
 static int lua_getK(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -283,12 +294,11 @@ static int lua_rendir(lua_State *L) {
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
 	const char *path2 = luaL_checkstring(L, 2);
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
-	FSUSER_RenameDirectory(&fileHandle,sdmcArchive,filePath,sdmcArchive,filePath2);
-	svcCloseHandle(fileHandle);
+	FSUSER_RenameDirectory(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
     return 0;
 }
 
@@ -296,11 +306,10 @@ static int lua_createdir(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_CreateDirectory(&fileHandle,sdmcArchive,filePath);
-	svcCloseHandle(fileHandle);
+	FSUSER_CreateDirectory(NULL,sdmcArchive,filePath);
     return 0;
 }
 
@@ -308,11 +317,10 @@ static int lua_deldir(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_DeleteDirectory(&fileHandle,sdmcArchive,filePath);
-	svcCloseHandle(fileHandle);
+	FSUSER_DeleteDirectory(NULL,sdmcArchive,filePath);
     return 0;
 }
 
@@ -320,11 +328,10 @@ static int lua_delfile(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_DeleteFile(&fileHandle,sdmcArchive,filePath);
-	svcCloseHandle(fileHandle);
+	FSUSER_DeleteFile(NULL,sdmcArchive,filePath);
     return 0;
 }
 
@@ -333,12 +340,11 @@ static int lua_renfile(lua_State *L) {
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
 	const char *path2 = luaL_checkstring(L, 2);
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
-	FSUSER_RenameFile(&fileHandle,sdmcArchive,filePath,sdmcArchive,filePath2);
-	svcCloseHandle(fileHandle);
+	FSUSER_RenameFile(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
     return 0;
 }
 
@@ -424,6 +430,7 @@ static const luaL_Reg System_functions[] = {
   {"getBatteryLife",		lua_batterylv},
   {"isBatteryCharging",		lua_batterycharge},
   {"isWifiEnabled",			lua_wifistat},
+  {"getLanguage",			lua_getLang},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
