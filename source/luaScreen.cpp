@@ -22,13 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -50,16 +49,18 @@ static int lua_print(lua_State *L)
 	int x = luaL_checkint(L, 1);
     int y = luaL_checkint(L, 2);
 	char* text = (char*)(luaL_checkstring(L, 3));
-	u32 color = luaL_checkint(L,4);
+	u32 color = luaL_checknumber(L,4);
+	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,5);
-	int side;
-	if (argc == 6){
-	side = luaL_checkint(L,6);
-	}else{
-	side = 0;
+	int side=0;
+	if (argc == 6) side = luaL_checkint(L,6);
+	if (screen > 1){ 
+	if (alpha==255) DrawImageText(x,y,text,color,screen);
+	else DrawAlphaImageText(x,y,text,color,screen,alpha);
+	}else{ 
+	if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
+	else DrawAlphaScreenText(x,y,text,color,screen,side,alpha);
 	}
-	if (screen > 1) DrawImageText(x,y,text,color,screen);
-	else DrawScreenText(x,y,text,color,screen,side);
 	return 0;
 }
 
@@ -124,12 +125,8 @@ static int lua_pbitmap(lua_State *L)
     int y = luaL_checkint(L, 2);
 	Bitmap* file = (Bitmap*)luaL_checkint(L, 3);
 	int screen= luaL_checkint(L, 4);
-	int side;
-	if (argc == 5){
-	side = luaL_checkint(L,5);
-	}else{
-	side = 0;
-	}
+	int side = 0;
+	if (argc == 5) side = luaL_checkint(L,5);
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
 	else PrintScreenBitmap(x,y,file,screen,side);
 	return 0;
@@ -262,12 +259,8 @@ static int lua_fillRect(lua_State *L)
 	u32 color = luaL_checknumber(L,5);
 	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,6);
-	int side;
-	if (argc == 7){
-	side = luaL_checkint(L,7);
-	}else{
-	side = 0;
-	}
+	int side=0;
+	if (argc == 7) side = luaL_checkint(L,7);
 	if (screen > 1){
 	if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
 	else FillAlphaImageRect(x1,x2,y1,y2,color,screen,alpha);
@@ -289,12 +282,8 @@ static int lua_fillEmptyRect(lua_State *L)
 	u32 color = luaL_checknumber(L,5);
 	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,6);
-	int side;
-	if (argc == 7){
-	side = luaL_checkint(L,7);
-	}else{
-	side = 0;
-	}
+	int side=0;
+	if (argc == 7) side = luaL_checkint(L,7);
 	if (screen > 1){ 
 	if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
 	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
@@ -314,12 +303,8 @@ static int lua_pixel(lua_State *L)
 	u32 color = luaL_checkint(L,3);
 	u8 alpha = (color >> 24) & 0xFF;
 	int screen = luaL_checkint(L,4);
-	int side;
-	if (argc == 5){
-	side = luaL_checkint(L,5);
-	}else{
-	side = 0;
-	}
+	int side=0;
+	if (argc == 5) side = luaL_checkint(L,5);
 	if (screen > 1){
 	if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
 	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen,alpha);
@@ -342,12 +327,8 @@ static int lua_pixel2(lua_State *L)
 	int x = luaL_checkint(L,1);
 	int y = luaL_checkint(L,2);
 	int screen = luaL_checkint(L,3);
-	int side;
-	if (argc == 4){
-	side = luaL_checkint(L,4);
-	}else{
-	side = 0;
-	}
+	int side=0;
+	if (argc == 4) side = luaL_checkint(L,4);
 	if (screen > 1){
 	lua_pushnumber(L,GetImagePixel(x,y,(Bitmap*)screen));
 	}else{
@@ -363,7 +344,7 @@ static int lua_color(lua_State *L) {
     int g = luaL_checkint(L, 2);
 	int b = luaL_checkint(L, 3);
 	int a = 255;
-	if (argc==4) int a = luaL_checkint(L, 4);
+	if (argc==4) a = luaL_checkint(L, 4);
     u32 color = b | (g << 8) | (r << 16) | (a << 24);
     lua_pushnumber(L,color);
     return 1;
