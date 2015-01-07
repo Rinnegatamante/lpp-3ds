@@ -299,6 +299,7 @@ static int lua_rendir(lua_State *L) {
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
 	FSUSER_RenameDirectory(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
     return 0;
 }
 
@@ -310,6 +311,7 @@ static int lua_createdir(lua_State *L) {
 	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FSUSER_CreateDirectory(NULL,sdmcArchive,filePath);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
     return 0;
 }
 
@@ -321,6 +323,7 @@ static int lua_deldir(lua_State *L) {
 	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FSUSER_DeleteDirectory(NULL,sdmcArchive,filePath);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
     return 0;
 }
 
@@ -332,6 +335,7 @@ static int lua_delfile(lua_State *L) {
 	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FSUSER_DeleteFile(NULL,sdmcArchive,filePath);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
     return 0;
 }
 
@@ -345,6 +349,7 @@ static int lua_renfile(lua_State *L) {
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
 	FSUSER_RenameFile(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
     return 0;
 }
 
@@ -360,7 +365,7 @@ static int lua_listdir(lua_State *L){
 	FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, dirPath);
 	u32 entriesRead;
 	lua_newtable(L);
-	int i = 0;
+	int i = 1;
 	static char name[1024];
 	for (;;){
 		entriesRead=0;
@@ -382,6 +387,7 @@ static int lua_listdir(lua_State *L){
 		}else break;
 	}
 	FSDIR_Close(dirHandle);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
 	return 1;
 }
 
