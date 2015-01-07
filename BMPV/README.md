@@ -4,7 +4,7 @@ In the future i'll add various compression algorithm for audio and video buffers
 The bad thing is the eccessive size of a BMPV video (i suggest to use them only for very short videos).<br>
 Actually, audio buffer is coded in WAV format with PCM16 codec and video buffer is a sequence of BMP for every frame.<br>
 Headers from WAV and BMPs original files are deleted.<br>
-You can find a simple converter from various video format to BMPV in this folder.<br>
+You can find a simple converter from various video format to BMPV in this folder. (BMPV Creator is the GUI-style version but require Microsoft .NET Framework 3.5 ; vid2bmpv is the command-line style version wrote in C. Only vid2bmpv is opensource.<br>
 <br>
 <b>File infos:</b>
 <table>
