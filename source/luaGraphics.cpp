@@ -22,13 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -88,14 +87,16 @@ void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen){
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
 				color = B + G*256 + R*256*256;
+				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 			}else if (result->bitperpixel == 32){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
+				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
 				color = B + G*256 + R*256*256;
+				DrawAlphaImagePixel(xp+x,yp+y,color,(Bitmap*)screen, A);
 			}
 			
-			DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 		}
 	}
 }
@@ -252,6 +253,81 @@ x++;
 }
 }
 
+void DrawAlphaScreenText(int x, int y, char* str, u32 color, int screen,int side,u8 alpha){
+u8* buffer;
+if (screen == 0){
+if (side == 0) buffer = TopLFB;
+else buffer = TopRFB;
+}else if (screen == 1) buffer = BottomFB;
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if (val & (1 << cx))
+DrawAlphaPixel(buffer, x+cx, y+cy, color, alpha);
+}
+}
+x += glyphsize;
+x++;
+}
+}
+
+void DrawAlphaImageText(int x, int y, char* str, u32 color, int screen, u8 alpha){
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if (val & (1 << cx))
+DrawAlphaImagePixel(x+cx, y+cy, color, (Bitmap*)screen, alpha);
+}
+}
+x += glyphsize;
+x++;
+}
+}
+
 void DrawImageText(int x, int y, char* str, u32 color, int screen){
 unsigned short* ptr;
 unsigned short glyphsize;
@@ -333,6 +409,73 @@ DrawPixel(BottomFB, x+cx, y+cy, 0xFFFFFF);
 x += glyphsize;
 x++;
 }
+}
+
+int ConsoleOutput(Console* console){
+unsigned short* ptr;
+unsigned short glyphsize;
+int max_x;
+u8* buffer;
+if (console->screen == 0){
+max_x = 400;
+buffer = TopLFB;
+}else{
+max_x = 320;
+buffer = BottomFB;
+}
+int i, cx, cy;
+int x=0;
+int y=0;
+int res = 0;
+for (i = 0; console->text[i] != '\0'; i++)
+{
+if (y > 240) break;
+if (console->text[i] == 0x0A){
+x=0;
+y=y+15;
+res++;
+continue;
+}else if(console->text[i] == 0x0D){
+res++;
+continue;
+}
+if (console->text[i] < 0x21)
+{
+x += 6;
+res++;
+continue;
+}
+u16 ch = console->text[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+res++;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if ((x+cx) >= max_x){
+x=0;
+y=y+15;
+}
+if (val & (1 << cx))
+DrawPixel(buffer, x+cx, y+cy, 0xFFFFFF);
+}
+}
+x += glyphsize;
+x++;
+res++;
+}
+x = 0;
+y = 0;
+return res;
 }
 
 void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){

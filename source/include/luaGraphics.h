@@ -22,13 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 struct Bitmap{
@@ -36,6 +35,10 @@ struct Bitmap{
 	int width;
 	int height;
 	u16 bitperpixel;
+};
+struct Console{
+	int screen;
+	char text[1500];
 };
 extern u8* TopLFB;
 extern u8* TopRFB;
@@ -49,9 +52,12 @@ void DrawAlphaImagePixel(int x,int y,u32 color,Bitmap* screen,u8 alpha);
 void DrawPixel(u8* screen,int x,int y,u32 color);
 void DrawAlphaPixel(u8* screen,int x,int y,u32 color,u8 alpha);
 void DrawScreenText(int x, int y, char* str, u32 color,int screen,int side);
+void DrawAlphaScreenText(int x, int y, char* str, u32 color,int screen,int side,u8 alpha);
 void DrawImageText(int x, int y, char* str, u32 color,int screen);
+void DrawAlphaImageText(int x, int y, char* str, u32 color,int screen,u8 alpha);
 void RefreshScreen();
 void DebugOutput(char* str);
+int ConsoleOutput(Console* console);
 void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen);
 void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha);
 void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side);

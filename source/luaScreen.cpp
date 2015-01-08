@@ -386,6 +386,60 @@ static int lua_getA(lua_State *L) {
     return 1;
 }
 
+static int lua_console(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    int screen = luaL_checkint(L, 1);
+	Console* console = (Console*)malloc(sizeof(Console));
+	console->screen = screen;
+	strcpy(console->text,"");
+    lua_pushnumber(L,(u32)console);
+    return 1;
+}
+
+static int lua_conclear(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    Console* console = (Console*)luaL_checkint(L, 1);
+	strcpy(console->text,"");
+    return 0;
+}
+
+static int lua_condest(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    Console* console = (Console*)luaL_checkint(L, 1);
+	free(console);
+    return 0;
+}
+
+static int lua_conshow(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    Console* console = (Console*)luaL_checkint(L, 1);
+	int res = ConsoleOutput(console);
+	lua_pushnumber(L,res);
+    return 1;
+}
+
+static int lua_conappend(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+    Console* console = (Console*)luaL_checkint(L, 1);
+	char* string = (char*)luaL_checkstring(L, 2);
+	strcat(console->text,string);
+    return 0;
+}
+
+//Register our Console Functions
+static const luaL_Reg Console_functions[] = {
+  {"new",                				lua_console},
+  {"clear",								lua_conclear},
+  {"show",								lua_conshow},
+  {"append",							lua_conappend},
+  {"destroy",							lua_condest},
+  {0, 0}
+};
 
 //Register our Color Functions
 static const luaL_Reg Color_functions[] = {
@@ -427,6 +481,9 @@ void luaScreen_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Color_functions, 0);
 	lua_setglobal(L, "Color");
+	lua_newtable(L);
+	luaL_setfuncs(L, Console_functions, 0);
+	lua_setglobal(L, "Console");
 	int TOP_SCREEN = 0;
 	int BOTTOM_SCREEN = 1;
 	int LEFT_EYE = 0;
