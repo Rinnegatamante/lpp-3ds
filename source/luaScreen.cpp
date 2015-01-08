@@ -129,6 +129,7 @@ static int lua_pbitmap(lua_State *L)
 	if (argc == 5) side = luaL_checkint(L,5);
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
 	else PrintScreenBitmap(x,y,file,screen,side);
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -218,7 +219,6 @@ static int lua_flip(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	gfxFlushBuffers();
 	gfxSwapBuffers();
 	return 0;
 }
@@ -245,6 +245,7 @@ static int lua_clearScreen(lua_State *L)
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	int screen = luaL_checkint(L,1);
 	ClearScreen(screen);
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -268,6 +269,7 @@ static int lua_fillRect(lua_State *L)
 	if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
 	else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side,alpha);
 	}
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -291,6 +293,7 @@ static int lua_fillEmptyRect(lua_State *L)
 	if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
 	else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side,alpha);
 	}
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -317,6 +320,7 @@ static int lua_pixel(lua_State *L)
 	if (alpha == 255) DrawPixel(buffer,x,y,color);
 	else DrawAlphaPixel(buffer,x,y,color,alpha);
 	}
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -419,6 +423,7 @@ static int lua_conshow(lua_State *L) {
     Console* console = (Console*)luaL_checkint(L, 1);
 	int res = ConsoleOutput(console);
 	lua_pushnumber(L,res);
+	gfxFlushBuffers();
     return 1;
 }
 
