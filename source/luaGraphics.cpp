@@ -429,7 +429,7 @@ int y=0;
 int res = 0;
 for (i = 0; console->text[i] != '\0'; i++)
 {
-if (y > 240) break;
+if (y > 230) break;
 if (console->text[i] == 0x0A){
 x=0;
 y=y+15;
@@ -456,15 +456,16 @@ res++;
 continue;
 }
 x++;
+if (x >= max_x - 10){
+x=0;
+y=y+15;
+if (y > 230) break;
+}
 for (cy = 0; cy < 12; cy++)
 {
 unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
-if ((x+cx) >= max_x){
-x=0;
-y=y+15;
-}
 if (val & (1 << cx))
 DrawPixel(buffer, x+cx, y+cy, 0xFFFFFF);
 }
@@ -682,11 +683,11 @@ void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,i
 
 void ClearScreen(int screen){
 	if (screen==1){
-		FillScreenRect(0,319,0,239,0x000000,1,0);
+		memset(BottomFB,0x00,230400);
 	}else{
-		FillScreenRect(0,399,0,239,0x000000,0,0);
+		memset(TopLFB,0x00,288000);
 	if (CONFIG_3D_SLIDERSTATE != 0){
-		FillScreenRect(0,399,0,239,0x000000,0,1);
+		memset(TopRFB,0x00,288000);
 	}
 	}
 }
