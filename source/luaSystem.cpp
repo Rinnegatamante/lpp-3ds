@@ -121,7 +121,7 @@ static int lua_checkexist(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	lua_pushboolean(L,ret);
+	lua_pushboolean(L,!ret);
 	return 1;
 }
 
