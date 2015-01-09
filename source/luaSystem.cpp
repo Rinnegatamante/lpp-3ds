@@ -222,7 +222,7 @@ static int lua_readfile(lua_State *L)
 	Result ret=FSFILE_Read(fileHandle, &bytesRead, init, buffer, size);
 	buffer[size] = 0;
 	if(ret || size!=bytesRead) return luaL_error(L, "error reading file");
-	lua_pushstring(L,(const char*)buffer);
+	lua_pushlstring(L,(const char*)buffer,size);
 	free(buffer);
 	return 1;
 }
@@ -231,11 +231,11 @@ static int lua_readfile(lua_State *L)
 static int lua_writefile(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 3) return luaL_error(L, "wrong number of arguments");
+    if (argc != 4) return luaL_error(L, "wrong number of arguments");
 	Handle fileHandle = luaL_checknumber(L, 1);
 	u64 init = luaL_checknumber(L, 2);
 	const char *text = luaL_checkstring(L, 3);
-	u64 size = strlen(text);
+	u64 size = luaL_checknumber(L, 4);
 	u32 bytesWritten;
 	Result ret=FSFILE_Write(fileHandle, &bytesWritten, init, text, size, FS_WRITE_FLUSH);
 	if(ret || size!=bytesWritten) return luaL_error(L, "error writing file");
