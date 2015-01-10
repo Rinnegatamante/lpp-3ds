@@ -22,11 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -81,7 +82,7 @@ static int lua_loadBMPV(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 4, &(BMPV_file->framerate), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 8, &(BMPV_file->width), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 12,&(BMPV_file->height), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 16,&(BMPV_file->audiotype), 2);
+	if (!GW_MODE) FSFILE_Read(fileHandle, &bytesRead, 16,&(BMPV_file->audiotype), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 18,&(BMPV_file->bytepersample), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 20,&(BMPV_file->samplerate), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 24,&(BMPV_file->audio_size), 4);
@@ -154,6 +155,8 @@ int argc = lua_gettop(L);
 		CSND_setchannel_playbackstate(src->ch2, 1);
 	}
 	CSND_sharedmemtype0_cmdupdatestate(0);
+	}else{
+	src->tick = osGetTime();
 	}
 	return 0;
 }
@@ -173,18 +176,22 @@ int argc = lua_gettop(L);
 		if (src->currentFrame >= src->tot_frame){
 			if (src->loop == 1){
 				src->currentFrame = 0;
+				if (!GW_MODE){
 				if (src->audiotype == 1){
 					My_CSND_playsound(src->ch1, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, NULL, src->audio_size, 0xFFFF, 0xFFFF);
 				}else{
 					My_CSND_playsound(src->ch1, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, NULL, src->audio_size/2, 0xFFFF, 0);
 					My_CSND_playsound(src->ch2, CSND_LOOP_DISABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, NULL, src->audio_size/2, 0, 0xFFFF);
 				}
+				}
 				src->tick = osGetTime();
+				if (!GW_MODE){
 				CSND_setchannel_playbackstate(src->ch1, 1);
 				if (src->audiotype == 2){
 					CSND_setchannel_playbackstate(src->ch2, 1);
 				}
 				CSND_sharedmemtype0_cmdupdatestate(0);
+				}
 			}else{
 				src->isPlaying = false;
 			}
