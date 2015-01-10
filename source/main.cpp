@@ -22,11 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -39,13 +40,14 @@
 const char *errMsg;
 unsigned char *buffer;
 char cur_dir[256];
-
+char start_dir[256];
 int main(int argc, char **argv)
 {
 	srvInit();	
 	aptInit();
 	gfxInit();
 	acInit();
+	initCfgu();
 	ptmInit();
 	hidInit(NULL);
 	irrstInit(NULL);
@@ -68,9 +70,11 @@ int main(int argc, char **argv)
 		}
 		strcpy(path,&argv[0][5]);
 		path[latest_slash-5] = 0;
+		strcpy(start_dir,path);
 		strcpy(cur_dir,path); // Set current dir
 		strcat(path,"/index.lua");
 	}else{
+		strcpy(start_dir,"/");
 		strcpy(cur_dir,"/"); // Set current dir for GW Mode
 		strcpy(path,"/index.lua");
 	}
@@ -113,6 +117,7 @@ int main(int argc, char **argv)
 							DebugOutput(error);
 							hidScanInput();
 							if(hidKeysDown() & KEY_A){
+								strcpy(cur_dir,start_dir);
 								restore=1;
 							}else if(hidKeysDown() & KEY_B){
 								restore=2;
@@ -130,6 +135,7 @@ int main(int argc, char **argv)
 	hidExit();
 	ptmExit();
 	acExit();
+	exitCfgu();
 	gfxExit();
 	aptExit();
 	srvExit();
