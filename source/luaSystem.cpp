@@ -504,7 +504,7 @@ static int lua_keyboard(lua_State *L){
 			console->text[strlen(console->text)-1] = 0;
 		}else{
 			if (maiusc) strncpy(letter,&keychar1[key_pos/12][key_pos%12],1);
-			else strncpy(letter,&keychar1[key_pos/12][key_pos%12],1);
+			else strncpy(letter,&keychar2[key_pos/12][key_pos%12],1);
 			letter[1] = 0;
 			strcat(console->text,letter);
 		}
