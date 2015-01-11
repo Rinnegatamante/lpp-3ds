@@ -121,6 +121,10 @@ static int lua_checkexist(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	if (!ret){
+	FSFILE_Close(fileHandle);
+	}
+	svcCloseHandle(fileHandle);
 	lua_pushboolean(L,!ret);
 	return 1;
 }
@@ -418,6 +422,124 @@ static int lua_wifistat(lua_State *L){
 	return 1;
 }
 
+static int lua_keyboard(lua_State *L){
+	int argc = lua_gettop(L);
+	if ((argc != 0) && (argc != 1)) return luaL_error(L, "wrong number of arguments");
+	Console* console = (Console*)malloc(sizeof(Console));
+	console->screen = 0;
+	if (argc == 1) strcpy(console->text, luaL_checkstring(L, 1));
+	else strcpy(console->text,"");
+	int key_pos = 0;
+	bool maiusc = true;
+	char* keychar1[4] = {"1234567890()","QWERTYUIOP[]","ASDFGHJKL+- ","ZXCVBNM,.   "}; // Last 3 are Maiusc/Del/Enter
+	char* keychar2[4] = {"1234567890!$","qwertyuiop{}","asdfghjkl@=_","zxcvbnm;%   "}; // Last 3 are Maiusc/Del/Enter
+	char letter[2];
+	for (;;){
+		gspWaitForVBlank();
+		RefreshScreen();
+		ClearScreen(0);
+		ClearScreen(1);
+		FillScreenEmptyRect(5,200,5,83,0x000000,1,0);
+		FillScreenRect(6,199,6,82,0xFFFFFF,1,0);
+		ConsoleOutput(console);
+		if (maiusc){
+		int i=0;
+		while (i < 4){
+			int j=0;
+			while (j < 12){
+				u32 color;
+				if (key_pos == (j+(i*12))){
+				if (key_pos < 46) FillScreenRect(6+j*15,j*15+16,i*15+6,i*15+19,0xFFFF00,1,0);
+				else if (key_pos == 46) FillScreenRect(26,36,(i+1)*15+6,(i+1)*15+19,0xFFFF00,1,0);
+				else FillScreenRect(76,86,(i+1)*15+6,(i+1)*15+19,0xFFFF00,1,0);
+				color = 0xFF0000;
+				}
+				else color = 0x000000;
+				if ((j < 9) || (i < 3)){
+				strncpy(letter,&keychar1[i][j],1);
+				letter[1] = 0;
+				DrawScreenText(8+(j*15),8+(i*15),letter,color,1,0);
+				}else{
+					if (j == 9) DrawScreenText(8+(j*15),8+(i*15),"DEL",color,1,0);
+					if (j == 10) DrawScreenText(28,8+((i+1)*15),"CAPS",color,1,0);
+					if (j == 11) DrawScreenText(78,8+((i+1)*15),"ENTER",color,1,0);
+				}
+				j++;
+			}
+			i++;
+		}		
+		}else{
+		int i=0;
+		while (i < 4){
+			int j=0;
+			while (j < 12){
+				u32 color;
+				if (key_pos == (j+(i*12))){
+				if (key_pos < 46) FillScreenRect(6+j*15,j*15+16,i*15+6,i*15+19,0xFFFF00,1,0);
+				else if (key_pos == 46) FillScreenRect(26,36,(i+1)*15+6,(i+1)*15+19,0xFFFF00,1,0);
+				else FillScreenRect(76,86,(i+1)*15+6,(i+1)*15+19,0xFFFF00,1,0);
+				color = 0xFF0000;
+				}
+				else color = 0x000000;
+				if ((j < 9) || (i < 3)){
+				strncpy(letter,&keychar2[i][j],1);
+				letter[1] = 0;
+				DrawScreenText(8+(j*15),8+(i*15),letter,color,1,0);
+				}else{
+					if (j == 9) DrawScreenText(8+(j*15),8+(i*15),"DEL",color,1,0);
+					if (j == 10) DrawScreenText(28,8+((i+1)*15),"CAPS",color,1,0);
+					if (j == 11) DrawScreenText(78,8+((i+1)*15),"ENTER",color,1,0);
+				}
+				j++;
+			}
+			i++;
+		}
+		}
+		hidScanInput();
+		irrstScanInput();
+		if ((hidKeysDown() & KEY_A) == KEY_A){
+		if (key_pos == 47) break;
+		else if (key_pos == 46) maiusc = !maiusc;
+		else if ((key_pos == 45) && (strlen(console->text) > 0)){
+			console->text[strlen(console->text)-1] = 0;
+		}else{
+			if (maiusc) strncpy(letter,&keychar1[key_pos/12][key_pos%12],1);
+			else strncpy(letter,&keychar1[key_pos/12][key_pos%12],1);
+			letter[1] = 0;
+			strcat(console->text,letter);
+		}
+		}else if ((hidKeysDown() & KEY_DUP) == KEY_DUP){
+			if ((key_pos < 46) && (key_pos > 11)) key_pos = key_pos - 12;
+			else if (key_pos == 46) key_pos = 37;
+			else if (key_pos < 5) key_pos = 46;
+			else if (key_pos < 12) key_pos = 47;
+			else key_pos = 41;
+		}else if ((hidKeysDown() & KEY_DDOWN) == KEY_DDOWN){
+			if (key_pos < 34) key_pos = key_pos + 12;
+			else if ((key_pos == 35) || (key_pos == 34)) key_pos = 45;
+			else if (key_pos == 45) key_pos = 9;
+			else if (key_pos == 46) key_pos = 1;
+			else if (key_pos == 47) key_pos = 5;
+			else if (key_pos < 41) key_pos = 46;
+			else key_pos = 47;
+		}
+		else if ((hidKeysDown() & KEY_DLEFT) == KEY_DLEFT){
+		key_pos = key_pos - 1;
+		}
+		else if ((hidKeysDown() & KEY_DRIGHT) == KEY_DRIGHT){
+		key_pos = key_pos + 1;
+		}
+		if (key_pos > 47) key_pos = 0;
+		else if (key_pos < 0) key_pos = 47;
+		gfxSwapBuffers();
+	}
+	char result[256];
+	strcpy(result,console->text);
+	free(console);
+	lua_pushstring(L, result);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -437,6 +559,7 @@ static const luaL_Reg System_functions[] = {
   {"isBatteryCharging",		lua_batterycharge},
   {"isWifiEnabled",			lua_wifistat},
   {"getLanguage",			lua_getLang},
+  {"startKeyboard",			lua_keyboard},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
