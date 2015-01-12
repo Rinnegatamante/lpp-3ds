@@ -61,6 +61,7 @@ static int lua_print(lua_State *L)
 	if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
 	else DrawAlphaScreenText(x,y,text,color,screen,side,alpha);
 	}
+	gfxFlushBuffers();
 	return 0;
 }
 
@@ -128,9 +129,52 @@ static int lua_pbitmap(lua_State *L)
 	int side = 0;
 	if (argc == 5) side = luaL_checkint(L,5);
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
-	else PrintScreenBitmap(x,y,file,screen,side);
+	else{ 
+		if (screen == 0){
+			bool partial_x = false;
+			bool partial_y = false;
+			if (file->width > 400) partial_x = true;
+			if (file->height > 240) partial_y = true;
+			if (partial_x || partial_y){
+				int width = file->width;
+				int height = file->height;
+				if (partial_x) width = 400;
+				if (partial_y) height = 240;
+				PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
+			}else PrintScreenBitmap(x,y,file,screen,side);
+		}else{
+			bool partial_x = false;
+			bool partial_y = false;
+			if (file->width > 320) partial_x = true;
+			if (file->height > 240) partial_y = true;
+			if (partial_x || partial_y){
+				int width = file->width;
+				int height = file->height;
+				if (partial_x) width = 320;
+				if (partial_y) height = 240;
+				PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
+			}else PrintScreenBitmap(x,y,file,screen,side);
+		}
+	}
 	gfxFlushBuffers();
 	return 0;
+}
+
+static int lua_partial(lua_State *L){
+	int argc = lua_gettop(L);
+	if ((argc != 8) && (argc != 9)) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkint(L, 1);
+    int y = luaL_checkint(L, 2);
+	int st_x = luaL_checkint(L, 3);
+    int st_y = luaL_checkint(L, 4);
+	int width = luaL_checkint(L, 5);
+    int height = luaL_checkint(L, 6);
+	Bitmap* file = (Bitmap*)luaL_checkint(L, 7);
+	int screen= luaL_checkint(L, 8);
+	int side = 0;
+	if (argc == 5) side = luaL_checkint(L,9);
+	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
+	else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
 }
 
 static int lua_flipBitmap(lua_State *L)
@@ -341,6 +385,24 @@ static int lua_pixel2(lua_State *L)
 	return 1;
 }
 
+static int lua_getWidth(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	lua_pushnumber(L,src->width);
+	return 1;
+}
+
+static int lua_getHeight(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	lua_pushnumber(L,src->height);
+	return 1;
+}
+
 static int lua_color(lua_State *L) {
     int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
@@ -476,6 +538,9 @@ static const luaL_Reg Screen_functions[] = {
   {"flipImage",						lua_flipBitmap},
   {"createImage",					lua_newBitmap},
   {"saveBitmap",					lua_saveimg},
+  {"getImageWidth",					lua_getWidth},
+  {"getImageHeight",				lua_getHeight},  
+  {"drawPartialImage",				lua_partial},  
   {0, 0}
 };
 

@@ -45,6 +45,8 @@ extern u8* TopRFB;
 extern u8* BottomFB;
 Bitmap* LoadBitmap(char* fname);
 void PrintScreenBitmap(int xp,int yp, Bitmap* result,int screen,int side);
+void PrintPartialScreenBitmap(int xp,int yp,int st_x,int st_y,int width,int height, Bitmap* result,int screen,int side);
+void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int height, Bitmap* result,int screen);
 void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen);
 u8* flipBitmap(u8* flip_bitmap, Bitmap* result);
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen);
