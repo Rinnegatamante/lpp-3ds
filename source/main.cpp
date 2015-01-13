@@ -52,6 +52,7 @@ int main(int argc, char **argv)
 	hidInit(NULL);
 	irrstInit(NULL);
 	fsInit();
+	hbInit();
 	Handle fileHandle;
 	u64 size;
 	u32 bytesRead;
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
 	irrstExit();
 	hidExit();
 	ptmExit();
+	hbExit();
 	acExit();
 	exitCfgu();
 	gfxExit();

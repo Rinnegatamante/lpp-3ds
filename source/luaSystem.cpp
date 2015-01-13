@@ -540,6 +540,34 @@ static int lua_keyboard(lua_State *L){
 	return 1;
 }
 
+//Boot Func
+extern void (*__system_retAddr)(void);
+static Handle hbHandle;
+void (*callBootloader)(Handle hb, Handle file);
+void (*setArgs)(u32* src, u32 length);
+static void launchFile(void){ callBootloader(0x00000000, hbHandle); }
+
+static int lua_launch(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char* file = luaL_checkstring(L, 1);
+	HB_GetBootloaderAddresses((void**)&callBootloader, (void**)&setArgs);
+	fsExit();
+	fsInit();
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenFileDirectly(NULL, &hbHandle, sdmcArchive, FS_makePath(PATH_CHAR, file), FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	static u32 argbuffer[0x200];
+	argbuffer[0]=1;
+	snprintf((char*)&argbuffer[1], 0x200*4, "sdmc:%s", file);
+	setArgs(argbuffer, 0x200*4);
+	__system_retAddr = launchFile;
+	char string[20];
+	strcpy(string,"lpp_exit_0456432");
+	return luaL_error(L, string); // NOTE: This is a fake error
+}
+
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -560,6 +588,7 @@ static const luaL_Reg System_functions[] = {
   {"isWifiEnabled",			lua_wifistat},
   {"getLanguage",			lua_getLang},
   {"startKeyboard",			lua_keyboard},
+  {"launch",				lua_launch},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
