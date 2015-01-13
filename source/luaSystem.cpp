@@ -439,7 +439,6 @@ static int lua_keyboard(lua_State *L){
 		RefreshScreen();
 		ClearScreen(0);
 		ClearScreen(1);
-		FillScreenEmptyRect(5,200,5,83,0x000000,1,0);
 		FillScreenRect(6,199,6,82,0xFFFFFF,1,0);
 		ConsoleOutput(console);
 		if (maiusc){
@@ -531,12 +530,119 @@ static int lua_keyboard(lua_State *L){
 		}
 		if (key_pos > 47) key_pos = 0;
 		else if (key_pos < 0) key_pos = 47;
+		gfxFlushBuffers();
 		gfxSwapBuffers();
 	}
 	char result[256];
 	strcpy(result,console->text);
 	free(console);
 	lua_pushstring(L, result);
+	return 1;
+}
+
+static inline void putPixel565(u8* dst, u8 x, u8 y, u16 v)
+{
+dst[(x+(47-y)*48)*3+0]=(v&0x1F)<<3;
+dst[(x+(47-y)*48)*3+1]=((v>>5)&0x3F)<<2;
+dst[(x+(47-y)*48)*3+2]=((v>>11)&0x1F)<<3;
+}
+u8 tileOrder[]={0,1,8,9,2,3,10,11,16,17,24,25,18,19,26,27,4,5,12,13,6,7,14,15,20,21,28,29,22,23,30,31,32,33,40,41,34,35,42,43,48,49,56,57,50,51,58,59,36,37,44,45,38,39,46,47,52,53,60,61,54,55,62,63};
+
+static int lua_readsmdh(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char* file = luaL_checkstring(L, 1);
+	char name[64];
+	char desc[128];
+	char author[64];
+	Handle fileHandle;
+	u32 bytesRead;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file);
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	u32 magic;
+	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	if (magic != 0x48444D53) return luaL_error(L, "error opening SMDH file");
+	unsigned char *buffer = (unsigned char*)(malloc((129) * sizeof (char)));
+	buffer[128] = 0;
+	FSFILE_Read(fileHandle, &bytesRead, 8, buffer, 128);
+	int i = 0;
+	while (i < 129){
+	if (buffer[i*2] == 0) break;
+	else name[i] = buffer[i*2];
+	i++;
+	}
+	name[i] = 0;
+	FSFILE_Read(fileHandle, &bytesRead, 392, buffer, 128);
+	i = 0;
+	while (i < 129){
+	if (buffer[i*2] == 0) break;
+	else author[i] = buffer[i*2];
+	i++;
+	}
+	author[i] = 0;
+	free(buffer);
+	buffer = (unsigned char*)(malloc((257) * sizeof (char)));
+	buffer[256] = 0;
+	FSFILE_Read(fileHandle, &bytesRead, 136, buffer, 256);
+	i = 0;
+	while (i < 257){
+	if (buffer[i*2] == 0) break;
+	else desc[i] = buffer[i*2];
+	i++;
+	}
+	desc[i] = 0;
+	free(buffer);
+	Bitmap* bitmap = (Bitmap*)malloc(sizeof(Bitmap));
+	bitmap->width = 48;
+	bitmap->height = 48;
+	bitmap->pixels = (u8*)malloc(6912);
+	bitmap->bitperpixel = 24;
+	u16* icon_buffer = (u16*)malloc(0x1200);
+	FSFILE_Read(fileHandle, &bytesRead, 0x24C0, icon_buffer, 0x1200);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	//convert RGB565 to RGB24
+    int x=0;
+    int y=0;
+	int tile_size = 16;
+	int tile_number = 1;
+	int extra_x = 0;
+	int extra_y = 0;
+	i=0;
+	int tile_x[16] = {0,1,0,1,2,3,2,3,0,1,0,1,2,3,2,3};
+	int tile_y[16] = {0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3};
+	while (tile_number < 37){
+		while (i < (tile_size)){
+			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)*64)] + extra_x, tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i]);
+			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)*64)] + extra_x, tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+16]);
+			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)*64)] + extra_x, 4+tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+32]);
+			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)*64)] + extra_x, 4+tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+48]);
+			i++;
+		}
+		if (tile_number % 6 == 0){
+			extra_x = 0;
+			extra_y = extra_y + 8;
+		}else extra_x = extra_x + 8;
+		tile_number++;
+		tile_size = tile_size + 64;
+		i = i + 48;
+	}
+	free(icon_buffer);
+	lua_newtable(L);
+	lua_newtable(L);
+	lua_pushstring(L, "title");
+	lua_pushstring(L, name);
+	lua_settable(L, -3);
+	lua_pushstring(L, "desc");
+	lua_pushstring(L, desc);
+	lua_settable(L, -3);
+	lua_pushstring(L, "author");
+	lua_pushstring(L, author);
+	lua_settable(L, -3);
+	lua_pushstring(L, "icon");
+	lua_pushnumber(L, (u32)bitmap);
+	lua_settable(L, -3);
 	return 1;
 }
 
@@ -589,6 +695,7 @@ static const luaL_Reg System_functions[] = {
   {"getLanguage",			lua_getLang},
   {"startKeyboard",			lua_keyboard},
   {"launch",				lua_launch},
+  {"extractSMDH",			lua_readsmdh},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
