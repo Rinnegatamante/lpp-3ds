@@ -22,11 +22,12 @@
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -47,6 +48,8 @@ u32 size;
 u32 mem_size;
 Handle sourceFile;
 u32 startRead;
+char author[256];
+char title[256];
 u32 moltiplier;
 u64 tick;
 bool isPlaying;
@@ -71,18 +74,55 @@ static int lua_openwav(lua_State *L)
 	u16 audiotype;
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x46464952){
+	wav *wav_file = (wav*)malloc(sizeof(wav));
+	strcpy(wav_file->author,"");
+	strcpy(wav_file->title,"");
 	u64 size;
-	u32 pos = 16;
+	u32 pos = 16;	
 	while (chunk != 0x61746164){
 	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
 	pos=pos+4+jump;
-	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
 	pos=pos+4;
+	
+	//Chunk LIST detection
+	if (chunk == 0x5453494C){
+		u32 chunk_size;
+		u32 subchunk;
+		u32 subchunk_size;
+		u32 sub_pos = pos+4;
+		FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+		if (subchunk == 0x4F464E49){
+			sub_pos = sub_pos+4;
+			FSFILE_Read(fileHandle, &bytesRead, pos, &chunk_size, 4);
+			while (sub_pos < (chunk_size + pos + 4)){
+				FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+				FSFILE_Read(fileHandle, &bytesRead, sub_pos+4, &subchunk_size, 4);
+				if (subchunk == 0x54524149){
+					char* author = (char*)malloc(subchunk_size * sizeof(char));
+					FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, author, subchunk_size);
+					strcpy(wav_file->author,author);
+					wav_file->author[subchunk_size+1] = 0;
+					free(author);
+				}else if (subchunk == 0x4D414E49){
+					char* title = (char*)malloc(subchunk_size * sizeof(char));
+					FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, title, subchunk_size);
+					strcpy(wav_file->title,title);
+					wav_file->title[subchunk_size+1] = 0;
+					free(title);
+				}
+				sub_pos = sub_pos + 8 + subchunk_size;
+				u8 checksum;
+				FSFILE_Read(fileHandle, &bytesRead, sub_pos, &checksum, 1); //Prevent errors switching subchunks
+				if (checksum == 0) sub_pos++;
+			}
+		}
+	}
+	
 	}
 	FSFILE_GetSize(fileHandle, &size);
 	FSFILE_Read(fileHandle, &bytesRead, 22, &audiotype, 2);
 	FSFILE_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
-	wav *wav_file = (wav*)malloc(sizeof(wav));
 	wav_file->mem_size = mem_size;
 	wav_file->samplerate = samplerate;
 	FSFILE_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
@@ -102,6 +142,7 @@ static int lua_openwav(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
 	wav_file->audiobuf2 = NULL;
 	wav_file->size = size-(pos+4);
+	wav_file->startRead = 0;
 	}
 	}else{
 	// I must reordinate my buffer in order to play stereo sound (Thanks CSND/FS libraries .-.)
@@ -110,6 +151,7 @@ static int lua_openwav(lua_State *L)
 	if (mem_size > 0){
 	wav_file->moltiplier = 1;
 	wav_file->sourceFile = fileHandle;
+	wav_file->isPlaying = false;
 	wav_file->startRead = (pos+4);
 	wav_file->size = size;
 	wav_file->mem_size = (size-(pos+4))/mem_size;
@@ -136,7 +178,6 @@ static int lua_openwav(lua_State *L)
 	wav_file->audiobuf2[off+z] = tmp_buffer[i+z+(wav_file->bytepersample/2)];
 	z++;
 	}
-	z=0;
 	i=i+wav_file->bytepersample;
 	off=off+(wav_file->bytepersample/2);
 	}
@@ -219,6 +260,7 @@ static int lua_streamWav(lua_State *L)
 			src->moltiplier = 1;
 		}else{
 			src->isPlaying = false;
+			src->tick = (osGetTime()-src->tick);
 			src->moltiplier = 1;
 			CSND_setchannel_playbackstate(src->ch, 0);
 			if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
@@ -279,7 +321,6 @@ static int lua_streamWav(lua_State *L)
 						src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
 						z++;
 					}
-					z=0;
 					i=i+src->bytepersample;
 					off=off+(src->bytepersample/2);
 				}
@@ -404,6 +445,8 @@ static int lua_regsound(lua_State *L)
 	wav_file->mem_size = 0;
 	wav_file->size = mem_size - 32000;
 	wav_file->samplerate = 16000;
+	strcpy(wav_file->author,"");
+	strcpy(wav_file->title,"");
 	wav_file->isPlaying = false;
 	wav_file->bytepersample = 2;
 	lua_pushnumber(L,(u32)wav_file);
@@ -446,6 +489,60 @@ static int lua_savemono(lua_State *L)
 	return 0;
 }
 
+static int lua_getSrate(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->samplerate);
+	return 1;
+}
+
+static int lua_getTime(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	if (src->isPlaying){
+		lua_pushnumber(L, (osGetTime() - src->tick) / 1000);
+	}else{
+		lua_pushnumber(L, src->tick / 1000);
+	}
+	return 1;
+}
+
+static int lua_getTotalTime(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	u32 result = (src->size - src->startRead) / (src->bytepersample * src->samplerate);
+	lua_pushnumber(L, result);
+	return 1;
+}
+
+static int lua_getTitle(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	lua_pushstring(L, src->title);
+	return 1;
+}
+
+static int lua_getAuthor(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	lua_pushstring(L, src->author);
+	return 1;
+}
+
+static int lua_getType(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	wav* src = (wav*)luaL_checkint(L, 1);
+	if (src->audiobuf2 == NULL) lua_pushnumber(L, 1);
+	else lua_pushnumber(L, 2);
+	return 1;
+}
+
 //Register our Sound Functions
 static const luaL_Reg Sound_functions[] = {
   {"openWav",				lua_openwav},
@@ -454,6 +551,12 @@ static const luaL_Reg Sound_functions[] = {
   {"init",					lua_soundinit},
   {"term",					lua_soundend},
   {"pause",					lua_pause},
+  {"getSrate",				lua_getSrate},
+  {"getTime",				lua_getTime},
+  {"getTitle",				lua_getTitle},
+  {"getAuthor",				lua_getAuthor},
+  {"getType",				lua_getType},  
+  {"getTotalTime",			lua_getTotalTime},
   {"resume",				lua_resume},
   {"isPlaying",				lua_wisPlaying},
   {"updateStream",			lua_streamWav},
