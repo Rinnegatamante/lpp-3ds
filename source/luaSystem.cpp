@@ -865,6 +865,306 @@ static int lua_listExtdataDir(lua_State *L){
 	return 1;
 }
 
+
+//AM service support, partially stolen by libctru
+static Handle amHandle = 0;
+
+Result amInit()
+{
+	if(srvGetServiceHandle(&amHandle, "am:net") == 0)
+		return (Result)0;
+	else
+		return srvGetServiceHandle(&amHandle, "am:u");
+}
+
+Result amExit()
+{
+	return svcCloseHandle(amHandle);
+}
+
+Result AM_StartCiaInstall(u8 mediatype, Handle *ciahandle)
+{
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = 0x04020040;
+	cmdbuf[1] = mediatype;
+
+	if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+
+	*ciahandle = cmdbuf[3];
+	
+	return (Result)cmdbuf[1];
+}
+
+Result AM_FinishCiaInstall(u8 mediatype, Handle *ciahandle)
+{
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = 0x04050002;
+	cmdbuf[1] = 0x10;
+	cmdbuf[2] = *ciahandle;
+
+	if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+
+	return (Result)cmdbuf[1];
+}
+
+Result AM_GetTitleCount(u8 mediatype, u32 *count)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x00010040;
+cmdbuf[1] = mediatype;
+if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+*count = cmdbuf[2];
+return (Result)cmdbuf[1];
+}
+
+Result AM_GetTitleList(u8 mediatype, u32 count, void *buffer)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x00020082;
+cmdbuf[1] = count;
+cmdbuf[2] = mediatype;
+cmdbuf[3] = ((count*8) << 4) | 12;
+cmdbuf[4] = (u32)buffer;
+if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+return (Result)cmdbuf[1];
+}
+
+Result AM_GetTitleProductCode(u8 mediatype, u64 titleid, char* product_code)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x000500C0;
+cmdbuf[1] = mediatype;
+cmdbuf[2] = titleid & 0xffffffff;
+cmdbuf[3] = (titleid >> 32) & 0xffffffff;
+if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+sprintf(product_code,"%s",(char*)(&cmdbuf[2]));
+return (Result)cmdbuf[1];
+}
+
+Result AM_DeleteTitle(u8 mediatype, u64 titleid)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x041000C0;
+cmdbuf[1] = mediatype;
+cmdbuf[2] = titleid & 0xffffffff;
+cmdbuf[3] = (titleid >> 32) & 0xffffffff;
+if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+return (Result)cmdbuf[1];
+}
+
+Result AM_DeleteAppTitle(u8 mediatype, u64 titleid)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x000400C0;
+cmdbuf[1] = mediatype;
+cmdbuf[2] = titleid & 0xffffffff;
+cmdbuf[3] = (titleid >> 32) & 0xffffffff;
+if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
+return (Result)cmdbuf[1];
+}
+//Finish AM support
+
+int MAX_RAM_ALLOCATION = 62914560;
+
+static int lua_installCia(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char* path = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	Handle ciaHandle;
+	u64 size;
+	u32 bytes;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, path);
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	amInit();
+	AM_StartCiaInstall(mediatype_SDMC, &ciaHandle);
+	FSFILE_GetSize(fileHandle, &size);
+	if (size < MAX_RAM_ALLOCATION){
+		char* cia_buffer = (char*)(malloc((size) * sizeof (char)));
+		FSFILE_Read(fileHandle, &bytes, 0x0, cia_buffer, size);
+		FSFILE_Write(ciaHandle, &bytes, 0, cia_buffer, size, 0x10001);
+		free(cia_buffer);
+	}else{
+		u64 i = 0;
+		char* cia_buffer;
+		while (i < size){
+			u64 bytesToRead;
+			if	(i+MAX_RAM_ALLOCATION > size){
+				cia_buffer = (char*)(malloc((size-i) * sizeof(char)));
+				bytesToRead = size - i;
+			}else{
+				cia_buffer = (char*)(malloc((MAX_RAM_ALLOCATION) * sizeof(char)));
+				bytesToRead = MAX_RAM_ALLOCATION;
+			}
+			FSFILE_Read(fileHandle, &bytes, i, cia_buffer, bytesToRead);
+			FSFILE_Write(ciaHandle, &bytes, i, cia_buffer, bytesToRead, 0x10001);
+			i = i + bytesToRead;
+			free(cia_buffer);
+		}
+	}
+	AM_FinishCiaInstall(mediatype_SDMC, &ciaHandle);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	amExit();
+	return 0;
+}
+
+struct TitleId{
+	u32 uniqueid;
+	u16 category;
+	u16 platform;
+};
+/* CIA categories
+0 = Application
+1 = System
+2 = DLC
+3 = Patch
+4 = TWL
+*/
+static int lua_listCia(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	amInit();
+	u32 cia_nums;
+	AM_GetTitleCount(mediatype_SDMC, &cia_nums);
+	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
+	AM_GetTitleList(mediatype_SDMC,cia_nums,TitleIDs);
+	u32 i = 1;
+	lua_newtable(L);
+	while (i <= cia_nums){
+		lua_pushnumber(L, i);
+		lua_newtable(L);
+		lua_pushstring(L, "unique_id");
+		lua_pushnumber(L, (TitleIDs[i-1].uniqueid));
+		lua_settable(L, -3);
+		lua_pushstring(L, "mediatype");
+		lua_pushnumber(L, 1);
+		lua_settable(L, -3);
+		lua_pushstring(L, "platform");
+		lua_pushnumber(L, (TitleIDs[i-1].platform));
+		lua_settable(L, -3);
+		u64 id = TitleIDs[i-1].uniqueid | ((u64)TitleIDs[i-1].category << 32) | ((u64)TitleIDs[i-1].platform << 48);
+		char product_id[16];
+		AM_GetTitleProductCode(mediatype_SDMC, id, product_id);
+		lua_pushstring(L, "product_id");
+		lua_pushstring(L, product_id);
+		lua_settable(L, -3);
+		lua_pushstring(L, "access_id");
+		lua_pushnumber(L, i);
+		lua_settable(L, -3);
+		lua_pushstring(L, "category");
+		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushnumber(L, 4);
+		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushnumber(L, 1);
+		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushnumber(L, 3);
+		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushnumber(L, 2);
+		else lua_pushnumber(L, 0);
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+		i++;
+	}
+	free(TitleIDs);
+	u32 z = 1;
+	AM_GetTitleCount(mediatype_NAND, &cia_nums);
+	TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
+	AM_GetTitleList(mediatype_NAND,cia_nums,TitleIDs);
+	while (z <= cia_nums){
+		lua_pushnumber(L, i);
+		lua_newtable(L);
+		lua_pushstring(L, "unique_id");
+		lua_pushnumber(L, (TitleIDs[i-1].uniqueid));
+		lua_settable(L, -3);
+		lua_pushstring(L, "mediatype");
+		lua_pushnumber(L, 2);
+		lua_settable(L, -3);
+		lua_pushstring(L, "platform");
+		lua_pushnumber(L, (TitleIDs[i-1].platform));
+		lua_settable(L, -3);
+		u64 id = TitleIDs[i-1].uniqueid | ((u64)TitleIDs[i-1].category << 32) | ((u64)TitleIDs[i-1].platform << 48);
+		char product_id[16];
+		AM_GetTitleProductCode(mediatype_NAND, id, product_id);
+		lua_pushstring(L, "product_id");
+		lua_pushstring(L, product_id);
+		lua_settable(L, -3);
+		lua_pushstring(L, "access_id");
+		lua_pushnumber(L, z);
+		lua_settable(L, -3);
+		lua_pushstring(L, "category");
+		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushnumber(L, 4);
+		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushnumber(L, 1);
+		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushnumber(L, 3);
+		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushnumber(L, 2);
+		else lua_pushnumber(L, 0);
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+		i++;
+		z++;
+	}
+	free(TitleIDs);
+	amExit();
+	return 1;
+}
+
+static int lua_uninstallCia(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	u32 delete_id = luaL_checknumber(L,1);
+	u32 mediatype = luaL_checknumber(L,2);
+	mediatypes_enum media;
+	if (mediatype == 1) media = mediatype_SDMC;
+	else media = mediatype_NAND;
+	amInit();
+	u32 cia_nums;
+	AM_GetTitleCount(media, &cia_nums);
+	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
+	AM_GetTitleList(media,cia_nums,TitleIDs);
+	u64 id = TitleIDs[delete_id-1].uniqueid | ((u64)TitleIDs[delete_id-1].category << 32) | ((u64)TitleIDs[delete_id-1].platform << 48);
+	AM_DeleteAppTitle(media, id);
+	AM_DeleteTitle(media, id);
+	amExit();
+	free(TitleIDs);
+	return 0;
+}
+
+u32 Endian_UInt32_Conversion(u32 value){
+   return ((value >> 24) & 0x000000FF) | ((value >> 8) & 0x0000FF00) | ((value << 8) & 0x00FF0000) | ((value << 24) & 0xFF000000);
+}
+
+static int lua_ciainfo(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char* file = luaL_checkstring(L, 1);
+	char title[16];
+	Handle fileHandle;
+	u32 bytesRead;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file);
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	u32 unique_id;
+	FSFILE_Read(fileHandle, &bytesRead, 0x3A50, title, 16);
+	FSFILE_Read(fileHandle, &bytesRead, 0x2C20, &unique_id, 4);
+	lua_newtable(L);
+	lua_newtable(L);
+	lua_pushstring(L, "title");
+	lua_pushstring(L, title);
+	lua_settable(L, -3);
+	lua_pushstring(L, "unique_id");
+	lua_pushnumber(L, Endian_UInt32_Conversion(unique_id));
+	lua_settable(L, -3);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -889,6 +1189,10 @@ static const luaL_Reg System_functions[] = {
   {"extractSMDH",			lua_readsmdh},
   {"scanExtdata",			lua_listExtdata},
   {"listExtdataDir",		lua_listExtdataDir},
+  {"installCIA",			lua_installCia},
+  {"listCIA",				lua_listCia},
+  {"uninstallCIA",			lua_uninstallCia},
+  {"extractCIA",			lua_ciainfo},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},

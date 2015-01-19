@@ -1,12 +1,12 @@
 BasicInfo:
-  Title                   : "LuaPlayerPlus"
+  Title                   : "BigRedMenu"
   CompanyCode             : "00"
-  ProductCode             : "CTR-P-LPPD"
+  ProductCode             : "CTR-P-BGRM"
   ContentType             : Application
   Logo                    : Nintendo # Nintendo / Licensed / Distributed / iQue / iQueForSystem
 
 TitleInfo:
-  UniqueId                : 0x1337
+  UniqueId                : 0x1338
   Category                : Application
   
 CardInfo:
@@ -167,7 +167,7 @@ AccessControlInfo:
    - ir:USER
    - ir:u
    - csnd:SND
-  
+   - am:u
    
 SystemControlInfo:
   Dependency: 
