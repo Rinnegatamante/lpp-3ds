@@ -1184,26 +1184,25 @@ static int lua_ZipExtract(lua_State *L) {
 	const char *FileToExtract = luaL_checkstring(L, 1);
 	const char *DirTe = luaL_checkstring(L, 2);
 	const char *Password = (argc == 3) ? luaL_checkstring(L, 3) : NULL;
-	const char *tmpPath = "/tempLPP";
-	const char *tmpFile = "/tempLPP/temp.zip"; 
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FSUSER_OpenArchive(NULL, &sdmcArchive);
-	FS_path TEMP_PATH=FS_makePath(PATH_CHAR, tmpPath);
-	FS_path TEMP_FILE=FS_makePath(PATH_CHAR, tmpFile);
-	FS_path DIR_OUTPUT=FS_makePath(PATH_CHAR, DirTe);
-	FS_path FILE_INPUT=FS_makePath(PATH_CHAR, FileToExtract);
+	FS_path TEMP_PATH=FS_makePath(PATH_CHAR, DirTe);
 	FSUSER_CreateDirectory(NULL,sdmcArchive,TEMP_PATH);
-	FSUSER_RenameFile(NULL,sdmcArchive,FILE_INPUT,sdmcArchive,TEMP_FILE);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
 	char tmpFile2[1024];
+	char tmpPath2[1024];
+	sdmcInit();
+	strcpy(tmpPath2,"sdmc:");
+	strcat(tmpPath2,(char*)DirTe);
+	chdir(tmpPath2);
 	strcpy(tmpFile2,"sdmc:");
-	strcat(tmpFile2,(char*)tmpFile);
+	strcat(tmpFile2,(char*)FileToExtract);
 	Zip *handle = ZipOpen(tmpFile2);
+	if (handle == NULL) luaL_error(L, "error opening ZIP file.");
 	int result = ZipExtract(handle, Password);
 	ZipClose(handle);
-	FSUSER_RenameFile(NULL,sdmcArchive,TEMP_FILE,sdmcArchive,FILE_INPUT);
-	FSUSER_RenameDirectory(NULL,sdmcArchive,TEMP_PATH,sdmcArchive,DIR_OUTPUT);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
-	lua_pushstring(L, tmpFile2);
+	sdmcExit();
+	lua_pushnumber(L, result);
 	return 1;
 }
 
