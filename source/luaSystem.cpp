@@ -37,6 +37,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/luaGraphics.h"
+#include "include/Archives.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
@@ -44,6 +45,8 @@
 int FREAD = 0;
 int FWRITE = 1;
 int FCREATE = 2;
+int NAND = 0;
+int SDMC = 1;
 
 FS_archive main_extdata_archive;
 
@@ -166,6 +169,16 @@ static int lua_isGW(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	lua_pushboolean(L,GW_MODE);
+	return 1;
+}
+
+static int lua_getRegion(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8 region;
+	CFGU_SecureInfoGetRegion(&region);
+	lua_pushnumber(L,region);
 	return 1;
 }
 
@@ -973,8 +986,6 @@ return (Result)cmdbuf[1];
 }
 //Finish AM support
 
-int MAX_RAM_ALLOCATION = 62914560;
-
 static int lua_installCia(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -982,6 +993,7 @@ static int lua_installCia(lua_State *L){
 	Handle fileHandle;
 	Handle ciaHandle;
 	u64 size;
+	int MAX_RAM_ALLOCATION = 10485760;
 	u32 bytes;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
@@ -1027,7 +1039,7 @@ struct TitleId{
 /* CIA categories
 0 = Application
 1 = System
-2 = DLC
+2 = Demo
 3 = Patch
 4 = TWL
 */
@@ -1165,6 +1177,36 @@ static int lua_ciainfo(lua_State *L){
 	return 1;
 }
 
+static int lua_ZipExtract(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 2 && argc != 3)
+		return luaL_error(L, "wrong number of arguments.");
+	const char *FileToExtract = luaL_checkstring(L, 1);
+	const char *DirTe = luaL_checkstring(L, 2);
+	const char *Password = (argc == 3) ? luaL_checkstring(L, 3) : NULL;
+	const char *tmpPath = "/tempLPP";
+	const char *tmpFile = "/tempLPP/temp.zip"; 
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FS_path TEMP_PATH=FS_makePath(PATH_CHAR, tmpPath);
+	FS_path TEMP_FILE=FS_makePath(PATH_CHAR, tmpFile);
+	FS_path DIR_OUTPUT=FS_makePath(PATH_CHAR, DirTe);
+	FS_path FILE_INPUT=FS_makePath(PATH_CHAR, FileToExtract);
+	FSUSER_CreateDirectory(NULL,sdmcArchive,TEMP_PATH);
+	FSUSER_RenameFile(NULL,sdmcArchive,FILE_INPUT,sdmcArchive,TEMP_FILE);
+	char tmpFile2[1024];
+	strcpy(tmpFile2,"sdmc:");
+	strcat(tmpFile2,(char*)tmpFile);
+	Zip *handle = ZipOpen(tmpFile2);
+	int result = ZipExtract(handle, Password);
+	ZipClose(handle);
+	FSUSER_RenameFile(NULL,sdmcArchive,TEMP_FILE,sdmcArchive,FILE_INPUT);
+	FSUSER_RenameDirectory(NULL,sdmcArchive,TEMP_PATH,sdmcArchive,DIR_OUTPUT);
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	lua_pushstring(L, tmpFile2);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1193,6 +1235,8 @@ static const luaL_Reg System_functions[] = {
   {"listCIA",				lua_listCia},
   {"uninstallCIA",			lua_uninstallCia},
   {"extractCIA",			lua_ciainfo},
+  {"getRegion",				lua_getRegion},
+  {"extractZIP",			lua_ZipExtract},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
@@ -1211,4 +1255,6 @@ void luaSystem_init(lua_State *L) {
 	VariableRegister(L,FREAD);
 	VariableRegister(L,FWRITE);
 	VariableRegister(L,FCREATE);
+	VariableRegister(L,NAND);
+	VariableRegister(L,SDMC);
 }
