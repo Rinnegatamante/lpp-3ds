@@ -84,12 +84,10 @@ const char *runScript(const char* script, bool isStringBuffer)
 	luaSystem_init(L);
 	luaScreen_init(L);
 	luaControls_init(L);
+	luaNetwork_init(L);
 	luaTimer_init(L);
-	if (!GW_MODE){
-	luaSound_init(L);
-	}else{
-	luaFakeSound_init(L);
-	}
+	if (!GW_MODE) luaSound_init(L);
+	else luaFakeSound_init(L);
 	luaVideo_init(L);
 	
 	int s = 0;
