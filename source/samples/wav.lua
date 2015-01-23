@@ -1,6 +1,6 @@
 test = Sound.openWav("/blood.wav")
 Sound.init()
-Sound.play(test,0x09,NO_LOOP)
+Sound.play(test,NO_LOOP,0x09)
 while true do
 	Screen.waitVblankStart()
 	Screen.refresh()
