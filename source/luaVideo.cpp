@@ -189,14 +189,18 @@ int argc = lua_gettop(L);
 				src->tick = osGetTime();
 			}else{
 				src->isPlaying = false;
-				src->moltiplier = 1;
-				CSND_setchannel_playbackstate(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
+				if (!GW_MODE){
+					src->moltiplier = 1;
+					CSND_setchannel_playbackstate(src->ch1, 0);
+					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+					CSND_sharedmemtype0_cmdupdatestate(0);
+				}
 			}
+			if (!GW_MODE){
 			if (src->audiobuf2 == NULL){
-				FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
+				
+					FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
+					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 			}else{
 				u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
 				FSFILE_Read(src->sourceFile, &bytesRead, 28, tmp_buffer, src->mem_size);
@@ -219,8 +223,9 @@ int argc = lua_gettop(L);
 			GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
 			GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
 			}
+			}
 		}else{
-			if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
+			if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying) && (!GW_MODE)){
 			if ((src->moltiplier % 2) == 1){
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
@@ -261,9 +266,9 @@ int argc = lua_gettop(L);
 			u32 bytesRead;
 			//Update and flush second half-buffer
 			if (src->audiobuf2 == NULL){
-				FSFILE_Read(src->sourceFile, &bytesRead, 28+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
-				src->moltiplier = src->moltiplier + 1;
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
+					FSFILE_Read(src->sourceFile, &bytesRead, 28+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
+					src->moltiplier = src->moltiplier + 1;
+					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 			}else{
 				u8* tmp_buffer = (u8*)linearAlloc((src->mem_size)/2);
 				FSFILE_Read(src->sourceFile, &bytesRead, 28+(src->mem_size/2)*(src->moltiplier + 1), tmp_buffer, (src->mem_size)/2);
