@@ -1,6 +1,6 @@
 white = Color.new(255,255,255)
 fileStream = io.open("/file.txt",FCREATE)
-io.write(fileStream,0,"Text written with LPP")
+io.write(fileStream,0,"Text written with LPP",21)
 io.close(fileStream)
 fileStream = io.open("/file.txt",FREAD)
 size = io.size(fileStream)
