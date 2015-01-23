@@ -12,6 +12,7 @@ Credits:<br>
 Smealum for ctrulib<br>
 StapleButter for debug font<br>
 Lode Vandevenne for lodepng<br>
+Jean-loup Gailly and Mark Adler for zlib<br>
 Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
 <br><br>
 NOTE: BMPV video format is a RAW video format created by me with the help of Aurelio.<br>
