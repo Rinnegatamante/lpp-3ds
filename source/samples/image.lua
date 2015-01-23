@@ -1,7 +1,7 @@
 white = Color.new(255,255,255)
 black = Color.new(0,0,0)
 oldpad = Controls.read()
-bitmap2 = Screen.loadBitmap("/file.bmp")
+bitmap2 = Screen.loadImage("/file.bmp")
 bitmap = Screen.createImage(1,1)
 Screen.flipImage(bitmap2,bitmap)
 Screen.fillRect(50,150,1,15,white,bitmap2)
