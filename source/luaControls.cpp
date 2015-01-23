@@ -45,6 +45,12 @@ static int lua_readInit(lua_State *L)
     if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	hidScanInput();
 	irrstScanInput();
+	APP_STATUS status = aptGetStatus();
+	if (status == APP_SUSPENDING) aptReturnToMenu();
+	else if (status == APP_PREPARE_SLEEPMODE){
+		aptSignalReadyForSleep();
+		aptWaitStatusEvent();
+	}
 	return 0;
 }
 
