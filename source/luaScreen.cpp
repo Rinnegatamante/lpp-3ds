@@ -245,6 +245,7 @@ static int lua_newBitmap(lua_State *L)
 	i++;
 	}
 	bitmap->pixels = pixels_new;
+	bitmap->bitperpixel = 24;
 	lua_pushnumber(L, (u32)(bitmap));
 	return 1;
 }
