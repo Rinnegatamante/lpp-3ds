@@ -51,6 +51,9 @@ int main(int argc, char **argv)
 	ptmInit();
 	hidInit(NULL);
 	irrstInit(NULL);
+	aptOpenSession();
+	Result ret=APT_SetAppCpuTimeLimit(NULL, 30);
+	aptCloseSession();
 	fsInit();
 	hbInit();
 	Handle fileHandle;
@@ -79,7 +82,7 @@ int main(int argc, char **argv)
 		strcpy(cur_dir,"/"); // Set current dir for GW Mode
 		strcpy(path,"/index.lua");
 	}
-		
+	
 	while(aptMainLoop())
 	{
 		restore=0;		
@@ -130,7 +133,6 @@ int main(int argc, char **argv)
 							break;
 						}
 	}
-	
 	fsExit();
 	irrstExit();
 	hidExit();
