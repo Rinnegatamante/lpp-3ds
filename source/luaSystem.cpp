@@ -459,15 +459,6 @@ static int lua_batterycharge(lua_State *L){
 	return 1;
 }
 
-static int lua_wifistat(lua_State *L){
-	int argc = lua_gettop(L);
-	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	u32 wifiStatus;
-	ACU_GetWifiStatus(NULL, &wifiStatus);
-	lua_pushboolean(L,wifiStatus);
-	return 1;
-}
-
 static int lua_keyboard(lua_State *L){
 	int argc = lua_gettop(L);
 	if ((argc != 0) && (argc != 1)) return luaL_error(L, "wrong number of arguments");
@@ -1223,7 +1214,6 @@ static const luaL_Reg System_functions[] = {
   {"listDirectory",			lua_listdir},
   {"getBatteryLife",		lua_batterylv},
   {"isBatteryCharging",		lua_batterycharge},
-  {"isWifiEnabled",			lua_wifistat},
   {"getLanguage",			lua_getLang},
   {"startKeyboard",			lua_keyboard},
   {"launch",				lua_launch},
