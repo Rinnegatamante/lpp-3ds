@@ -27,36 +27,45 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-#ifndef __LUAPLAYER_H
-#define __LUAPLAYER_H
-
 #include <stdlib.h>
-//#include <tdefs.h> //Not needed for compilation via Ubuntu (complains it's missing)
-#include "lua/lua.hpp"
+#include <string.h>
+#include <unistd.h>
+#include <3ds.h>
+#include "include/luaplayer.h"
 
-extern void luaC_collectgarbage (lua_State *L);
+static int lua_wifistat(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u32 wifiStatus;
+	ACU_GetWifiStatus(NULL, &wifiStatus);
+	lua_pushboolean(L,wifiStatus);
+	return 1;
+}
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+static int lua_macaddr(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8* mac_byte = (u8*)0x1FF81060; 
+	char mac_address[18];
+	sprintf(mac_address,"%02X:%02X:%02X:%02X:%02X:%02X",*mac_byte,*(mac_byte+1),*(mac_byte+2),*(mac_byte+3),*(mac_byte+4),*(mac_byte+5));
+	mac_address[17] = 0;
+	lua_pushstring(L,mac_address);
+	return 1;
+}
 
-const char *runScript(const char* script, bool isStringBuffer);
-void luaC_collectgarbage (lua_State *L);
+//Register our Network Functions
+static const luaL_Reg Network_functions[] = {
+  {"isWifiEnabled",			lua_wifistat},
+  {"getMacAddress",			lua_macaddr},
+  {0, 0}
+};
 
-void luaScreen_init(lua_State *L);
-void luaControls_init(lua_State *L);
-void luaSystem_init(lua_State *L);
-void luaTimer_init(lua_State *L);
-void luaSound_init(lua_State *L);
-void luaVideo_init(lua_State *L);
-void luaNetwork_init(lua_State *L);
-
-void stackDump (lua_State *L);
-
-extern bool GW_MODE;
-extern char cur_dir[256];
-
-#endif
+void luaNetwork_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Network_functions, 0);
+	lua_setglobal(L, "Network");
+}
