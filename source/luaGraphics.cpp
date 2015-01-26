@@ -68,7 +68,6 @@ Bitmap* LoadBitmap(char* fname){
 	FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result->width), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result->height), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
-	
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	
@@ -79,21 +78,24 @@ void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen){
 	if(!result)
 		return;
 	int x, y;
+if (result->bitperpixel == 24){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-			u32 color;
-			if (result->bitperpixel == 24){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				color = B + G*256 + R*256*256;
+				u32 color = B + G*256 + R*256*256;
 				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
-			}else if (result->bitperpixel == 32){
+			}
+		}
+			}else{
+			for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
 				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				color = B + G*256 + R*256*256;
+				u32 color = B + G*256 + R*256*256;
 				DrawAlphaImagePixel(xp+x,yp+y,color,(Bitmap*)screen, A);
 			}
 			
@@ -102,29 +104,31 @@ void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen){
 }
 
 void PrintScreenBitmap(int xp,int yp, Bitmap* result,int screen,int side){
-if(!result)
-	return;
+if(!result) return;
 u8* buffer = 0;
 if (screen == 0){
 if (side == 0) buffer = TopLFB;
 else buffer = TopRFB;
 }else if (screen == 1) buffer = BottomFB;
 int x, y;
+if (result->bitperpixel == 24){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-			u32 color;
-			if (result->bitperpixel == 24){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				color = B + G*256 + R*256*256;
-				DrawPixel(buffer,xp+x,yp+y,color);
-			}else if (result->bitperpixel == 32){
+			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
+			u32 color = B + G*256 + R*256*256;
+			DrawPixel(buffer,xp+x,yp+y,color);
+			}
+		}
+}else{
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
 				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				color = B + G*256 + R*256*256;
+				u32 color = B + G*256 + R*256*256;
 				DrawAlphaPixel(buffer,xp+x,yp+y,color,A);
 			}			
 		}
@@ -140,21 +144,24 @@ if (side == 0) buffer = TopLFB;
 else buffer = TopRFB;
 }else if (screen == 1) buffer = BottomFB;
 int x, y;
+if (result->bitperpixel == 24){
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-			u32 color;
-			if (result->bitperpixel == 24){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				color = B + G*256 + R*256*256;
-				DrawPixel(buffer,xp+x-st_x,yp+y-st_y,color);
-			}else if (result->bitperpixel == 32){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				color = B + G*256 + R*256*256;
+			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
+			u32 color = B + G*256 + R*256*256;
+			DrawPixel(buffer,xp+x-st_x,yp+y-st_y,color);
+		}
+	}
+}else{
+	for (y = st_y; y < st_y + height; y++){
+		for (x = st_x; x < st_x + width; x++){
+			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
+			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
+			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
+			u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
+				u32 color = B + G*256 + R*256*256;
 				DrawAlphaPixel(buffer,xp+x-st_x,yp+y-st_y,color,A);
 			}			
 		}
@@ -165,21 +172,24 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 	if(!result)
 		return;
 	int x, y;
+			if (result->bitperpixel == 24){
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-			u32 color;
-			if (result->bitperpixel == 24){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				color = B + G*256 + R*256*256;
+				u32 color = B + G*256 + R*256*256;
 				DrawImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen);
-			}else if (result->bitperpixel == 32){
+				}
+				}
+			}else{
+				for (y = st_y; y < st_y + height; y++){
+		for (x = st_x; x < st_x + width; x++){
 				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
 				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
 				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
 				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				color = B + G*256 + R*256*256;
+				u32 color = B + G*256 + R*256*256;
 				DrawAlphaImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
 			}
 			
@@ -807,3 +817,58 @@ Bitmap* loadPng(const char* filename)
 	
 	return result;
 }
+
+/*void PrintScreenPNG(int xp,int yp, Bitmap* result,int screen,int side){
+if(!result) return;
+u8* buffer = 0;
+if (screen == 0){
+if (side == 0) buffer = TopLFB;
+else buffer = TopRFB;
+}else if (screen == 1) buffer = BottomFB;
+int x, y;
+if (result->bitperpixel == 24){
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+			u8 R = result->pixels[(x + y * result->width)*3];
+			u8 G = result->pixels[(x + y * result->width)*3 + 1];
+			u8 B = result->pixels[(x + y * result->width)*3 + 2];
+			u32 color = B + G*256 + R*256*256;
+			DrawPixel(buffer,xp+x,yp+y,color);
+			}
+			}
+			}else if (result->bitperpixel == 32){
+			for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+				u8 R = result->pixels[(x + y * result->width)*4];
+				u8 G = result->pixels[(x + y * result->width)*4 + 1];
+				u8 B = result->pixels[(x + y * result->width)*4 + 2];
+				u8 A = result->pixels[(x + y * result->width)*4 + 3];
+				u32 color = B + G*256 + R*256*256;
+				DrawAlphaPixel(buffer,xp+x,yp+y,color,A);
+			}			
+		}
+	}
+}
+
+Bitmap* decodePng(unsigned char* in,u64 size)
+{
+	Handle fileHandle;
+	Bitmap* result;
+	u32 bytesRead;
+	unsigned char* out;
+	unsigned int w, h;
+		
+	if(lodepng_decode24(&out, &w, &h, in, size) != 0) return 0;
+	
+	result = (Bitmap*)malloc(sizeof(Bitmap));
+	if(!result) {
+		free(out);
+	}
+	
+	result->pixels = out;
+	result->width = w;
+	result->height = h;
+	result->bitperpixel = 24;
+	
+	return result;
+}*/

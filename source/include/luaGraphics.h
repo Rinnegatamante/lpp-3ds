@@ -72,3 +72,5 @@ void ClearScreen(int screen);
 u32 GetPixel(int x,int y,int screen,int side);
 u32 GetImagePixel(int x,int y,Bitmap* screen);
 Bitmap* loadPng(const char* filename);
+/*Bitmap* decodePng(unsigned char* in,u64 size);
+void PrintScreenPNG(int xp,int yp, Bitmap* result,int screen,int side);*/
