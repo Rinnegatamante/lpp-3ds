@@ -57,10 +57,43 @@ static int lua_macaddr(lua_State *L){
 	return 1;
 }
 
+static int lua_download(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	const char* url = luaL_checkstring(L,1);
+	const char* file = luaL_checkstring(L,2);
+	httpcInit();
+	httpcContext context;
+	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	if(ret==0){
+		httpcBeginRequest(&context);
+		u32 statuscode=0;
+		u32 contentsize=0;
+		httpcGetResponseStatusCode(&context, &statuscode, 0);
+		if (statuscode != 200) luaL_error(L, "download request error");
+		httpcGetDownloadSizeState(&context, NULL, &contentsize);
+		u8* buf = (u8*)malloc(contentsize);
+		memset(buf, 0, contentsize);
+		httpcDownloadData(&context, buf, contentsize, NULL);
+		Handle fileHandle;
+		u32 bytesWritten;
+		FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+		FS_path filePath=FS_makePath(PATH_CHAR, file);
+		FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		free(buf);
+	}else luaL_error(L, "error opening url");
+	httpcExit();
+	return 0;
+}
+
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
   {"isWifiEnabled",			lua_wifistat},
   {"getMacAddress",			lua_macaddr},
+  {"downloadFile",			lua_download},
   {0, 0}
 };
 
