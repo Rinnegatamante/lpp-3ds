@@ -62,7 +62,6 @@ static int lua_download(lua_State *L){
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	const char* url = luaL_checkstring(L,1);
 	const char* file = luaL_checkstring(L,2);
-	httpcInit();
 	httpcContext context;
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
@@ -85,7 +84,7 @@ static int lua_download(lua_State *L){
 		svcCloseHandle(fileHandle);
 		free(buf);
 	}else luaL_error(L, "error opening url");
-	httpcExit();
+	httpcCloseContext(&context);
 	return 0;
 }
 
