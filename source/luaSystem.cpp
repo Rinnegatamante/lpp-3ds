@@ -195,6 +195,7 @@ static int lua_screenshot(lua_State *L)
 	if(ret) return luaL_error(L, "error opening file");
 	u32 bytesWritten;
 	u8* tempbuf = (u8*)malloc(0x36+576000);
+	memset(tempbuf, 0, 0x36+576000);
 	tempbuf[0x36+576000]=0;
 	FSFILE_SetSize(fileHandle, (u16)(0x36+576000));
 	*(u16*)&tempbuf[0x0] = 0x4D42;
@@ -1197,6 +1198,13 @@ static int lua_ZipExtract(lua_State *L) {
 	return 1;
 }
 
+static int lua_model(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	lua_pushnumber(L,*((u8*)0x1FF81066)); // 0 = 3DS | 3 = N3DS
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1226,6 +1234,7 @@ static const luaL_Reg System_functions[] = {
   {"extractCIA",			lua_ciainfo},
   {"getRegion",				lua_getRegion},
   {"extractZIP",			lua_ZipExtract},
+  {"getModel",				lua_model},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},

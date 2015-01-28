@@ -207,6 +207,7 @@ static int lua_saveimg(lua_State *L)
 	u32 bytesWritten;
 	u8 moltiplier = src->bitperpixel / 8;
 	u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*moltiplier);
+	memset(tempbuf, 0, 0x36+(src->width)*(src->height)*moltiplier);
 	tempbuf[0x36+(src->width)*(src->height)*moltiplier]=0;
 	FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*moltiplier));
 	*(u16*)&tempbuf[0x0] = 0x4D42;
@@ -215,7 +216,8 @@ static int lua_saveimg(lua_State *L)
 	*(u32*)&tempbuf[0xE] = 0x28;
 	*(u32*)&tempbuf[0x12] = src->width;
 	*(u32*)&tempbuf[0x16] = src->height;
-	*(u32*)&tempbuf[0x1A] = 0x00180001;
+	if (moltiplier == 3) *(u32*)&tempbuf[0x1A] = 0x00180001;
+	else *(u32*)&tempbuf[0x1A] = 0x00200001;
 	*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*moltiplier;
 	int i=0;
 	while (i<((src->width)*(src->height)*moltiplier)){
@@ -232,20 +234,18 @@ static int lua_saveimg(lua_State *L)
 static int lua_newBitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+    if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	int width_new = luaL_checkint(L, 1);
 	int height_new = luaL_checkint(L, 2);
+	u32 color = luaL_checkint(L, 3);
 	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
 	bitmap->width = width_new;
 	bitmap->height = height_new;
-	u8* pixels_new = (u8*)malloc(width_new*height_new*3);
+	u8* pixels_new = (u8*)malloc(width_new*height_new*4);
 	int i=0;
-	while (i < (width_new*height_new*3)){
-	pixels_new[i] = 0;
-	i++;
-	}
+	memset(pixels_new,color,width_new*height_new*4);
 	bitmap->pixels = pixels_new;
-	bitmap->bitperpixel = 24;
+	bitmap->bitperpixel = 32;
 	lua_pushnumber(L, (u32)(bitmap));
 	return 1;
 }
