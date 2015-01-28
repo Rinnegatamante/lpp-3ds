@@ -663,6 +663,7 @@ void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	while (x1 <= x2){
 		DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
 		DrawImagePixel(x1,y2,color,(Bitmap*)screen);
+		x1++;
 	}
 }
 
@@ -686,6 +687,7 @@ void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8
 	while (x1 <= x2){
 		DrawAlphaImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
 		DrawAlphaImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
+		x1++;
 	}
 }
 
@@ -818,7 +820,7 @@ Bitmap* loadPng(const char* filename)
 	return result;
 }
 
-/*void PrintScreenPNG(int xp,int yp, Bitmap* result,int screen,int side){
+void PrintScreenPNG(int xp,int yp, Bitmap* result,int screen,int side){
 if(!result) return;
 u8* buffer = 0;
 if (screen == 0){
@@ -871,4 +873,4 @@ Bitmap* decodePng(unsigned char* in,u64 size)
 	result->bitperpixel = 24;
 	
 	return result;
-}*/
+}
