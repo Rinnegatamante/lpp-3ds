@@ -16,4 +16,5 @@ Jean-loup Gailly and Mark Adler for zlib<br>
 Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
 <br><br>
 NOTE: BMPV video format is a RAW video format created by me with the help of Aurelio.<br>
-More info about this format and a simple converter coded in VB.NET can be found in "BMPV" folder of this repository.
+More info about this format and a simple converter coded in VB.NET can be found in "BMPV" folder of this repository.<br><br>
+<b>Note: If you get errors during compilation with luaAudio.cpp, just add prototypes of functions which compiler tells you to be not declared in libctru's CSND header.</b>
