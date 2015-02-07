@@ -65,5 +65,5 @@ You can find a simple converter from various video format to BMPV in this folder
 <td>Video buffer</td>
 </tr></table><br><br>
 <b>Credits:</b><br>
-BMPV and BMPV Creator made by Rinnegatamante<br>
+BMPV, vid2bmpv and BMPV Creator made by Rinnegatamante<br>
 Special thanks to Aurelio for helping during BMPV creation
