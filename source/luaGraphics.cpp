@@ -39,6 +39,8 @@
 #include "include/font.h"
 #define LODEPNG_COMPILE_PNG
 #include "include/lodepng/lodepng.h"
+#include "include/libjpeg/jpeglib.h"
+#include <setjmp.h>
 
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
@@ -172,6 +174,31 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 	if(!result)
 		return;
 	int x, y;
+		if (((Bitmap*)screen)->bitperpixel == 32){
+		if (result->bitperpixel == 24){
+			for (y = st_y; y < st_y + height; y++){
+				for (x = st_x; x < st_x + width; x++){
+					u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
+					u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
+					u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
+					u8 A = 255;
+					u32 color = B + G*256 + R*256*256;
+				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
+				}
+				}
+		}else{
+		for (y = st_y; y < st_y + height; y++){
+		for (x = st_x; x < st_x + width; x++){
+				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
+				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
+				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
+				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
+				u32 color = B + G*256 + R*256*256;
+				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
+			}
+		}
+		}
+		}else{
 			if (result->bitperpixel == 24){
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
@@ -191,9 +218,9 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
 				u32 color = B + G*256 + R*256*256;
 				DrawAlphaImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
-			}
-			
+			}			
 		}
+	}
 	}
 }
 
@@ -261,16 +288,26 @@ return color;
 void DrawAlphaImagePixel(int x,int y,u32 color,Bitmap* screen, u8 alpha){
 int idx = (x + (screen->height - y) * screen->width);
 float ratio = alpha / 255.0f;
-screen->pixels[idx*3+0] = ((color & 0xFF) * ratio) + (screen->pixels[idx*3+0] * (1.0 - ratio));
-screen->pixels[idx*3+1] = ((((color) >> 8) & 0xFF) * ratio) + (screen->pixels[idx*3+1] * (1.0 - ratio));
-screen->pixels[idx*3+2] = ((((color) >> 16) & 0xFF) * ratio) + (screen->pixels[idx*3+2] * (1.0 - ratio));
+screen->pixels[idx*(screen->bitperpixel / 8)+0] = ((color & 0xFF) * ratio) + (screen->pixels[idx*(screen->bitperpixel / 8)+0] * (1.0 - ratio));
+screen->pixels[idx*(screen->bitperpixel / 8)+1] = ((((color) >> 8) & 0xFF) * ratio) + (screen->pixels[idx*(screen->bitperpixel / 8)+1] * (1.0 - ratio));
+screen->pixels[idx*(screen->bitperpixel / 8)+2] = ((((color) >> 16) & 0xFF) * ratio) + (screen->pixels[idx*(screen->bitperpixel / 8)+2] * (1.0 - ratio));
 }
 
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen){
+	int idx = (x + (screen->height - y) * screen->width);
+	screen->pixels[idx*3+0] = (color);
+	screen->pixels[idx*3+1] = (color) >> 8;
+	screen->pixels[idx*3+2] = (color) >> 16;
+}
+
+void Draw32bppImagePixel(int x,int y,u32 color,Bitmap* screen, u8 alpha){
 int idx = (x + (screen->height - y) * screen->width);
-screen->pixels[idx*3+0] = (color);
-screen->pixels[idx*3+1] = (color) >> 8;
-screen->pixels[idx*3+2] = (color) >> 16;
+float srcA = alpha / 255.0f;
+float outA = srcA + (screen->pixels[idx*4+3] / 255.0f) * (1 - srcA);
+screen->pixels[idx*4+0] = (((color & 0xFF) * srcA)  + (screen->pixels[idx*4+0] * (screen->pixels[idx*4+3] / 255.0f) * (1.0 - srcA))) / outA;
+screen->pixels[idx*4+1] = ((((color >> 8) & 0xFF) * srcA)  + (screen->pixels[idx*4+1] * (screen->pixels[idx*4+3] / 255.0f) * (1.0 - srcA))) / outA;
+screen->pixels[idx*4+2] = (((((color) >> 16) & 0xFF) * srcA)  + (screen->pixels[idx*4+2] * (screen->pixels[idx*4+3] / 255.0f) * (1.0 - srcA))) / outA;
+screen->pixels[idx*4+3] = outA * 255.0f;
 }
 
 void RefreshScreen(){
@@ -387,6 +424,41 @@ for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
 DrawAlphaImagePixel(x+cx, y+cy, color, (Bitmap*)screen, alpha);
+}
+}
+x += glyphsize;
+x++;
+}
+}
+
+void Draw32bppImageText(int x, int y, char* str, u32 color, int screen, u8 alpha){
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if (val & (1 << cx))
+Draw32bppImagePixel(x+cx, y+cy, color, (Bitmap*)screen, alpha);
 }
 }
 x += glyphsize;
@@ -589,6 +661,28 @@ void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alph
 	}
 }
 
+void Fill32bppImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (x1 <= x2){
+		while (y1 <= y2){
+			Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
 void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	u8* buffer;
 	if (screen == 0){
@@ -687,6 +781,30 @@ void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8
 	while (x1 <= x2){
 		DrawAlphaImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
 		DrawAlphaImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
+		x1++;
+	}
+}
+
+void Fill32bppImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (y1 <= y2){
+		Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+		Draw32bppImagePixel(x2,y1,color,(Bitmap*)screen,alpha);
+		y1++;
+		}
+	while (x1 <= x2){
+		Draw32bppImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
+		Draw32bppImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
 		x1++;
 	}
 }
@@ -820,57 +938,118 @@ Bitmap* loadPng(const char* filename)
 	return result;
 }
 
-void PrintScreenPNG(int xp,int yp, Bitmap* result,int screen,int side){
-if(!result) return;
-u8* buffer = 0;
-if (screen == 0){
-if (side == 0) buffer = TopLFB;
-else buffer = TopRFB;
-}else if (screen == 1) buffer = BottomFB;
-int x, y;
-if (result->bitperpixel == 24){
-	for (y = 0; y < result->height; y++){
-		for (x = 0; x < result->width; x++){
-			u8 R = result->pixels[(x + y * result->width)*3];
-			u8 G = result->pixels[(x + y * result->width)*3 + 1];
-			u8 B = result->pixels[(x + y * result->width)*3 + 2];
-			u32 color = B + G*256 + R*256*256;
-			DrawPixel(buffer,xp+x,yp+y,color);
-			}
-			}
-			}else if (result->bitperpixel == 32){
-			for (y = 0; y < result->height; y++){
-		for (x = 0; x < result->width; x++){
-				u8 R = result->pixels[(x + y * result->width)*4];
-				u8 G = result->pixels[(x + y * result->width)*4 + 1];
-				u8 B = result->pixels[(x + y * result->width)*4 + 2];
-				u8 A = result->pixels[(x + y * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				DrawAlphaPixel(buffer,xp+x,yp+y,color,A);
-			}			
+void linecpy(u8* screen,u16 x,u16 y,u16 width,u16 height, u8* image,u16 x_img,u16 y_img){
+	for (int i=y_img; i<y_img+height; i++){
+		for (int j=x_img; j<x_img+width; j++){
+			screen[(j+i*width)*3] = image[(j+i*width)*3];
+			screen[(j+i*width)*3+1] = image[(j+i*width)*3+1];
+			screen[(j+i*width)*3+2] = image[(j+i*width)*3+2];
 		}
 	}
 }
 
-Bitmap* decodePng(unsigned char* in,u64 size)
+void RAW2FB(int xp,int yp, Bitmap* result,int screen,int side){
+	if(!result) return;
+	u8* buffer = 0;
+	if (screen == 0){
+	if (side == 0) buffer = TopLFB;
+	else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+	int x=0, y=0;
+	linecpy(buffer,xp,yp,result->width,result->height, result->pixels,x,y);
+	free(result->pixels);
+	free(result);
+}
+
+struct my_error_mgr {
+struct jpeg_error_mgr pub;
+jmp_buf setjmp_buffer;
+};
+typedef struct my_error_mgr * my_error_ptr;
+METHODDEF(void)
+my_error_exit (j_common_ptr cinfo)
 {
-	Handle fileHandle;
-	Bitmap* result;
+my_error_ptr myerr = (my_error_ptr) cinfo->err;
+(*cinfo->err->output_message) (cinfo);
+longjmp(myerr->setjmp_buffer, 1);
+}
+
+Bitmap* OpenJPG(const char* filename)
+{
+    Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+	if (result == NULL) return 0;
+	u64 size;
 	u32 bytesRead;
-	unsigned char* out;
-	unsigned int w, h;
-		
-	if(lodepng_decode24(&out, &w, &h, in, size) != 0) return 0;
-	
-	result = (Bitmap*)malloc(sizeof(Bitmap));
-	if(!result) {
-		free(out);
+	Handle fileHandle;
+    struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = my_error_exit;
+    jpeg_create_decompress(&cinfo);
+	FS_path filePath = FS_makePath(PATH_CHAR, filename);
+	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
+	FSFILE_GetSize(fileHandle, &size);
+	unsigned char* in = (unsigned char*)malloc(size);
+	if(!in) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
 	}
-	
-	result->pixels = out;
-	result->width = w;
-	result->height = h;
-	result->bitperpixel = 24;
-	
-	return result;
+	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+    jpeg_mem_src(&cinfo, in, size);
+    jpeg_read_header(&cinfo, TRUE);
+    jpeg_start_decompress(&cinfo);
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_bytes = width * cinfo.num_components;
+    u8* bgr_buffer = (u8*) malloc(width*height*cinfo.num_components);
+    while (cinfo.output_scanline < cinfo.output_height) {
+        u8* buffer_array[1];
+        buffer_array[0] = bgr_buffer + (cinfo.output_scanline) * row_bytes;
+        jpeg_read_scanlines(&cinfo, buffer_array, 1);
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+    result->bitperpixel = 24;
+    result->width = width;
+    result->height = height;
+    result->pixels = bgr_buffer;
+	u8* flipped = (u8*)malloc(width*height*3);
+	flipped = flipBitmap(flipped, result);
+	free(bgr_buffer);
+	free(in);
+	result->pixels = flipped;
+    return result;
+}
+
+Bitmap* decodeJpg(unsigned char* in,u64 size)
+{
+    Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+    struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = my_error_exit;
+    jpeg_create_decompress(&cinfo);
+    jpeg_mem_src(&cinfo, in, size);
+    jpeg_read_header(&cinfo, TRUE);
+    jpeg_start_decompress(&cinfo);
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_bytes = width * cinfo.num_components;
+    u8* bgr_buffer = (u8*) malloc(width*height*cinfo.num_components);
+    while (cinfo.output_scanline < cinfo.output_height) {
+        u8* buffer_array[1];
+        buffer_array[0] = bgr_buffer + (cinfo.output_scanline) * row_bytes;
+        jpeg_read_scanlines(&cinfo, buffer_array, 1);
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+    result->bitperpixel = 24;
+    result->width = width;
+    result->height = height;
+    result->pixels = bgr_buffer;
+    return result;
 }
