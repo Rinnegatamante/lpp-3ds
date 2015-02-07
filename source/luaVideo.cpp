@@ -67,6 +67,120 @@ struct BMPV{
 	u32 moltiplier;
 };
 
+struct JPGV{
+	Handle sourceFile;
+	u32 currentFrame;
+	u32 tot_frame;
+	u32 framerate;
+	u64 tick;
+	u32 audio_size;
+	u16 bytepersample;
+	u16 audiotype;
+	u32 samplerate;
+	u8* audiobuf;
+	u8* audiobuf2;
+	Bitmap* framebuf;
+	int ch1;
+	int ch2;
+	bool isPlaying;
+	int loop;
+	u32 mem_size;
+	u32 moltiplier;
+};
+
+static int lua_loadJPGV(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *file_tbo = luaL_checkstring(L, 1);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	if(ret) return luaL_error(L, "error opening file");
+	u32 magic,bytesRead;
+	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	if (magic == 0x5647504A){
+	JPGV* JPGV_file = (JPGV*)malloc(sizeof(JPGV));
+	FSFILE_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 4);
+	if (!GW_MODE) FSFILE_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
+	FSFILE_Read(fileHandle, &bytesRead, 10,&(JPGV_file->bytepersample), 2);
+	FSFILE_Read(fileHandle, &bytesRead, 12,&(JPGV_file->samplerate), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 16,&(JPGV_file->tot_frame), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 20,&(JPGV_file->audio_size), 4);
+	JPGV_file->isPlaying = false;
+	JPGV_file->currentFrame = 0;
+	JPGV_file->sourceFile = fileHandle;
+	JPGV_file->tick = 0;
+	JPGV_file->audiobuf = NULL;
+	JPGV_file->audiobuf2 = NULL;
+	JPGV_file->mem_size = JPGV_file->audio_size;
+	lua_pushnumber(L, (u32)JPGV_file);
+	}
+	return 1;
+}
+
+static int lua_startJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	int loop = luaL_checkint(L, 2);
+	int ch1 = luaL_checkint(L, 3);
+	if (argc == 4){
+	int ch2 = luaL_checkint(L, 4);
+	src->ch2 = ch2;
+	}
+	src->loop = loop;
+	src->isPlaying = true;
+	src->ch1 = ch1;
+	src->currentFrame = 0;
+	u32 bytesRead;
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+		while(src->mem_size > MAX_RAM_ALLOCATION){
+			src->mem_size = src->mem_size / 2;
+		}
+		if (src->audiotype == 1){
+			FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
+			GSPGPU_FlushDataCache(NULL, src->audiobuf, src->audio_size);
+			My_CSND_playsound(ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 0xFFFF, 0xFFFF);
+		}else{
+			u8* audiobuf = (u8*)linearAlloc(src->mem_size);
+			FSFILE_Read(src->sourceFile, &bytesRead, 24, audiobuf, src->mem_size);
+			src->audiobuf = (u8*)linearAlloc(src->mem_size/2);
+			src->audiobuf2 = (u8*)linearAlloc(src->mem_size/2);
+			u32 off=0;
+			u32 i=0;
+			u16 z;
+			while (i < (src->mem_size)){
+				z=0;
+				while (z < (src->bytepersample/2)){
+					src->audiobuf[off+z] = audiobuf[i+z];
+					src->audiobuf2[off+z] = audiobuf[i+z+(src->bytepersample/2)];
+					z++;
+				}
+				i=i+src->bytepersample;
+				off=off+(src->bytepersample/2);
+			}
+			linearFree(audiobuf);
+			GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size/2);
+			GSPGPU_FlushDataCache(NULL, src->audiobuf2, src->mem_size/2);
+			My_CSND_playsound(src->ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 0xFFFF, 0);
+			My_CSND_playsound(src->ch2, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 0, 0xFFFF);
+		}
+	src->tick = osGetTime();
+	CSND_setchannel_playbackstate(ch1, 1);
+	if (src->audiotype == 2){
+		CSND_setchannel_playbackstate(src->ch2, 1);
+	}
+	CSND_sharedmemtype0_cmdupdatestate(0);
+	src->moltiplier = 1;
+	}else{
+	src->tick = osGetTime();
+	}
+	return 0;
+}
+
+
 static int lua_loadBMPV(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -163,6 +277,166 @@ int argc = lua_gettop(L);
 	src->moltiplier = 1;
 	}else{
 	src->tick = osGetTime();
+	}
+	return 0;
+}
+
+static int lua_drawJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkint(L, 1);
+	int y = luaL_checkint(L, 2);
+	JPGV* src = (JPGV*)luaL_checkint(L, 3);
+	u32 bytesRead;
+	int screen = luaL_checkint(L, 4);
+	int side = 0;
+	if (argc == 5){
+	side = luaL_checkint(L,5);
+	}
+	if (src->isPlaying){
+		if (src->currentFrame >= src->tot_frame){
+			if (src->loop == 1){
+				src->currentFrame = 0;
+				if (!GW_MODE){
+					src->moltiplier = 1;
+				}
+				src->tick = osGetTime();
+			}else{
+				src->isPlaying = false;
+				if (!GW_MODE){
+					src->moltiplier = 1;
+					CSND_setchannel_playbackstate(src->ch1, 0);
+					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+					CSND_sharedmemtype0_cmdupdatestate(0);
+				}
+			}
+			if (!GW_MODE){
+			if (src->audiobuf2 == NULL){
+				
+					FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
+					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
+			}else{
+				u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buffer, src->mem_size);
+				u32 size_tbp = src->mem_size;
+				u32 off=0;
+				u32 i=0;
+				u16 z;
+				while (i < size_tbp){
+					z=0;
+					while (z < (src->bytepersample/2)){
+						src->audiobuf[off+z] = tmp_buffer[i+z];
+						src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
+						z++;
+					}
+					z=0;
+					i=i+src->bytepersample;
+					off=off+(src->bytepersample/2);
+				}
+			linearFree(tmp_buffer);
+			GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
+			GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
+			}
+			}
+		}else{
+			if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying) && (!GW_MODE)){
+			if ((src->moltiplier % 2) == 1){
+			//Update and flush first half-buffer
+			if (src->audiobuf2 == NULL){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
+				if (bytesRead != ((src->mem_size)/2)){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, (src->mem_size)/2);
+				src->moltiplier = src->moltiplier + 1;
+				}
+				src->moltiplier = src->moltiplier + 1;
+				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
+			}else{
+				u8* tmp_buffer = (u8*)linearAlloc((src->mem_size)/2);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buffer, (src->mem_size)/2);
+				if (bytesRead != ((src->mem_size)/2)){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buffer, (src->mem_size)/2);
+				src->moltiplier = src->moltiplier + 1;
+				}
+				src->moltiplier = src->moltiplier + 1;
+				u32 size_tbp = (src->mem_size)/2;
+				u32 off=0;
+				u32 i=0;
+				u16 z;
+				while (i < size_tbp){
+					z=0;
+					while (z < (src->bytepersample/2)){
+						src->audiobuf[off+z] = tmp_buffer[i+z];
+						src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
+						z++;
+					}
+					i=i+src->bytepersample;
+					off=off+(src->bytepersample/2);
+				}
+				linearFree(tmp_buffer);
+				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
+				GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
+			}
+		}else{
+			u32 bytesRead;
+			//Update and flush second half-buffer
+			if (src->audiobuf2 == NULL){
+					FSFILE_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
+					src->moltiplier = src->moltiplier + 1;
+					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
+			}else{
+				u8* tmp_buffer = (u8*)linearAlloc((src->mem_size)/2);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buffer, (src->mem_size)/2);
+				src->moltiplier = src->moltiplier + 1;
+				u32 size_tbp = (src->mem_size)/2;
+				u32 off=0;
+				u32 i=0;
+				u16 z;
+				while (i < size_tbp){
+					z=0;
+					while (z < (src->bytepersample/2)){
+						src->audiobuf[(src->mem_size)/4+off+z] = tmp_buffer[i+z];
+						src->audiobuf2[(src->mem_size)/4+off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
+						z++;
+					}
+				i=i+src->bytepersample;
+				off=off+(src->bytepersample/2);
+				}
+				linearFree(tmp_buffer);
+				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
+				GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
+			}
+		}
+		}
+			src->currentFrame =((osGetTime() - src->tick) * src->framerate / 1000);
+			if (src->currentFrame >= src->tot_frame) return 0;
+			u32 bytesRead;
+			u64 offset;
+			u64 size;
+			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+			size = size - offset;
+			unsigned char* frame = (unsigned char*)malloc(size);
+			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+			src->framebuf = decodeJpg(frame, size);
+			free(frame);
+			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
+			else RAW2FB(x,y,src->framebuf,screen,side);
+		}
+	}else{
+		if (src->tick != 0){	
+			u32 bytesRead;
+			u64 offset;
+			u64 size;
+			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-1)*8), &offset, 8);
+			FSFILE_GetSize(src->sourceFile, &size);
+			size = size - offset;
+			unsigned char* frame = (unsigned char*)malloc(size);
+			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+			src->framebuf = decodeJpg(frame, size);
+			free(frame);
+			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
+			else RAW2FB(x,y,src->framebuf,screen,side);
+		}
 	}
 	return 0;
 }
@@ -330,10 +604,26 @@ int argc = lua_gettop(L);
 	return 1;
 }
 
+static int lua_getFPS2(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->framerate);
+	return 1;
+}
+
 static int lua_getCF(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->currentFrame);
+	return 1;
+}
+
+static int lua_getCF2(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
 	lua_pushnumber(L, src->currentFrame);
 	return 1;
 }
@@ -346,10 +636,26 @@ int argc = lua_gettop(L);
 	return 1;
 }
 
+static int lua_getSize2(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->tot_frame);
+	return 1;
+}
+
 static int lua_getSrate(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	lua_pushnumber(L, src->samplerate);
+	return 1;
+}
+
+static int lua_getSrate2(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
 	lua_pushnumber(L, src->samplerate);
 	return 1;
 }
@@ -362,10 +668,35 @@ int argc = lua_gettop(L);
 	return 1;
 }
 
+static int lua_isPlaying2(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	lua_pushboolean(L, src->isPlaying);
+	return 1;
+}
+
 static int lua_unloadBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	linearFree(src->audiobuf);
+	if (src->audiotype == 2){
+		linearFree(src->audiobuf2);
+	}
+	}
+	FSFILE_Close(src->sourceFile);
+	svcCloseHandle(src->sourceFile);
+	free(src->framebuf);
+	free(src);
+	return 0;
+}
+
+static int lua_unloadJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	linearFree(src->audiobuf);
 	if (src->audiotype == 2){
@@ -395,6 +726,22 @@ int argc = lua_gettop(L);
 	return 0;
 }
 
+static int lua_stopJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	src->isPlaying = false;
+	src->currentFrame = 0;
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	CSND_setchannel_playbackstate(src->ch1, 0);
+	if (src->audiotype == 2){
+	CSND_setchannel_playbackstate(src->ch2, 0);
+	}
+	CSND_sharedmemtype0_cmdupdatestate(0);
+	}
+	return 0;
+}
+
 static int lua_pauseBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -411,10 +758,42 @@ int argc = lua_gettop(L);
 	return 0;
 }
 
+static int lua_pauseJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	src->isPlaying = false;
+	src->tick = (osGetTime() - src->tick);
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	CSND_setchannel_playbackstate(src->ch1, 0);
+	if (src->audiotype == 2){
+	CSND_setchannel_playbackstate(src->ch2, 0);
+	}
+	CSND_sharedmemtype0_cmdupdatestate(0);
+	}
+	return 0;
+}
+
 static int lua_resumeBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	src->isPlaying = true;
+	src->tick = (osGetTime() - src->tick);
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	CSND_setchannel_playbackstate(src->ch1, 1);
+	if (src->audiotype == 2){
+	CSND_setchannel_playbackstate(src->ch2, 1);
+	}
+	CSND_sharedmemtype0_cmdupdatestate(0);
+	}
+	return 0;
+}
+
+static int lua_resumeJPGV(lua_State *L){
+int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	JPGV* src = (JPGV*)luaL_checkint(L, 1);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -444,10 +823,30 @@ static const luaL_Reg BMPV_functions[] = {
   {0, 0}
 };
 
+//Register our JPGV Functions
+static const luaL_Reg JPGV_functions[] = {
+  {"load",				lua_loadJPGV},
+  {"start",				lua_startJPGV},
+  {"draw",				lua_drawJPGV},
+  {"unload",			lua_unloadJPGV},
+  {"getFPS",			lua_getFPS2},
+  {"getFrame",			lua_getCF2},
+  {"getSize",			lua_getSize2},
+  {"getSrate",			lua_getSrate2},
+  {"isPlaying",			lua_isPlaying2},
+  {"stop",				lua_stopJPGV},
+  {"resume",			lua_resumeJPGV},
+  {"pause",				lua_pauseJPGV},
+  {0, 0}
+};
+
 void luaVideo_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, BMPV_functions, 0);
 	lua_setglobal(L, "BMPV");
+	lua_newtable(L);
+	luaL_setfuncs(L, JPGV_functions, 0);
+	lua_setglobal(L, "JPGV");
 	int LOOP = 1;
 	int NO_LOOP = 0;
 	VariableRegister(L,LOOP);
