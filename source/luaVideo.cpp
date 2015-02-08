@@ -294,7 +294,7 @@ int argc = lua_gettop(L);
 	side = luaL_checkint(L,5);
 	}
 	if (src->isPlaying){
-		if (src->currentFrame >= src->tot_frame){
+		if (src->currentFrame >= (src->tot_frame - 5)){
 			if (src->loop == 1){
 				src->currentFrame = 0;
 				if (!GW_MODE){
@@ -408,27 +408,34 @@ int argc = lua_gettop(L);
 		}
 		}
 			src->currentFrame =((osGetTime() - src->tick) * src->framerate / 1000);
-			if (src->currentFrame >= src->tot_frame) return 0;
-			u32 bytesRead;
-			u64 offset;
-			u64 size;
-			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
-			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
-			size = size - offset;
-			unsigned char* frame = (unsigned char*)malloc(size);
-			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
-			src->framebuf = decodeJpg(frame, size);
-			free(frame);
-			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
-			else RAW2FB(x,y,src->framebuf,screen,side);
+			if (src->currentFrame >= (src->tot_frame-5)) return 0;
+			else{
+				u32 bytesRead;
+				u64 offset;
+				u64 size;
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				size = size - offset;
+				unsigned char* frame = (unsigned char*)malloc(size);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+				src->framebuf = decodeJpg(frame, size);
+				free(frame);
+				if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
+				else RAW2FB(x,y,src->framebuf,screen,side);
+			}
 		}
 	}else{
 		if (src->tick != 0){	
 			u32 bytesRead;
 			u64 offset;
 			u64 size;
-			FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-1)*8), &offset, 8);
-			FSFILE_GetSize(src->sourceFile, &size);
+			if (src->currentFrame >= (src->tot_frame-5)){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
+			}else{
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+			}
 			size = size - offset;
 			unsigned char* frame = (unsigned char*)malloc(size);
 			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
@@ -705,7 +712,6 @@ int argc = lua_gettop(L);
 	}
 	FSFILE_Close(src->sourceFile);
 	svcCloseHandle(src->sourceFile);
-	free(src->framebuf);
 	free(src);
 	return 0;
 }
