@@ -55,7 +55,8 @@ static int lua_print(lua_State *L)
 	int side=0;
 	if (argc == 6) side = luaL_checkint(L,6);
 	if (screen > 1){ 
-	if (alpha==255) DrawImageText(x,y,text,color,screen);
+	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen,alpha);
+	else if (alpha==255) DrawImageText(x,y,text,color,screen);
 	else DrawAlphaImageText(x,y,text,color,screen,alpha);
 	}else{ 
 	if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
@@ -112,6 +113,10 @@ static int lua_loadimg(lua_State *L)
 		FSFILE_Close(fileHandle);
 		svcCloseHandle(fileHandle);
 		bitmap = LoadBitmap(text);
+	}else if (magic == 0xD8FF){
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		bitmap = OpenJPG(text);
 	}
 	if(!bitmap) return luaL_error(L, "Error loading image");
     lua_pushnumber(L, (u32)(bitmap));
@@ -175,6 +180,8 @@ static int lua_partial(lua_State *L){
 	if (argc == 5) side = luaL_checkint(L,9);
 	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
 	else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
+	gfxFlushBuffers();
+	return 0;
 }
 
 static int lua_flipBitmap(lua_State *L)
@@ -272,7 +279,7 @@ static int lua_refresh(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	RefreshScreen();	
+	RefreshScreen();
 	return 0;
 }
 
@@ -308,7 +315,8 @@ static int lua_fillRect(lua_State *L)
 	int side=0;
 	if (argc == 7) side = luaL_checkint(L,7);
 	if (screen > 1){
-	if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
+	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen,alpha);
+	else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
 	else FillAlphaImageRect(x1,x2,y1,y2,color,screen,alpha);
 	}else{
 	if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
@@ -332,7 +340,8 @@ static int lua_fillEmptyRect(lua_State *L)
 	int side=0;
 	if (argc == 7) side = luaL_checkint(L,7);
 	if (screen > 1){ 
-	if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
+	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
+	else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
 	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
 	}else{
 	if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
@@ -354,7 +363,8 @@ static int lua_pixel(lua_State *L)
 	int side=0;
 	if (argc == 5) side = luaL_checkint(L,5);
 	if (screen > 1){
-	if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
+	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen,alpha);
+	else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
 	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen,alpha);
 	}else{
 	u8* buffer;
