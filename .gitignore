@@ -1,6 +1,4 @@
 *~
-*.3dsx
-*.elf
 *.smdh
 Thumbs.db
 build/
