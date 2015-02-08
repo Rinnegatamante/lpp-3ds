@@ -1204,7 +1204,28 @@ static int lua_model(lua_State *L) {
 	lua_pushnumber(L,*((u8*)0x1FF81066)); // 0 = 3DS | 3 = N3DS
 	return 1;
 }
+	
+static int lua_syscall1(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	aptReturnToMenu();
+	return 0;
+}
 
+static int lua_syscall2(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	aptSignalReadyForSleep();
+	aptWaitStatusEvent();
+	return 0;
+}
+
+static int lua_appstatus(lua_State *L) {
+	int argc = lua_gettop(L);
+	APP_STATUS status = aptGetStatus();
+	lua_pushnumber(L,status);
+	return 1;
+}
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1235,6 +1256,8 @@ static const luaL_Reg System_functions[] = {
   {"getRegion",				lua_getRegion},
   {"extractZIP",			lua_ZipExtract},
   {"getModel",				lua_model},
+  {"showHomeMenu",			lua_syscall1},
+  {"checkStatus",			lua_appstatus},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
@@ -1250,6 +1273,8 @@ void luaSystem_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, System_functions, 0);
 	lua_setglobal(L, "System");
+	VariableRegister(L,APP_EXITING);
+	VariableRegister(L,APP_RUNNING);
 	VariableRegister(L,FREAD);
 	VariableRegister(L,FWRITE);
 	VariableRegister(L,FCREATE);
