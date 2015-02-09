@@ -1212,20 +1212,48 @@ static int lua_syscall1(lua_State *L) {
 	return 0;
 }
 
-static int lua_syscall2(lua_State *L) {
-	int argc = lua_gettop(L);
-	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
-	aptSignalReadyForSleep();
-	aptWaitStatusEvent();
-	return 0;
-}
-
 static int lua_appstatus(lua_State *L) {
 	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
 	APP_STATUS status = aptGetStatus();
 	lua_pushnumber(L,status);
 	return 1;
 }
+
+static int lua_reboot(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	aptOpenSession();
+	APT_HardwareResetAsync(NULL);
+	aptCloseSession();
+	return 0;
+}
+
+static Handle nsHandle;
+
+Result NS_RebootToTitle(u8 mediatype, u64 titleid)
+{
+Result ret = 0;
+u32 *cmdbuf = getThreadCommandBuffer();
+cmdbuf[0] = 0x00100180;
+cmdbuf[1] = 0x1;
+cmdbuf[2] = titleid & 0xffffffff;
+cmdbuf[3] = (titleid >> 32) & 0xffffffff;
+cmdbuf[4] = mediatype;
+cmdbuf[5] = 0x0; // reserved
+cmdbuf[6] = 0x0;
+if((ret = svcSendSyncRequest(nsHandle))!=0)return ret;
+return (Result)cmdbuf[1];
+}
+
+static int lua_startcard(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	NS_RebootToTitle(mediatype_GAMECARD,0);
+	svcCloseHandle(nsHandle);
+	return 0;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1258,6 +1286,8 @@ static const luaL_Reg System_functions[] = {
   {"getModel",				lua_model},
   {"showHomeMenu",			lua_syscall1},
   {"checkStatus",			lua_appstatus},
+  {"reboot",				lua_reboot},
+  {"launchGamecard",		lua_startcard},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
