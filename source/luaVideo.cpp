@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -115,7 +115,7 @@ static int lua_loadJPGV(lua_State *L)
 	JPGV_file->audiobuf = NULL;
 	JPGV_file->audiobuf2 = NULL;
 	JPGV_file->mem_size = JPGV_file->audio_size;
-	lua_pushnumber(L, (u32)JPGV_file);
+	lua_pushinteger(L, (u32)JPGV_file);
 	}
 	return 1;
 }
@@ -123,11 +123,11 @@ static int lua_loadJPGV(lua_State *L)
 static int lua_startJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
-	int loop = luaL_checkint(L, 2);
-	int ch1 = luaL_checkint(L, 3);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	int loop = luaL_checkinteger(L, 2);
+	int ch1 = luaL_checkinteger(L, 3);
 	if (argc == 4){
-	int ch2 = luaL_checkint(L, 4);
+	int ch2 = luaL_checkinteger(L, 4);
 	src->ch2 = ch2;
 	}
 	src->loop = loop;
@@ -216,7 +216,7 @@ static int lua_loadBMPV(lua_State *L)
 	int tot_frame = (size-28-BMPV_file->audio_size)/frame_size;
 	BMPV_file->mem_size = BMPV_file->audio_size;
 	BMPV_file->tot_frame = tot_frame;
-	lua_pushnumber(L, (u32)BMPV_file);
+	lua_pushinteger(L, (u32)BMPV_file);
 	}
 	return 1;
 }
@@ -224,11 +224,11 @@ static int lua_loadBMPV(lua_State *L)
 static int lua_startBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	int loop = luaL_checkint(L, 2);
-	int ch1 = luaL_checkint(L, 3);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
+	int loop = luaL_checkinteger(L, 2);
+	int ch1 = luaL_checkinteger(L, 3);
 	if (argc == 4){
-	int ch2 = luaL_checkint(L, 4);
+	int ch2 = luaL_checkinteger(L, 4);
 	src->ch2 = ch2;
 	}
 	src->loop = loop;
@@ -284,14 +284,14 @@ int argc = lua_gettop(L);
 static int lua_drawJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L, 1);
-	int y = luaL_checkint(L, 2);
-	JPGV* src = (JPGV*)luaL_checkint(L, 3);
+	int x = luaL_checkinteger(L, 1);
+	int y = luaL_checkinteger(L, 2);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 3);
 	u32 bytesRead;
-	int screen = luaL_checkint(L, 4);
+	int screen = luaL_checkinteger(L, 4);
 	int side = 0;
 	if (argc == 5){
-	side = luaL_checkint(L,5);
+	side = luaL_checkinteger(L,5);
 	}
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 5)){
@@ -451,14 +451,14 @@ int argc = lua_gettop(L);
 static int lua_drawBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L, 1);
-	int y = luaL_checkint(L, 2);
-	BMPV* src = (BMPV*)luaL_checkint(L, 3);
+	int x = luaL_checkinteger(L, 1);
+	int y = luaL_checkinteger(L, 2);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 3);
 	u32 bytesRead;
-	int screen = luaL_checkint(L, 4);
+	int screen = luaL_checkinteger(L, 4);
 	int side = 0;
 	if (argc == 5){
-	side = luaL_checkint(L,5);
+	side = luaL_checkinteger(L,5);
 	}
 	if (src->isPlaying){
 		if (src->currentFrame >= src->tot_frame){
@@ -606,71 +606,71 @@ int argc = lua_gettop(L);
 static int lua_getFPS(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->framerate);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->framerate);
 	return 1;
 }
 
 static int lua_getFPS2(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->framerate);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->framerate);
 	return 1;
 }
 
 static int lua_getCF(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->currentFrame);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->currentFrame);
 	return 1;
 }
 
 static int lua_getCF2(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->currentFrame);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->currentFrame);
 	return 1;
 }
 
 static int lua_getSize(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->tot_frame);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->tot_frame);
 	return 1;
 }
 
 static int lua_getSize2(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->tot_frame);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->tot_frame);
 	return 1;
 }
 
 static int lua_getSrate(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->samplerate);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->samplerate);
 	return 1;
 }
 
 static int lua_getSrate2(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->samplerate);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->samplerate);
 	return 1;
 }
 
 static int lua_isPlaying(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
 	lua_pushboolean(L, src->isPlaying);
 	return 1;
 }
@@ -678,7 +678,7 @@ int argc = lua_gettop(L);
 static int lua_isPlaying2(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	lua_pushboolean(L, src->isPlaying);
 	return 1;
 }
@@ -686,7 +686,7 @@ int argc = lua_gettop(L);
 static int lua_unloadBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	linearFree(src->audiobuf);
 	if (src->audiotype == 2){
@@ -703,7 +703,7 @@ int argc = lua_gettop(L);
 static int lua_unloadJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
 	linearFree(src->audiobuf);
 	if (src->audiotype == 2){
@@ -719,7 +719,7 @@ int argc = lua_gettop(L);
 static int lua_stopBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
 	src->isPlaying = false;
 	src->currentFrame = 0;
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -735,7 +735,7 @@ int argc = lua_gettop(L);
 static int lua_stopJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	src->isPlaying = false;
 	src->currentFrame = 0;
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -751,7 +751,7 @@ int argc = lua_gettop(L);
 static int lua_pauseBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -767,7 +767,7 @@ int argc = lua_gettop(L);
 static int lua_pauseJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -783,7 +783,7 @@ int argc = lua_gettop(L);
 static int lua_resumeBMPV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	BMPV* src = (BMPV*)luaL_checkint(L, 1);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 1);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
@@ -799,7 +799,7 @@ int argc = lua_gettop(L);
 static int lua_resumeJPGV(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	JPGV* src = (JPGV*)luaL_checkint(L, 1);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){

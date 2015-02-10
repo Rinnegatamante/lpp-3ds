@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -46,14 +46,14 @@ static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L, 1);
-    int y = luaL_checkint(L, 2);
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
 	char* text = (char*)(luaL_checkstring(L, 3));
-	u32 color = luaL_checknumber(L,4);
+	u32 color = luaL_checkinteger(L,4);
 	u8 alpha = (color >> 24) & 0xFF;
-	int screen = luaL_checkint(L,5);
+	int screen = luaL_checkinteger(L,5);
 	int side=0;
-	if (argc == 6) side = luaL_checkint(L,6);
+	if (argc == 6) side = luaL_checkinteger(L,6);
 	if (screen > 1){ 
 	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen,alpha);
 	else if (alpha==255) DrawImageText(x,y,text,color,screen);
@@ -119,7 +119,7 @@ static int lua_loadimg(lua_State *L)
 		bitmap = OpenJPG(text);
 	}
 	if(!bitmap) return luaL_error(L, "Error loading image");
-    lua_pushnumber(L, (u32)(bitmap));
+    lua_pushinteger(L, (u32)(bitmap));
 	return 1;
 }
 
@@ -127,12 +127,12 @@ static int lua_pbitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L, 1);
-    int y = luaL_checkint(L, 2);
-	Bitmap* file = (Bitmap*)luaL_checkint(L, 3);
-	int screen= luaL_checkint(L, 4);
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+	Bitmap* file = (Bitmap*)luaL_checkinteger(L, 3);
+	int screen= luaL_checkinteger(L, 4);
 	int side = 0;
-	if (argc == 5) side = luaL_checkint(L,5);
+	if (argc == 5) side = luaL_checkinteger(L,5);
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
 	else{ 
 		if (screen == 0){
@@ -168,16 +168,16 @@ static int lua_pbitmap(lua_State *L)
 static int lua_partial(lua_State *L){
 	int argc = lua_gettop(L);
 	if ((argc != 8) && (argc != 9)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L, 1);
-    int y = luaL_checkint(L, 2);
-	int st_x = luaL_checkint(L, 3);
-    int st_y = luaL_checkint(L, 4);
-	int width = luaL_checkint(L, 5);
-    int height = luaL_checkint(L, 6);
-	Bitmap* file = (Bitmap*)luaL_checkint(L, 7);
-	int screen= luaL_checkint(L, 8);
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+	int st_x = luaL_checkinteger(L, 3);
+    int st_y = luaL_checkinteger(L, 4);
+	int width = luaL_checkinteger(L, 5);
+    int height = luaL_checkinteger(L, 6);
+	Bitmap* file = (Bitmap*)luaL_checkinteger(L, 7);
+	int screen= luaL_checkinteger(L, 8);
 	int side = 0;
-	if (argc == 5) side = luaL_checkint(L,9);
+	if (argc == 5) side = luaL_checkinteger(L,9);
 	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
 	else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
 	gfxFlushBuffers();
@@ -189,8 +189,8 @@ static int lua_flipBitmap(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	u8* not_flipped;
-	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
-	Bitmap* dst = (Bitmap*)luaL_checkint(L, 2);
+	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	Bitmap* dst = (Bitmap*)luaL_checkinteger(L, 2);
 	not_flipped = dst->pixels;
 	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
 	dst->pixels = flipBitmap(flip_pixels, src);
@@ -204,7 +204,7 @@ static int lua_saveimg(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	char* text = (char*)(luaL_checkstring(L, 2));
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
@@ -242,9 +242,9 @@ static int lua_newBitmap(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 3) return luaL_error(L, "wrong number of arguments");
-	int width_new = luaL_checkint(L, 1);
-	int height_new = luaL_checkint(L, 2);
-	u32 color = luaL_checkint(L, 3);
+	int width_new = luaL_checkinteger(L, 1);
+	int height_new = luaL_checkinteger(L, 2);
+	u32 color = luaL_checkinteger(L, 3);
 	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
 	bitmap->width = width_new;
 	bitmap->height = height_new;
@@ -253,7 +253,7 @@ static int lua_newBitmap(lua_State *L)
 	memset(pixels_new,color,width_new*height_new*4);
 	bitmap->pixels = pixels_new;
 	bitmap->bitperpixel = 32;
-	lua_pushnumber(L, (u32)(bitmap));
+	lua_pushinteger(L, (u32)(bitmap));
 	return 1;
 }
 
@@ -261,7 +261,7 @@ static int lua_free(lua_State *L)
 {
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
+	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	free(src->pixels);
 	free(src);
 	return 0;
@@ -295,7 +295,7 @@ static int lua_clearScreen(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	int screen = luaL_checkint(L,1);
+	int screen = luaL_checkinteger(L,1);
 	ClearScreen(screen);
 	gfxFlushBuffers();
 	return 0;
@@ -305,15 +305,15 @@ static int lua_fillRect(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
-	int x1 = luaL_checkint(L,1);
-	int x2 = luaL_checkint(L,2);
-	int y1 = luaL_checkint(L,3);
-	int y2 = luaL_checkint(L,4);
-	u32 color = luaL_checknumber(L,5);
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
 	u8 alpha = (color >> 24) & 0xFF;
-	int screen = luaL_checkint(L,6);
+	int screen = luaL_checkinteger(L,6);
 	int side=0;
-	if (argc == 7) side = luaL_checkint(L,7);
+	if (argc == 7) side = luaL_checkinteger(L,7);
 	if (screen > 1){
 	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen,alpha);
 	else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
@@ -330,15 +330,15 @@ static int lua_fillEmptyRect(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
-	int x1 = luaL_checkint(L,1);
-	int x2 = luaL_checkint(L,2);
-	int y1 = luaL_checkint(L,3);
-	int y2 = luaL_checkint(L,4);
-	u32 color = luaL_checknumber(L,5);
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
 	u8 alpha = (color >> 24) & 0xFF;
-	int screen = luaL_checkint(L,6);
+	int screen = luaL_checkinteger(L,6);
 	int side=0;
-	if (argc == 7) side = luaL_checkint(L,7);
+	if (argc == 7) side = luaL_checkinteger(L,7);
 	if (screen > 1){ 
 	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
 	else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
@@ -355,13 +355,13 @@ static int lua_pixel(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L,1);
-	int y = luaL_checkint(L,2);
-	u32 color = luaL_checkint(L,3);
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	u32 color = luaL_checkinteger(L,3);
 	u8 alpha = (color >> 24) & 0xFF;
-	int screen = luaL_checkint(L,4);
+	int screen = luaL_checkinteger(L,4);
 	int side=0;
-	if (argc == 5) side = luaL_checkint(L,5);
+	if (argc == 5) side = luaL_checkinteger(L,5);
 	if (screen > 1){
 	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen,alpha);
 	else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
@@ -383,15 +383,15 @@ static int lua_pixel2(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkint(L,1);
-	int y = luaL_checkint(L,2);
-	int screen = luaL_checkint(L,3);
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int screen = luaL_checkinteger(L,3);
 	int side=0;
-	if (argc == 4) side = luaL_checkint(L,4);
+	if (argc == 4) side = luaL_checkinteger(L,4);
 	if (screen > 1){
-	lua_pushnumber(L,GetImagePixel(x,y,(Bitmap*)screen));
+	lua_pushinteger(L,GetImagePixel(x,y,(Bitmap*)screen));
 	}else{
-	lua_pushnumber(L,GetPixel(x,y,screen,side));
+	lua_pushinteger(L,GetPixel(x,y,screen,side));
 	}
 	return 1;
 }
@@ -400,8 +400,8 @@ static int lua_getWidth(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
-	lua_pushnumber(L,src->width);
+	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L,src->width);
 	return 1;
 }
 
@@ -409,75 +409,75 @@ static int lua_getHeight(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	Bitmap* src = (Bitmap*)luaL_checkint(L, 1);
-	lua_pushnumber(L,src->height);
+	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L,src->height);
 	return 1;
 }
 
 static int lua_color(lua_State *L) {
     int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
-    int r = luaL_checkint(L, 1);
-    int g = luaL_checkint(L, 2);
-	int b = luaL_checkint(L, 3);
+    int r = luaL_checkinteger(L, 1);
+    int g = luaL_checkinteger(L, 2);
+	int b = luaL_checkinteger(L, 3);
 	int a = 255;
-	if (argc==4) a = luaL_checkint(L, 4);
+	if (argc==4) a = luaL_checkinteger(L, 4);
     u32 color = b | (g << 8) | (r << 16) | (a << 24);
-    lua_pushnumber(L,color);
+    lua_pushinteger(L,color);
     return 1;
 }
 
 static int lua_getB(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    int color = luaL_checkint(L, 1);
+    int color = luaL_checkinteger(L, 1);
     u32 colour = color & 0xFF;
-    lua_pushnumber(L,colour);
+    lua_pushinteger(L,colour);
     return 1;
 }
 
 static int lua_getG(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    int color = luaL_checkint(L, 1);
+    int color = luaL_checkinteger(L, 1);
     u32 colour = (color >> 8) & 0xFF;
-    lua_pushnumber(L,colour);
+    lua_pushinteger(L,colour);
     return 1;
 }
 
 static int lua_getR(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    int color = luaL_checkint(L, 1);
+    int color = luaL_checkinteger(L, 1);
     u32 colour = (color >> 16) & 0xFF;
-    lua_pushnumber(L,colour);
+    lua_pushinteger(L,colour);
     return 1;
 }
 
 static int lua_getA(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    int color = luaL_checkint(L, 1);
+    int color = luaL_checkinteger(L, 1);
     u32 colour = (color >> 24) & 0xFF;
-    lua_pushnumber(L,colour);
+    lua_pushinteger(L,colour);
     return 1;
 }
 
 static int lua_console(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    int screen = luaL_checkint(L, 1);
+    int screen = luaL_checkinteger(L, 1);
 	Console* console = (Console*)malloc(sizeof(Console));
 	console->screen = screen;
 	strcpy(console->text,"");
-    lua_pushnumber(L,(u32)console);
+    lua_pushinteger(L,(u32)console);
     return 1;
 }
 
 static int lua_conclear(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    Console* console = (Console*)luaL_checkint(L, 1);
+    Console* console = (Console*)luaL_checkinteger(L, 1);
 	strcpy(console->text,"");
     return 0;
 }
@@ -485,7 +485,7 @@ static int lua_conclear(lua_State *L) {
 static int lua_condest(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    Console* console = (Console*)luaL_checkint(L, 1);
+    Console* console = (Console*)luaL_checkinteger(L, 1);
 	free(console);
     return 0;
 }
@@ -493,9 +493,9 @@ static int lua_condest(lua_State *L) {
 static int lua_conshow(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    Console* console = (Console*)luaL_checkint(L, 1);
+    Console* console = (Console*)luaL_checkinteger(L, 1);
 	int res = ConsoleOutput(console);
-	lua_pushnumber(L,res);
+	lua_pushinteger(L,res);
 	gfxFlushBuffers();
     return 1;
 }
@@ -503,7 +503,7 @@ static int lua_conshow(lua_State *L) {
 static int lua_conappend(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
-    Console* console = (Console*)luaL_checkint(L, 1);
+    Console* console = (Console*)luaL_checkinteger(L, 1);
 	char* string = (char*)luaL_checkstring(L, 2);
 	strcat(console->text,string);
     return 0;

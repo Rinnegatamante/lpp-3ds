@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -86,7 +86,7 @@ static int lua_dofile (lua_State *L) {
   lua_settop(L, 1);
   if (luaL_loadbuffer(L, (const char*)buffer, strlen((const char*)buffer), NULL) != LUA_OK)
     return lua_error(L);
-  lua_CFunction dofilecont = (lua_CFunction)(lua_gettop(L) - 1);
+  lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
   lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
   return (int)dofilecont;
 }
@@ -96,7 +96,7 @@ static int lua_openfile(lua_State *L)
     int argc = lua_gettop(L);
     if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1);
-	int type = luaL_checkint(L, 2);
+	int type = luaL_checkinteger(L, 2);
 	u64 archive_id;
 	bool extdata = false;
 	if (argc == 3){
@@ -143,7 +143,7 @@ static int lua_openfile(lua_State *L)
 		}
 		if(ret) return luaL_error(L, "error opening file");
 	}
-	lua_pushnumber(L,fileHandle);
+	lua_pushinteger(L,fileHandle);
 	return 1;
 }
 
@@ -178,7 +178,7 @@ static int lua_getRegion(lua_State *L)
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u8 region;
 	CFGU_SecureInfoGetRegion(&region);
-	lua_pushnumber(L,region);
+	lua_pushinteger(L,region);
 	return 1;
 }
 
@@ -297,7 +297,7 @@ static int lua_getFW(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushnumber(L,osGetFirmVersion());
+	lua_pushinteger(L,osGetFirmVersion());
     return 1;
 }
 
@@ -307,7 +307,7 @@ static int lua_getLang(lua_State *L)
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u8 language;
 	CFGU_GetSystemLanguage(&language);
-	lua_pushnumber(L,language);
+	lua_pushinteger(L,language);
     return 1;
 }
 
@@ -315,7 +315,7 @@ static int lua_getK(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushnumber(L,osGetKernelVersion());
+	lua_pushinteger(L,osGetKernelVersion());
     return 1;
 }
 
@@ -330,7 +330,7 @@ static int lua_setCurrentDirectory(lua_State *L)
     const char *path = luaL_checkstring(L, 1);
     if(!path) return luaL_error(L, "System.currentDirectory(file) takes a filename as a string argument.");
     strcpy(cur_dir,path);
-    return 1;
+    return 0;
 }
 
 static int lua_curdir(lua_State *L) {
@@ -422,7 +422,7 @@ static int lua_listdir(lua_State *L){
 		entriesRead=0;
 		FSDIR_Read(dirHandle, &entriesRead, 1, &entry);
 		if (entriesRead){
-			lua_pushnumber(L, i++);
+			lua_pushinteger(L, i++);
 			lua_newtable(L);
 			lua_pushstring(L, "name");
 			unicodeToChar(&name[0],entry.name);
@@ -447,7 +447,7 @@ static int lua_batterylv(lua_State *L){
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u8 batteryLevel;
 	PTMU_GetBatteryLevel(NULL, &batteryLevel);
-	lua_pushnumber(L,batteryLevel);
+	lua_pushinteger(L,batteryLevel);
 	return 1;
 }
 
@@ -678,7 +678,7 @@ static int lua_readsmdh(lua_State *L){
 	lua_pushstring(L, author);
 	lua_settable(L, -3);
 	lua_pushstring(L, "icon");
-	lua_pushnumber(L, (u32)bitmap);
+	lua_pushinteger(L, (u32)bitmap);
 	lua_settable(L, -3);
 	return 1;
 }
@@ -729,7 +729,7 @@ static int lua_listExtdata(lua_State *L){
 			u32 entriesRead=0;
 			FSDIR_Read(extdata_dir, &entriesRead, 1, &entry);
 			if (entriesRead){
-				lua_pushnumber(L, z++);
+				lua_pushinteger(L, z++);
 				lua_newtable(L);
 				lua_pushstring(L, "name");
 				unicodeToChar(&name[0],entry.name);
@@ -742,7 +742,7 @@ static int lua_listExtdata(lua_State *L){
 				lua_pushboolean(L, entry.isDirectory);
 				lua_settable(L, -3);
 				lua_pushstring(L, "archive");
-				lua_pushnumber(L, i);
+				lua_pushinteger(L, i);
 				lua_settable(L, -3);
 				lua_settable(L, -3);
 			}else break;
@@ -761,7 +761,7 @@ static int lua_listExtdata(lua_State *L){
 			u32 entriesRead=0;
 			FSDIR_Read(extdata_dir, &entriesRead, 1, &entry);
 			if (entriesRead){
-				lua_pushnumber(L, z++);
+				lua_pushinteger(L, z++);
 				lua_newtable(L);
 				lua_pushstring(L, "name");
 				unicodeToChar(&name[0],entry.name);
@@ -774,7 +774,7 @@ static int lua_listExtdata(lua_State *L){
 				lua_pushboolean(L, entry.isDirectory);
 				lua_settable(L, -3);
 				lua_pushstring(L, "archive");
-				lua_pushnumber(L, i);
+				lua_pushinteger(L, i);
 				lua_settable(L, -3);
 				lua_settable(L, -3);
 			}else break;
@@ -793,7 +793,7 @@ static int lua_listExtdata(lua_State *L){
 			u32 entriesRead=0;
 			FSDIR_Read(extdata_dir, &entriesRead, 1, &entry);
 			if (entriesRead){
-				lua_pushnumber(L, z++);
+				lua_pushinteger(L, z++);
 				lua_newtable(L);
 				lua_pushstring(L, "name");
 				unicodeToChar(&name[0],entry.name);
@@ -806,7 +806,7 @@ static int lua_listExtdata(lua_State *L){
 				lua_pushboolean(L, entry.isDirectory);
 				lua_settable(L, -3);
 				lua_pushstring(L, "archive");
-				lua_pushnumber(L, i);
+				lua_pushinteger(L, i);
 				lua_settable(L, -3);
 				lua_settable(L, -3);
 			}else break;
@@ -846,7 +846,7 @@ static int lua_listExtdataDir(lua_State *L){
 		u32 entriesRead=0;
 		FSDIR_Read(extdata_dir, &entriesRead, 1, &entry);
 		if (entriesRead){
-			lua_pushnumber(L, z++);
+			lua_pushinteger(L, z++);
 			lua_newtable(L);
 			lua_pushstring(L, "name");
 			unicodeToChar(&name[0],entry.name);
@@ -859,7 +859,7 @@ static int lua_listExtdataDir(lua_State *L){
 			lua_pushboolean(L, entry.isDirectory);
 			lua_settable(L, -3);
 			lua_pushstring(L, "archive");
-			lua_pushnumber(L, archive_id);
+			lua_pushinteger(L, archive_id);
 			lua_settable(L, -3);
 			lua_settable(L, -3);
 		}else break;
@@ -1046,16 +1046,16 @@ static int lua_listCia(lua_State *L){
 	u32 i = 1;
 	lua_newtable(L);
 	while (i <= cia_nums){
-		lua_pushnumber(L, i);
+		lua_pushinteger(L, i);
 		lua_newtable(L);
 		lua_pushstring(L, "unique_id");
-		lua_pushnumber(L, (TitleIDs[i-1].uniqueid));
+		lua_pushinteger(L, (TitleIDs[i-1].uniqueid));
 		lua_settable(L, -3);
 		lua_pushstring(L, "mediatype");
-		lua_pushnumber(L, 1);
+		lua_pushinteger(L, 1);
 		lua_settable(L, -3);
 		lua_pushstring(L, "platform");
-		lua_pushnumber(L, (TitleIDs[i-1].platform));
+		lua_pushinteger(L, (TitleIDs[i-1].platform));
 		lua_settable(L, -3);
 		u64 id = TitleIDs[i-1].uniqueid | ((u64)TitleIDs[i-1].category << 32) | ((u64)TitleIDs[i-1].platform << 48);
 		char product_id[16];
@@ -1064,13 +1064,13 @@ static int lua_listCia(lua_State *L){
 		lua_pushstring(L, product_id);
 		lua_settable(L, -3);
 		lua_pushstring(L, "access_id");
-		lua_pushnumber(L, i);
+		lua_pushinteger(L, i);
 		lua_settable(L, -3);
 		lua_pushstring(L, "category");
-		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushnumber(L, 4);
-		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushnumber(L, 1);
-		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushnumber(L, 3);
-		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushnumber(L, 2);
+		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushinteger(L, 4);
+		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushinteger(L, 1);
+		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushinteger(L, 3);
+		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushinteger(L, 2);
 		else lua_pushnumber(L, 0);
 		lua_settable(L, -3);
 		lua_settable(L, -3);
@@ -1082,16 +1082,16 @@ static int lua_listCia(lua_State *L){
 	TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
 	AM_GetTitleList(mediatype_NAND,cia_nums,TitleIDs);
 	while (z <= cia_nums){
-		lua_pushnumber(L, i);
+		lua_pushinteger(L, i);
 		lua_newtable(L);
 		lua_pushstring(L, "unique_id");
-		lua_pushnumber(L, (TitleIDs[i-1].uniqueid));
+		lua_pushinteger(L, (TitleIDs[i-1].uniqueid));
 		lua_settable(L, -3);
 		lua_pushstring(L, "mediatype");
-		lua_pushnumber(L, 2);
+		lua_pushinteger(L, 2);
 		lua_settable(L, -3);
 		lua_pushstring(L, "platform");
-		lua_pushnumber(L, (TitleIDs[i-1].platform));
+		lua_pushinteger(L, (TitleIDs[i-1].platform));
 		lua_settable(L, -3);
 		u64 id = TitleIDs[i-1].uniqueid | ((u64)TitleIDs[i-1].category << 32) | ((u64)TitleIDs[i-1].platform << 48);
 		char product_id[16];
@@ -1100,13 +1100,13 @@ static int lua_listCia(lua_State *L){
 		lua_pushstring(L, product_id);
 		lua_settable(L, -3);
 		lua_pushstring(L, "access_id");
-		lua_pushnumber(L, z);
+		lua_pushinteger(L, z);
 		lua_settable(L, -3);
 		lua_pushstring(L, "category");
-		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushnumber(L, 4);
-		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushnumber(L, 1);
-		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushnumber(L, 3);
-		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushnumber(L, 2);
+		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushinteger(L, 4);
+		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushinteger(L, 1);
+		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushinteger(L, 3);
+		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushinteger(L, 2);
 		else lua_pushnumber(L, 0);
 		lua_settable(L, -3);
 		lua_settable(L, -3);
@@ -1139,7 +1139,7 @@ static int lua_uninstallCia(lua_State *L){
 	return 0;
 }
 
-u32 Endian_UInt32_Conversion(u32 value){
+static u32 Endian_UInt32_Conversion(u32 value){
    return ((value >> 24) & 0x000000FF) | ((value >> 8) & 0x0000FF00) | ((value << 8) & 0x00FF0000) | ((value << 24) & 0xFF000000);
 }
 
@@ -1162,7 +1162,7 @@ static int lua_ciainfo(lua_State *L){
 	lua_pushstring(L, title);
 	lua_settable(L, -3);
 	lua_pushstring(L, "unique_id");
-	lua_pushnumber(L, Endian_UInt32_Conversion(unique_id));
+	lua_pushinteger(L, Endian_UInt32_Conversion(unique_id));
 	lua_settable(L, -3);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
@@ -1194,14 +1194,14 @@ static int lua_ZipExtract(lua_State *L) {
 	int result = ZipExtract(handle, Password);
 	ZipClose(handle);
 	sdmcExit();
-	lua_pushnumber(L, result);
+	lua_pushinteger(L, result);
 	return 1;
 }
 
 static int lua_model(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
-	lua_pushnumber(L,*((u8*)0x1FF81066)); // 0 = 3DS | 3 = N3DS
+	lua_pushinteger(L,*((u8*)0x1FF81066)); // 0 = 3DS | 3 = N3DS
 	return 1;
 }
 	
@@ -1216,7 +1216,7 @@ static int lua_appstatus(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
 	APP_STATUS status = aptGetStatus();
-	lua_pushnumber(L,status);
+	lua_pushinteger(L,status);
 	return 1;
 }
 
@@ -1249,6 +1249,7 @@ return (Result)cmdbuf[1];
 static int lua_startcard(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	srvGetServiceHandle(&nsHandle, "ns:s"); 
 	NS_RebootToTitle(mediatype_GAMECARD,0);
 	svcCloseHandle(nsHandle);
 	return 0;

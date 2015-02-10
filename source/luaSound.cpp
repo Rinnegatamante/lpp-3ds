@@ -65,7 +65,7 @@ static int lua_openwav(lua_State *L)
     if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1);
 	u32 mem_size = 0;
-	if (argc == 2) mem_size = luaL_checkint(L, 2);
+	if (argc == 2) mem_size = luaL_checkinteger(L, 2);
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
@@ -186,7 +186,7 @@ static int lua_openwav(lua_State *L)
 	}
 	linearFree(tmp_buffer);
 	}
-	lua_pushnumber(L,(u32)wav_file);
+	lua_pushinteger(L,(u32)wav_file);
 	}
 	if (mem_size == 0){
 	FSFILE_Close(fileHandle);
@@ -208,7 +208,7 @@ static int lua_openaiff(lua_State *L)
     if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1);
 	u32 mem_size = 0;
-	if (argc == 2) mem_size = luaL_checkint(L, 2);
+	if (argc == 2) mem_size = luaL_checkinteger(L, 2);
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
@@ -335,7 +335,7 @@ static int lua_openaiff(lua_State *L)
 	}
 	linearFree(tmp_buffer);
 	}
-	lua_pushnumber(L,(u32)wav_file);
+	lua_pushinteger(L,(u32)wav_file);
 	}
 	if (mem_size == 0){
 	FSFILE_Close(fileHandle);
@@ -356,11 +356,11 @@ static int lua_playWav(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4))	return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
-	int loop = luaL_checkint(L, 2);
-	u32 ch = luaL_checkint(L, 3);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
+	int loop = luaL_checkinteger(L, 2);
+	u32 ch = luaL_checkinteger(L, 3);
 	u32 ch2;
-	if (argc == 4) ch2 = luaL_checkint(L, 4);
+	if (argc == 4) ch2 = luaL_checkinteger(L, 4);
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
 		if (loop == 0) src->streamLoop = false;
@@ -404,7 +404,7 @@ static int lua_streamWav(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	u32 bytesRead;
 	if ((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000) >= (src->size - src->startRead)) && (src->isPlaying)){
 		if (src->streamLoop){
@@ -584,7 +584,7 @@ static int lua_closeWav(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	free(src);
@@ -595,7 +595,7 @@ static int lua_pause(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	CSND_setchannel_playbackstate(src->ch, 0);
 	if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
 	CSND_sharedmemtype0_cmdupdatestate(0);
@@ -608,7 +608,7 @@ static int lua_resume(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	CSND_setchannel_playbackstate(src->ch, 1);
 	if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 1);
 	CSND_sharedmemtype0_cmdupdatestate(0);
@@ -620,7 +620,7 @@ static int lua_resume(lua_State *L)
 static int lua_wisPlaying(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	lua_pushboolean(L, src->isPlaying);
 	return 1;
 }
@@ -637,7 +637,7 @@ static int lua_regsound(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	u32 time = luaL_checkint(L, 1);
+	u32 time = luaL_checkinteger(L, 1);
 	u32 mem_size = (time + 1) * 32000; // time + 1 because first second is mute
 	u8* audiobuf = (u8*)linearAlloc(mem_size);
 	u32 audiobuf_pos = 0;
@@ -668,7 +668,7 @@ static int lua_regsound(lua_State *L)
 	strcpy(wav_file->title,"");
 	wav_file->isPlaying = false;
 	wav_file->bytepersample = 2;
-	lua_pushnumber(L,(u32)wav_file);
+	lua_pushinteger(L,(u32)wav_file);
 	return 1;
 }
 
@@ -676,7 +676,7 @@ static int lua_savemono(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	const char* file = luaL_checkstring(L, 2);
 	Handle fileHandle;
 	u32 bytesWritten;
@@ -711,19 +711,19 @@ static int lua_savemono(lua_State *L)
 static int lua_getSrate(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
-	lua_pushnumber(L, src->samplerate);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, src->samplerate);
 	return 1;
 }
 
 static int lua_getTime(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	if (src->isPlaying){
-		lua_pushnumber(L, (osGetTime() - src->tick) / 1000);
+		lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
 	}else{
-		lua_pushnumber(L, src->tick / 1000);
+		lua_pushinteger(L, src->tick / 1000);
 	}
 	return 1;
 }
@@ -731,16 +731,16 @@ int argc = lua_gettop(L);
 static int lua_getTotalTime(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	u32 result = (src->size - src->startRead) / (src->bytepersample * src->samplerate);
-	lua_pushnumber(L, result);
+	lua_pushinteger(L, result);
 	return 1;
 }
 
 static int lua_getTitle(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	lua_pushstring(L, src->title);
 	return 1;
 }
@@ -748,7 +748,7 @@ int argc = lua_gettop(L);
 static int lua_getAuthor(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
 	lua_pushstring(L, src->author);
 	return 1;
 }
@@ -756,9 +756,9 @@ int argc = lua_gettop(L);
 static int lua_getType(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	wav* src = (wav*)luaL_checkint(L, 1);
-	if (src->audiobuf2 == NULL) lua_pushnumber(L, 1);
-	else lua_pushnumber(L, 2);
+	wav* src = (wav*)luaL_checkinteger(L, 1);
+	if (src->audiobuf2 == NULL) lua_pushinteger(L, 1);
+	else lua_pushinteger(L, 1);
 	return 1;
 }
 
