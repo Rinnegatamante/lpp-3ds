@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -47,18 +47,26 @@ bool GW_MODE;
 // Fake Sound Module for GW Mode to prevent interpreter error with generic scripts
 static int nil_func(lua_State *L){ return 0; }
 static const luaL_Reg Fake_Sound_functions[] = {
-	{"openWav",				nil_func},
-	{"closeWav",			nil_func},
-	{"play",				nil_func},
-	{"init",				nil_func},
-	{"term",				nil_func},
-	{"pause",				nil_func},
-	{"resume",				nil_func},
-	{"updateStream",		nil_func},
-	{"isPlaying",			nil_func},
-	{0, 0}
-	};
-	
+  {"openWav",				nil_func},
+  {"openAiff",				nil_func},
+  {"close",					nil_func},
+  {"play",					nil_func},
+  {"init",					nil_func},
+  {"term",					nil_func},
+  {"pause",					nil_func},
+  {"getSrate",				nil_func},
+  {"getTime",				nil_func},
+  {"getTitle",				nil_func},
+  {"getAuthor",				nil_func},
+  {"getType",				nil_func},  
+  {"getTotalTime",			nil_func},
+  {"resume",				nil_func},
+  {"isPlaying",				nil_func},
+  {"updateStream",			nil_func},
+  {"register",				nil_func},
+  {"saveWav",				nil_func},
+  {0, 0}
+};
 void luaFakeSound_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Fake_Sound_functions, 0);
