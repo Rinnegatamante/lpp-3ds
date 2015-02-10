@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 {
 	srvInit();	
 	aptInit();
-	gfxInit();
+	gfxInitDefault();
 	acInit();
 	initCfgu();
 	httpcInit();
