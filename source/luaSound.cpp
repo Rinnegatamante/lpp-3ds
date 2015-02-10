@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -56,6 +56,7 @@ bool isPlaying;
 u32 ch;
 u32 ch2;
 bool streamLoop;
+bool big_endian;
 };
 
 static int lua_openwav(lua_State *L)
@@ -78,6 +79,7 @@ static int lua_openwav(lua_State *L)
 	strcpy(wav_file->author,"");
 	strcpy(wav_file->title,"");
 	u64 size;
+	wav_file->big_endian = false;
 	u32 pos = 16;	
 	while (chunk != 0x61746164){
 	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
@@ -165,6 +167,7 @@ static int lua_openwav(lua_State *L)
 	wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
 	wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
 	size_tbp = size-(pos+4);
+	wav_file->startRead = 0;
 	wav_file->size = (size_tbp)/2;
 	FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_buffer, size-(pos+4));
 	}
@@ -176,6 +179,155 @@ static int lua_openwav(lua_State *L)
 	while (z < (wav_file->bytepersample/2)){
 	wav_file->audiobuf[off+z] = tmp_buffer[i+z];
 	wav_file->audiobuf2[off+z] = tmp_buffer[i+z+(wav_file->bytepersample/2)];
+	z++;
+	}
+	i=i+wav_file->bytepersample;
+	off=off+(wav_file->bytepersample/2);
+	}
+	linearFree(tmp_buffer);
+	}
+	lua_pushnumber(L,(u32)wav_file);
+	}
+	if (mem_size == 0){
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	}
+	return 1;
+}
+
+static u32 Endian_UInt32_Conversion(u32 value){
+   return ((value >> 24) & 0x000000FF) | ((value >> 8) & 0x0000FF00) | ((value << 8) & 0x00FF0000) | ((value << 24) & 0xFF000000);
+}
+
+static u16 Endian_UInt16_Conversion(u16 value){
+   return (u16)(((value >> 8) & 0x00FF) | ((value << 8) & 0xFF00));
+}
+static int lua_openaiff(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	const char *file_tbo = luaL_checkstring(L, 1);
+	u32 mem_size = 0;
+	if (argc == 2) mem_size = luaL_checkint(L, 2);
+	Handle fileHandle;
+	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	if(ret) return luaL_error(L, "error opening file");
+	u32 magic,bytesRead,jump,chunk=0x00000000;
+	u16 samplerate;
+	u16 audiotype;
+	FSFILE_Read(fileHandle, &bytesRead, 8, &magic, 4);
+	if (magic == 0x46464941){
+	wav *wav_file = (wav*)malloc(sizeof(wav));
+	strcpy(wav_file->author,"");
+	strcpy(wav_file->title,"");
+	u64 size;
+	wav_file->big_endian = true;
+	u32 pos = 12;	
+	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+	while (chunk != 0x444E5353){
+	
+	//Chunk LIST detection
+	if (chunk == 0x454D414E){ //NAME Chunk
+		u32 chunk_size;
+		FSFILE_Read(fileHandle, &bytesRead, pos+4, &chunk_size, 4);
+		chunk_size = Endian_UInt32_Conversion(chunk_size);
+		char* title = (char*)malloc(chunk_size * sizeof(char));
+		FSFILE_Read(fileHandle, &bytesRead, pos+8, title, chunk_size);
+		strcpy(wav_file->title,title);
+		wav_file->title[chunk_size+1] = 0;
+		free(title);
+	}else if (chunk == 0x4D4D4F43){ //COMM Chunk
+		FSFILE_Read(fileHandle, &bytesRead, pos+8, &audiotype, 2);
+		audiotype = audiotype / 256;
+		FSFILE_Read(fileHandle, &bytesRead, pos+14, &(wav_file->bytepersample), 2);
+		wav_file->bytepersample = (wav_file->bytepersample / 2048) * audiotype;
+		FSFILE_Read(fileHandle, &bytesRead, pos+18, &samplerate, 2);
+		samplerate = Endian_UInt16_Conversion(samplerate);
+	}
+	
+	pos=pos+4;
+	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
+	pos=pos+4+Endian_UInt32_Conversion(jump);
+	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
+	}
+	pos=pos+4;
+	FSFILE_GetSize(fileHandle, &size);
+	wav_file->mem_size = mem_size;
+	wav_file->samplerate = samplerate;
+	if (audiotype == 1){
+	if (mem_size > 0){
+	wav_file->moltiplier = 1;
+	wav_file->isPlaying = false;
+	wav_file->mem_size = (size-(pos+4))/mem_size;
+	wav_file->sourceFile = fileHandle;
+	wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/mem_size);
+	wav_file->startRead = (pos+4);
+	FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, (size-(pos+4))/mem_size);
+	
+	// Changing endianess
+	u64 i = 0;
+	while (i < (size-(pos+4))/mem_size){
+		u8 tmp = wav_file->audiobuf[i];
+		wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
+		wav_file->audiobuf[i+1] = tmp;
+		i=i+2;
+	}
+	
+	wav_file->audiobuf2 = NULL;
+	wav_file->size = size;
+	}else{
+	wav_file->audiobuf = (u8*)linearAlloc(size-(pos+4));
+	FSFILE_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
+	
+	// Changing endianess
+	u64 i = 0;
+	while (i < (size-(pos+4))){
+		u8 tmp = wav_file->audiobuf[i];
+		wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
+		wav_file->audiobuf[i+1] = tmp;
+		i=i+2;
+	}
+	
+	wav_file->audiobuf2 = NULL;
+	wav_file->size = size-(pos+4);
+	wav_file->startRead = 0;
+	wav_file->isPlaying = false;
+	}
+	}else{
+	// I must reordinate my buffer in order to play stereo sound and change endianess
+	u32 size_tbp;
+	u8* tmp_buffer;
+	if (mem_size > 0){
+	wav_file->moltiplier = 1;
+	wav_file->sourceFile = fileHandle;
+	wav_file->isPlaying = false;
+	wav_file->startRead = (pos+4);
+	wav_file->size = size;
+	wav_file->mem_size = (size-(pos+4))/mem_size;
+	tmp_buffer = (u8*)linearAlloc((size-(pos+4))/mem_size);
+	wav_file->audiobuf = (u8*)linearAlloc(((size-(pos+4))/mem_size)/2);
+	wav_file->audiobuf2 = (u8*)linearAlloc(((size-(pos+4))/mem_size)/2);
+	FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, tmp_buffer, (size-(pos+4))/mem_size);
+	size_tbp = (size-(pos+4))/mem_size;
+	}else{
+	tmp_buffer = (u8*)linearAlloc((size-(pos+4)));
+	wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
+	wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
+	wav_file->startRead = 0;
+	size_tbp = size-(pos+4);
+	wav_file->size = (size_tbp)/2;
+	FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_buffer, size-(pos+4));
+	}
+	u32 off=0;
+	u32 i=0;
+	u16 z;
+	while (i < size_tbp){
+	z=0;
+	while (z < (wav_file->bytepersample/2)){
+	wav_file->audiobuf[off+z] = tmp_buffer[i+(wav_file->bytepersample/2)-z-1];
+	wav_file->audiobuf2[off+z] = tmp_buffer[i+(wav_file->bytepersample)-z-1];
 	z++;
 	}
 	i=i+wav_file->bytepersample;
@@ -268,6 +420,15 @@ static int lua_streamWav(lua_State *L)
 		}
 		if (src->audiobuf2 == NULL){
 			FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, src->audiobuf, src->mem_size);
+			u64 i = 0;
+			if (src->big_endian){
+			while (i < (src->mem_size)){
+				u8 tmp = src->audiobuf[i];
+				src->audiobuf[i] = src->audiobuf[i+1];
+				src->audiobuf[i+1] = tmp;
+				i=i+2;
+			}
+			}
 			GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 		}else{
 			u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
@@ -276,6 +437,18 @@ static int lua_streamWav(lua_State *L)
 			u32 off=0;
 			u32 i=0;
 			u16 z;
+			if (src->big_endian){
+			while (i < size_tbp){
+				z=0;
+				while (z < (src->bytepersample/2)){
+					src->audiobuf[off+z] = tmp_buffer[i+(src->bytepersample/2)-z-1];
+					src->audiobuf2[off+z] = tmp_buffer[i+(src->bytepersample)-z-1];
+					z++;
+				}
+				i=i+src->bytepersample;
+				off=off+(src->bytepersample/2);
+			}
+			}else{
 			while (i < size_tbp){
 				z=0;
 				while (z < (src->bytepersample/2)){
@@ -283,9 +456,9 @@ static int lua_streamWav(lua_State *L)
 					src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
 					z++;
 				}
-				z=0;
 				i=i+src->bytepersample;
 				off=off+(src->bytepersample/2);
+			}
 			}
 			linearFree(tmp_buffer);
 			GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
@@ -296,9 +469,18 @@ static int lua_streamWav(lua_State *L)
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
 				FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
+				u64 i = 0;
 				if (bytesRead != ((src->mem_size)/2)){
 				FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, src->audiobuf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
+				}
+				if (src->big_endian){
+				while (i < ((src->mem_size)/2)){
+					u8 tmp = src->audiobuf[i];
+					src->audiobuf[i] = src->audiobuf[i+1];
+					src->audiobuf[i+1] = tmp;
+					i=i+2;
+				}
 				}
 				src->moltiplier = src->moltiplier + 1;
 				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
@@ -314,6 +496,18 @@ static int lua_streamWav(lua_State *L)
 				u32 off=0;
 				u32 i=0;
 				u16 z;
+				if (src->big_endian){
+			while (i < size_tbp){
+				z=0;
+				while (z < (src->bytepersample/2)){
+					src->audiobuf[off+z] = tmp_buffer[i+(src->bytepersample/2)-z-1];
+					src->audiobuf2[off+z] = tmp_buffer[i+(src->bytepersample)-z-1];
+					z++;
+				}
+				i=i+src->bytepersample;
+				off=off+(src->bytepersample/2);
+			}
+			}else{
 				while (i < size_tbp){
 					z=0;
 					while (z < (src->bytepersample/2)){
@@ -324,6 +518,7 @@ static int lua_streamWav(lua_State *L)
 					i=i+src->bytepersample;
 					off=off+(src->bytepersample/2);
 				}
+				}
 				linearFree(tmp_buffer);
 				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
 				GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
@@ -333,6 +528,15 @@ static int lua_streamWav(lua_State *L)
 			//Update and flush second half-buffer
 			if (src->audiobuf2 == NULL){
 				FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
+				if (src->big_endian){
+					u64 i = 0;
+					while (i < ((src->mem_size)/2)){
+						u8 tmp = src->audiobuf[i+((src->mem_size)/2)];
+						src->audiobuf[i+((src->mem_size)/2)] = src->audiobuf[i+((src->mem_size)/2)+1];
+						src->audiobuf[i+((src->mem_size)/2)+1] = tmp;
+						i=i+2;
+					}
+				}
 				src->moltiplier = src->moltiplier + 1;
 				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 			}else{
@@ -343,6 +547,19 @@ static int lua_streamWav(lua_State *L)
 				u32 off=0;
 				u32 i=0;
 				u16 z;
+				if (src->big_endian){
+			while (i < size_tbp){
+				z=0;
+				while (z < (src->bytepersample/2)){
+					src->audiobuf[(src->mem_size)/4+off+z] = tmp_buffer[i+(src->bytepersample/2)-z-1];
+					src->audiobuf2[(src->mem_size)/4+off+z] = tmp_buffer[i+(src->bytepersample)-z-1];
+					z++;
+				}
+				z=0;
+				i=i+src->bytepersample;
+				off=off+(src->bytepersample/2);
+			}
+			}else{
 				while (i < size_tbp){
 					z=0;
 					while (z < (src->bytepersample/2)){
@@ -352,6 +569,7 @@ static int lua_streamWav(lua_State *L)
 					}
 				i=i+src->bytepersample;
 				off=off+(src->bytepersample/2);
+				}
 				}
 				linearFree(tmp_buffer);
 				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
@@ -442,6 +660,7 @@ static int lua_regsound(lua_State *L)
 	wav* wav_file = (wav*)malloc(sizeof(wav));
 	wav_file->audiobuf = nomute_audiobuf;
 	wav_file->audiobuf2 = NULL;
+	wav_file->big_endian = false;
 	wav_file->mem_size = 0;
 	wav_file->size = mem_size - 32000;
 	wav_file->samplerate = 16000;
@@ -546,7 +765,8 @@ int argc = lua_gettop(L);
 //Register our Sound Functions
 static const luaL_Reg Sound_functions[] = {
   {"openWav",				lua_openwav},
-  {"closeWav",				lua_closeWav},
+  {"openAiff",				lua_openaiff},
+  {"close",					lua_closeWav},
   {"play",					lua_playWav},
   {"init",					lua_soundinit},
   {"term",					lua_soundend},
