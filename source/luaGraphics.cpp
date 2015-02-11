@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -83,22 +83,15 @@ void PrintImageBitmap(int xp,int yp, Bitmap* result,int screen){
 if (result->bitperpixel == 24){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				u32 color = B + G*256 + R*256*256;
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
 				DrawImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 			}
 		}
 			}else{
 			for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				DrawAlphaImagePixel(xp+x,yp+y,color,(Bitmap*)screen, A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				DrawAlphaImagePixel(xp+x,yp+y,color,(Bitmap*)screen);
 			}
 			
 		}
@@ -116,22 +109,15 @@ int x, y;
 if (result->bitperpixel == 24){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-			u32 color = B + G*256 + R*256*256;
+			u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
 			DrawPixel(buffer,xp+x,yp+y,color);
 			}
 		}
 }else{
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				DrawAlphaPixel(buffer,xp+x,yp+y,color,A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				DrawAlphaPixel(buffer,xp+x,yp+y,color);
 			}			
 		}
 	}
@@ -149,22 +135,15 @@ int x, y;
 if (result->bitperpixel == 24){
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-			u32 color = B + G*256 + R*256*256;
+			u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
 			DrawPixel(buffer,xp+x-st_x,yp+y-st_y,color);
 		}
 	}
 }else{
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-			u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-			u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-			u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-			u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				DrawAlphaPixel(buffer,xp+x-st_x,yp+y-st_y,color,A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				DrawAlphaPixel(buffer,xp+x-st_x,yp+y-st_y,color);
 			}			
 		}
 	}
@@ -178,23 +157,16 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 		if (result->bitperpixel == 24){
 			for (y = st_y; y < st_y + height; y++){
 				for (x = st_x; x < st_x + width; x++){
-					u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-					u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-					u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-					u8 A = 255;
-					u32 color = B + G*256 + R*256*256;
-				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
+				color = (color & 0x00FFFFFF) | (0xFF << 24);
+				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen);
 				}
 				}
 		}else{
 		for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				Draw32bppImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen);
 			}
 		}
 		}
@@ -202,22 +174,15 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 			if (result->bitperpixel == 24){
 	for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
-				u32 color = B + G*256 + R*256*256;
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
 				DrawImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen);
 				}
 				}
 			}else{
 				for (y = st_y; y < st_y + height; y++){
 		for (x = st_x; x < st_x + width; x++){
-				u8 B = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-				u8 G = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-				u8 R = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-				u8 A = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
-				u32 color = B + G*256 + R*256*256;
-				DrawAlphaImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen, A);
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				DrawAlphaImagePixel(xp+x-st_x,yp+y-st_y,color,(Bitmap*)screen);
 			}			
 		}
 	}
@@ -250,13 +215,12 @@ if (result->bitperpixel == 24){
 }
 
 void DrawPixel(u8* screen, int x,int y, u32 color){
-	int idx = ((x)*240) + (239-(y));
-	screen[idx*3+0] = (color);
-	screen[idx*3+1] = (color) >> 8;
-	screen[idx*3+2] = (color) >> 16;
+	int idx = (((x)*240) + (239-(y)))*3;
+	*(u32*)&(screen[idx]) = (((color) & 0x00FFFFFF) | ((*(u32*)&(screen[idx])) & 0xFF000000));
 }
 
-void DrawAlphaPixel(u8* screen, int x,int y, u32 color, u8 alpha){
+void DrawAlphaPixel(u8* screen, int x,int y, u32 color){
+	u8 alpha = (((color) >> 24) & 0xFF);
 	int idx = ((x)*240) + (239-(y));
 	float ratio = alpha / 255.0f;
 	screen[idx*3+0] = ((color & 0xFF) * ratio) + (screen[idx*3+0] * (1.0 - ratio));
@@ -285,7 +249,8 @@ u32 color = screen->pixels[idx*3+0] + screen->pixels[idx*3+1] * 256 + screen->pi
 return color;
 }
 
-void DrawAlphaImagePixel(int x,int y,u32 color,Bitmap* screen, u8 alpha){
+void DrawAlphaImagePixel(int x,int y,u32 color,Bitmap* screen){
+u8 alpha = (((color) >> 24) & 0xFF);
 int idx = (x + (screen->height - y) * screen->width);
 float ratio = alpha / 255.0f;
 screen->pixels[idx*(screen->bitperpixel / 8)+0] = ((color & 0xFF) * ratio) + (screen->pixels[idx*(screen->bitperpixel / 8)+0] * (1.0 - ratio));
@@ -294,13 +259,12 @@ screen->pixels[idx*(screen->bitperpixel / 8)+2] = ((((color) >> 16) & 0xFF) * ra
 }
 
 void DrawImagePixel(int x,int y,u32 color,Bitmap* screen){
-	int idx = (x + (screen->height - y) * screen->width);
-	screen->pixels[idx*3+0] = (color);
-	screen->pixels[idx*3+1] = (color) >> 8;
-	screen->pixels[idx*3+2] = (color) >> 16;
+	int idx = (x + (screen->height - y) * screen->width)*3;
+	*(u32*)&(screen->pixels[idx]) = (((color) & 0x00FFFFFF) | ((*(u32*)&(screen->pixels[idx])) & 0xFF000000));
 }
 
-void Draw32bppImagePixel(int x,int y,u32 color,Bitmap* screen, u8 alpha){
+void Draw32bppImagePixel(int x,int y,u32 color,Bitmap* screen){
+u8 alpha = (((color) >> 24) & 0xFF);
 int idx = (x + (screen->height - y) * screen->width);
 float srcA = alpha / 255.0f;
 float outA = srcA + (screen->pixels[idx*4+3] / 255.0f) * (1 - srcA);
@@ -356,7 +320,7 @@ x++;
 }
 }
 
-void DrawAlphaScreenText(int x, int y, char* str, u32 color, int screen,int side,u8 alpha){
+void DrawAlphaScreenText(int x, int y, char* str, u32 color, int screen,int side){
 u8* buffer;
 if (screen == 0){
 if (side == 0) buffer = TopLFB;
@@ -388,7 +352,7 @@ unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
-DrawAlphaPixel(buffer, x+cx, y+cy, color, alpha);
+DrawAlphaPixel(buffer, x+cx, y+cy, color);
 }
 }
 x += glyphsize;
@@ -396,7 +360,7 @@ x++;
 }
 }
 
-void DrawAlphaImageText(int x, int y, char* str, u32 color, int screen, u8 alpha){
+void DrawAlphaImageText(int x, int y, char* str, u32 color, int screen){
 unsigned short* ptr;
 unsigned short glyphsize;
 int i, cx, cy;
@@ -423,7 +387,7 @@ unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
-DrawAlphaImagePixel(x+cx, y+cy, color, (Bitmap*)screen, alpha);
+DrawAlphaImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
 }
 }
 x += glyphsize;
@@ -431,7 +395,7 @@ x++;
 }
 }
 
-void Draw32bppImageText(int x, int y, char* str, u32 color, int screen, u8 alpha){
+void Draw32bppImageText(int x, int y, char* str, u32 color, int screen){
 unsigned short* ptr;
 unsigned short glyphsize;
 int i, cx, cy;
@@ -458,7 +422,7 @@ unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
 if (val & (1 << cx))
-Draw32bppImagePixel(x+cx, y+cy, color, (Bitmap*)screen, alpha);
+Draw32bppImagePixel(x+cx, y+cy, color, (Bitmap*)screen);
 }
 }
 x += glyphsize;
@@ -639,7 +603,7 @@ void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
-void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -653,7 +617,7 @@ void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alph
 	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
-			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen);
 			y1++;
 		}
 		y1 = base_y;
@@ -661,7 +625,7 @@ void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alph
 	}
 }
 
-void Fill32bppImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+void Fill32bppImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -675,7 +639,7 @@ void Fill32bppImageRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alph
 	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
-			Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
+			Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen);
 			y1++;
 		}
 		y1 = base_y;
@@ -710,7 +674,7 @@ void FillScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	}
 }
 
-void FillAlphaScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side,u8 alpha){
+void FillAlphaScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	u8* buffer;
 	if (screen == 0){
 		if (side == 0) buffer = TopLFB;
@@ -729,7 +693,7 @@ void FillAlphaScreenRect(int x1,int x2,int y1,int y2,u32 color,int screen,int si
 	int base_y = y1;
 	while (x1 <= x2){
 		while (y1 <= y2){
-			DrawAlphaPixel(buffer,x1,y1,color,alpha);
+			DrawAlphaPixel(buffer,x1,y1,color);
 			y1++;
 		}
 		y1 = base_y;
@@ -761,7 +725,7 @@ void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
-void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -774,18 +738,18 @@ void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8
 	}
 	int base_y = y1;
 	while (y1 <= y2){
-			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
-			DrawAlphaImagePixel(x2,y1,color,(Bitmap*)screen,alpha);
+			DrawAlphaImagePixel(x1,y1,color,(Bitmap*)screen);
+			DrawAlphaImagePixel(x2,y1,color,(Bitmap*)screen);
 			y1++;
 		}
 	while (x1 <= x2){
-		DrawAlphaImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
-		DrawAlphaImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
+		DrawAlphaImagePixel(x1,base_y,color,(Bitmap*)screen);
+		DrawAlphaImagePixel(x1,y2,color,(Bitmap*)screen);
 		x1++;
 	}
 }
 
-void Fill32bppImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8 alpha){
+void Fill32bppImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -798,13 +762,13 @@ void Fill32bppImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,u8
 	}
 	int base_y = y1;
 	while (y1 <= y2){
-		Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen,alpha);
-		Draw32bppImagePixel(x2,y1,color,(Bitmap*)screen,alpha);
+		Draw32bppImagePixel(x1,y1,color,(Bitmap*)screen);
+		Draw32bppImagePixel(x2,y1,color,(Bitmap*)screen);
 		y1++;
 		}
 	while (x1 <= x2){
-		Draw32bppImagePixel(x1,base_y,color,(Bitmap*)screen,alpha);
-		Draw32bppImagePixel(x1,y2,color,(Bitmap*)screen,alpha);
+		Draw32bppImagePixel(x1,base_y,color,(Bitmap*)screen);
+		Draw32bppImagePixel(x1,y2,color,(Bitmap*)screen);
 		x1++;
 	}
 }
@@ -838,7 +802,7 @@ void FillScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int si
 	}
 }
 
-void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side,u8 alpha){
+void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,int side){
 	u8* buffer;
 	if (screen == 0){
 		if (side == 0) buffer = TopLFB;
@@ -856,13 +820,13 @@ void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,i
 	}
 	int base_y = y1;
 	while (y1 <= y2){
-		DrawAlphaPixel(buffer,x1,y1,color,alpha);
-		DrawAlphaPixel(buffer,x2,y1,color,alpha);
+		DrawAlphaPixel(buffer,x1,y1,color);
+		DrawAlphaPixel(buffer,x2,y1,color);
 		y1++;
 	}
 	while (x1 <= x2){
-		DrawAlphaPixel(buffer,x1,base_y,color,alpha);
-		DrawAlphaPixel(buffer,x1,y2,color,alpha);
+		DrawAlphaPixel(buffer,x1,base_y,color);
+		DrawAlphaPixel(buffer,x1,y2,color);
 		x1++;
 	}
 }
@@ -941,9 +905,8 @@ Bitmap* loadPng(const char* filename)
 void linecpy(u8* screen,u16 x,u16 y,u16 width,u16 height, u8* image,u16 x_img,u16 y_img){
 	for (int i=y_img; i<y_img+height; i++){
 		for (int j=x_img; j<x_img+width; j++){
-			screen[(j+i*width)*3] = image[(j+i*width)*3];
-			screen[(j+i*width)*3+1] = image[(j+i*width)*3+1];
-			screen[(j+i*width)*3+2] = image[(j+i*width)*3+2];
+			u32 idx = (j+i*width)*3;
+			*(u32*)&(screen[idx]) = (((*(u32*)&(image[idx])) & 0x00FFFFFF) | ((*(u32*)&(screen[idx])) & 0xFF000000));
 		}
 	}
 }

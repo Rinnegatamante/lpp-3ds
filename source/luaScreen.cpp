@@ -55,12 +55,12 @@ static int lua_print(lua_State *L)
 	int side=0;
 	if (argc == 6) side = luaL_checkinteger(L,6);
 	if (screen > 1){ 
-	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen,alpha);
+	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen);
 	else if (alpha==255) DrawImageText(x,y,text,color,screen);
-	else DrawAlphaImageText(x,y,text,color,screen,alpha);
+	else DrawAlphaImageText(x,y,text,color,screen);
 	}else{ 
 	if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
-	else DrawAlphaScreenText(x,y,text,color,screen,side,alpha);
+	else DrawAlphaScreenText(x,y,text,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -315,12 +315,12 @@ static int lua_fillRect(lua_State *L)
 	int side=0;
 	if (argc == 7) side = luaL_checkinteger(L,7);
 	if (screen > 1){
-	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen,alpha);
+	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen);
 	else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
-	else FillAlphaImageRect(x1,x2,y1,y2,color,screen,alpha);
+	else FillAlphaImageRect(x1,x2,y1,y2,color,screen);
 	}else{
 	if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
-	else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side,alpha);
+	else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -340,12 +340,12 @@ static int lua_fillEmptyRect(lua_State *L)
 	int side=0;
 	if (argc == 7) side = luaL_checkinteger(L,7);
 	if (screen > 1){ 
-	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
+	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen);
 	else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
-	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen,alpha);
+	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen);
 	}else{
 	if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
-	else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side,alpha);
+	else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -363,9 +363,9 @@ static int lua_pixel(lua_State *L)
 	int side=0;
 	if (argc == 5) side = luaL_checkinteger(L,5);
 	if (screen > 1){
-	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen,alpha);
+	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
 	else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
-	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen,alpha);
+	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen);
 	}else{
 	u8* buffer;
 	if (screen == 0){
@@ -373,7 +373,7 @@ static int lua_pixel(lua_State *L)
 	else buffer = TopRFB;
 	}else if (screen == 1) buffer = BottomFB;
 	if (alpha == 255) DrawPixel(buffer,x,y,color);
-	else DrawAlphaPixel(buffer,x,y,color,alpha);
+	else DrawAlphaPixel(buffer,x,y,color);
 	}
 	gfxFlushBuffers();
 	return 0;
