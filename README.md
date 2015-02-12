@@ -26,7 +26,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br>- Native support to 3DSX homebrews and SMDH homebrew datas
 <br>- Native support to CIA archives
 <br>- Native support to ZIP archives
-<br>- Access to some 3DS system syscalls (Reboot System, Launching Cartiridges, etc.)
+<br>- Access to some 3DS syscalls (Reboot System, Launching Cartridges, etc.)
 <br><br>
 <b>Credits:</b><br>
 - Smealum for ctrulib<br>
