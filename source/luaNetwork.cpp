@@ -111,12 +111,87 @@ static int lua_downstring(lua_State *L){
 	return 1;
 }
 
+static int SpaceCounter(char* string){
+	int res=0;
+	while (*string){
+		if (string[0] == 0x20) res++;
+		string++;
+	}
+	return res;
+}
+
+static int lua_sendmail(lua_State *L){ //BETA func
+	int argc = lua_gettop(L);
+	if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	char* to = (char*)luaL_checkstring(L,1);
+	char* subj = (char*)luaL_checkstring(L,2);
+	char* mex = (char*)luaL_checkstring(L,3);
+	int req_size = 70;
+	int nss = SpaceCounter(subj);
+	int nsm = SpaceCounter(mex);
+	req_size = req_size + nss * 2 + nsm * 2 + strlen(subj) + strlen(mex) + strlen(to);
+	char* url = (char*)malloc(req_size);
+	strcpy(url,"http://rinnegatamante.netsons.org/tmp_mail_lpp_beta.php?t=");
+	strcat(url,to);
+	strcat(url,"&s=");
+	char* subj_p = subj;
+	char* url_p = &url[strlen(url)];
+	while (*subj_p){
+		if (subj_p[0] == 0x20){
+			url_p[0] = '%';
+			url_p++;
+			url_p[0] = '2';
+			url_p++;
+			url_p[0] = '0';
+		}else url_p[0] = subj_p[0];
+		url_p++;
+		subj_p++;
+	}
+	strcat(url,"&b=");
+	char* mex_p = mex;
+	url_p = &url[strlen(url)];
+	while (*mex_p){
+		if (mex_p[0] == 0x20){
+			url_p[0] = '%';
+			url_p++;
+			url_p[0] = '2';
+			url_p++;
+			url_p[0] = '0';
+		}else url_p[0] = mex_p[0];
+		url_p++;
+		mex_p++;
+	}
+	url_p[0] = 0;
+	httpcContext context;
+	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	if(ret==0){
+		httpcBeginRequest(&context);
+		httpcReqStatus loading;
+		httpcGetRequestState(&context, &loading);
+		while (loading != 0x7){
+			httpcGetRequestState(&context, &loading);
+		}
+		u32 statuscode=0;
+		u32 contentsize=0;
+		httpcGetResponseStatusCode(&context, &statuscode, 0);
+		if (statuscode != 200) luaL_error(L, "request error");
+		httpcGetDownloadSizeState(&context, NULL, &contentsize);
+		u8 response;
+		httpcDownloadData(&context, &response, contentsize, NULL);
+		lua_pushboolean(L,response);
+		free(url);
+	}else luaL_error(L, "error opening url");
+	httpcCloseContext(&context);
+	return 1;
+}
+
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
   {"isWifiEnabled",			lua_wifistat},
   {"getMacAddress",			lua_macaddr},
   {"downloadFile",			lua_download},
   {"requestString",			lua_downstring},
+  {"sendMail",				lua_sendmail},
   {0, 0}
 };
 
