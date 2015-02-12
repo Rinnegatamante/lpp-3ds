@@ -1,12 +1,12 @@
 BasicInfo:
-  Title                   : "BigRedMenu"
+  Title                   : "ORGANIZ3D"
   CompanyCode             : "00"
-  ProductCode             : "CTR-P-BGRM"
+  ProductCode             : "CTR-P-RGNZ"
   ContentType             : Application
   Logo                    : Nintendo # Nintendo / Licensed / Distributed / iQue / iQueForSystem
 
 TitleInfo:
-  UniqueId                : 0x1338
+  UniqueId                : 0x1337
   Category                : Application
   
 CardInfo:
@@ -167,7 +167,9 @@ AccessControlInfo:
    - ir:USER
    - ir:u
    - csnd:SND
+   - am:net
    - am:u
+   - ns:s
    
 SystemControlInfo:
   Dependency: 
