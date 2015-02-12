@@ -27,7 +27,7 @@
 #- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Sean Barrett for stb_truetype ---------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -124,6 +124,10 @@ int main(int argc, char **argv)
 							if(hidKeysDown() & KEY_A){
 								strcpy(cur_dir,start_dir);
 								restore=1;
+								if (isCSND){
+									CSND_shutdown();
+									isCSND = false;
+								}
 							}else if(hidKeysDown() & KEY_B){
 								restore=2;
 							}

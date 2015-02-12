@@ -348,7 +348,10 @@ static int lua_soundinit(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	CSND_initialize(NULL);
+	if (!isCSND){
+		CSND_initialize(NULL);
+		isCSND = true;
+	}
 	return 0;
 }
 
@@ -629,7 +632,10 @@ static int lua_soundend(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	CSND_shutdown();
+	if (isCSND){
+		CSND_shutdown();
+		isCSND = false;
+	}
 	return 0;
 }
 
@@ -758,7 +764,7 @@ int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	if (src->audiobuf2 == NULL) lua_pushinteger(L, 1);
-	else lua_pushinteger(L, 1);
+	else lua_pushinteger(L, 2);
 	return 1;
 }
 

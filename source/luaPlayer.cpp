@@ -43,6 +43,7 @@
 
 static lua_State *L;
 bool GW_MODE;
+bool isCSND;
 
 // Fake Sound Module for GW Mode to prevent interpreter error with generic scripts
 static int nil_func(lua_State *L){ return 0; }
@@ -87,6 +88,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 	}else{
 	GW_MODE = true;
 	}
+	isCSND = false;
 	
 	// Modules
 	luaSystem_init(L);
