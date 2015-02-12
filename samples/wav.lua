@@ -8,7 +8,7 @@ while true do
 	Controls.init()
 	pad = Controls.read()
 	if (Controls.check(pad,KEY_A)) then
-		Sound.closeWav(test)
+		Sound.close(test)
 		Sound.term()
 		System.exit()
 	end
