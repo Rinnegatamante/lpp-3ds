@@ -229,23 +229,24 @@ void DrawAlphaPixel(u8* screen, int x,int y, u32 color){
 }
 
 u32 GetPixel(int x,int y,int screen,int side){
-int idx = ((x)*240) + (239-(y));
-u32 color;
-if ((screen == 0) && (x < 400) && (y < 240) && (x >= 0) && (y >= 0)){
-if (side == 0){
-color = TopLFB[idx*3+0] + TopLFB[idx*3+1] * 256 + TopLFB[idx*3+2] * 256 * 256;
-}else{
-color = TopRFB[idx*3+0] + TopRFB[idx*3+1] * 256 + TopRFB[idx*3+2] * 256 * 256;
-}
-}else if((screen == 1) && (x < 320) && (y < 240) && (x >= 0) && (y >= 0)){
-color = BottomFB[idx*3+0] + BottomFB[idx*3+1] * 256 + BottomFB[idx*3+2] * 256 * 256;
-}
-return color;
+	int idx = (((x)*240) + (239-(y))) * 3;
+	u32 color;
+	if (screen == 0){
+		if (side == 0) color = (TopLFB[idx] & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+		else color = (TopRFB[idx] & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+	}else if(screen == 1) color = (BottomFB[idx] & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+	return color;
 }
 
 u32 GetImagePixel(int x,int y,Bitmap* screen){
-int idx = (x + (screen->height - y) * screen->width);
-u32 color = screen->pixels[idx*3+0] + screen->pixels[idx*3+1] * 256 + screen->pixels[idx*3+2] * 256 * 256;
+	u32 color;
+	if (screen->bitperpixel == 24){
+		int idx = (x + (screen->height - y) * screen->width)*3;
+		color = ((*(u32*)&(screen->pixels[idx])) & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+	}else{ 
+		int idx = (x + (screen->height - y) * screen->width)*4;
+		color = *(u32*)&(screen->pixels[idx]);
+	}
 return color;
 }
 
