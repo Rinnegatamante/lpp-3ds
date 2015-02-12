@@ -88,11 +88,35 @@ static int lua_download(lua_State *L){
 	return 0;
 }
 
+static int lua_downstring(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char* url = luaL_checkstring(L,1);
+	httpcContext context;
+	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	if(ret==0){
+		httpcBeginRequest(&context);
+		u32 statuscode=0;
+		u32 contentsize=0;
+		httpcGetResponseStatusCode(&context, &statuscode, 0);
+		if (statuscode != 200) luaL_error(L, "request error");
+		httpcGetDownloadSizeState(&context, NULL, &contentsize);
+		unsigned char *buffer = (unsigned char*)malloc(contentsize+1);
+		httpcDownloadData(&context, buffer, contentsize, NULL);
+		buffer[contentsize] = 0;
+		lua_pushlstring(L,(const char*)buffer,contentsize);
+		free(buffer);
+	}else luaL_error(L, "error opening url");
+	httpcCloseContext(&context);
+	return 1;
+}
+
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
   {"isWifiEnabled",			lua_wifistat},
   {"getMacAddress",			lua_macaddr},
   {"downloadFile",			lua_download},
+  {"requestString",			lua_downstring},
   {0, 0}
 };
 
