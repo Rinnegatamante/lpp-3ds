@@ -1,3 +1,4 @@
+<b>Description:</b><br>
 This is the official repository for Lua Player Plus, the first lua interpreter for 3DS made by Rinnegatamante & NaNNi.
 <br><br>
 The interpreter runs under LUA 5.3.0 and is a strict porting of our Lua Player Plus for PSP/PSVITA.
@@ -8,12 +9,31 @@ If you're using a Gateway please note that you cannot use Sound Module (it will 
 Official support board: http://luaplayerplus.proboards.com<br>
 Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.html
 <br><br>
-Credits:<br>
-Smealum for ctrulib<br>
-StapleButter for debug font<br>
-Lode Vandevenne for lodepng<br>
-Jean-loup Gailly and Mark Adler for zlib<br>
-Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
+<b>Interpreter features:</b>
+<br>- 2D Graphics system with different built-in functions for drawing text, creating debug consoles, filling rectangles, drawing pixels, etc.
+<br>- Alpha channel support
+<br>- Native support to BMP/PNG/JPG images
+<br>- Sound system for reproducing audio files and recording audio with microphone
+<br>- Native support to WAV/AIFF audio files
+<br>- Complete access to Nintendo 3DS controls
+<br>- I/O features for SDMC and EXTDATA
+<br>- Video system for reproducing video files with native support to BMPV/JPGV video files
+<br>- Timer system
+<br>- Advanced arithmetical functions
+<br>- Internet connectivity features through Network module (Like downloading files)
+<br>- Read access to different 3DS info (Firmware, Mac Address, Kernel Version, Region, etc.)
+<br>- Built-in Keyboard system
+<br>- Native support to 3DSX homebrews and SMDH homebrew datas
+<br>- Native support to CIA archives
+<br>- Native support to ZIP archives
+<br>- Access to some 3DS system syscalls (Reboot System, Launching Cartiridges, etc.)
+<br><br>
+<b>Credits:</b><br>
+- Smealum for ctrulib<br>
+- StapleButter for debug font<br>
+- Lode Vandevenne for lodepng<br>
+- Jean-loup Gailly and Mark Adler for zlib<br>
+- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
 <br><br>
 NOTE: BMPV video format is a RAW video format created by me with the help of Aurelio.<br>
 More info about this format and a simple converter coded in VB.NET can be found in "BMPV" folder of this repository.<br><br>
