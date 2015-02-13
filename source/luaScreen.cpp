@@ -326,6 +326,32 @@ static int lua_fillRect(lua_State *L)
 	return 0;
 }
 
+
+static int lua_drawline(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
+	int screen = luaL_checkinteger(L,6);
+	int side=0;
+	if (argc == 7) side = luaL_checkinteger(L,7);
+	if (screen > 1){
+	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageLine(x1,y1,x2,y2,color,screen);
+	else if (alpha==255) DrawImageLine(x1,y1,x2,y2,color,screen);
+	else DrawAlphaImageLine(x1,y1,x2,y2,color,screen);
+	}else{
+	if (alpha==255) DrawScreenLine(x1,y1,x2,y2,color,screen,side);
+	else DrawAlphaScreenLine(x1,y1,x2,y2,color,screen,side);
+	}
+	gfxFlushBuffers();
+	return 0;
+}
+
 static int lua_fillEmptyRect(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -552,6 +578,7 @@ static const luaL_Reg Screen_functions[] = {
   {"getImageWidth",					lua_getWidth},
   {"getImageHeight",				lua_getHeight},  
   {"drawPartialImage",				lua_partial},  
+  {"drawLine",						lua_drawline},  
   {0, 0}
 };
 

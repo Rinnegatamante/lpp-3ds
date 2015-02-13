@@ -843,6 +843,211 @@ void ClearScreen(int screen){
 	}
 }
 
+void DrawScreenLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+{
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    DrawPixel(buffer, x0, y0, color);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            DrawPixel(buffer, x0, y0, color);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            DrawPixel(buffer, x0, y0, color);
+        }
+    }
+}
+
+void DrawAlphaScreenLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+{
+	u8* buffer;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else buffer = TopRFB;
+	}else if (screen == 1) buffer = BottomFB;
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    DrawAlphaPixel(buffer, x0, y0, color);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            DrawAlphaPixel(buffer, x0, y0, color);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            DrawAlphaPixel(buffer, x0, y0, color);
+        }
+    }
+}
+
+void DrawAlphaImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+{
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    DrawAlphaImagePixel(x0, y0, color, (Bitmap*)screen);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            DrawAlphaImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            DrawAlphaImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    }
+}
+
+void Draw32bppImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+{
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    Draw32bppImagePixel(x0, y0, color, (Bitmap*)screen);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            Draw32bppImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            Draw32bppImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    }
+}
+
+void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+{
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    }
+}
+
 Bitmap* loadPng(const char* filename)
 {
 	Handle fileHandle;

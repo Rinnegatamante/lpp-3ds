@@ -73,6 +73,11 @@ void FillAlphaScreenEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen,i
 void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen);
 void FillAlphaImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen);
 void ClearScreen(int screen);
+void DrawScreenLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side);
+void DrawAlphaScreenLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side);
+void Draw32bppImageLine(int x0, int y0, int x1, int y1, u32 color, int screen);
+void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen);
+void DrawAlphaImageLine(int x0, int y0, int x1, int y1, u32 color, int screen);
 u32 GetPixel(int x,int y,int screen,int side);
 u32 GetImagePixel(int x,int y,Bitmap* screen);
 Bitmap* loadPng(const char* filename);
