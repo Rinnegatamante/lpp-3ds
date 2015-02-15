@@ -738,8 +738,8 @@ static int lua_getTotalTime(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
-	u32 result = (src->size - src->startRead) / (src->bytepersample * src->samplerate);
-	lua_pushinteger(L, result);
+	if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size*2) - src->startRead) / (src->bytepersample * src->samplerate));
+	else lua_pushinteger(L,(src->size - src->startRead) / (src->bytepersample * src->samplerate));
 	return 1;
 }
 
