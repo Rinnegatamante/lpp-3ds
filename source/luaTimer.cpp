@@ -69,8 +69,10 @@ static int lua_pause(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
-	src->isPlaying = false;
-	src->tick = (osGetTime()-src->tick);
+	if (src->isPlaying){
+		src->isPlaying = false;
+		src->tick = (osGetTime()-src->tick);
+	}
 	return 0;
 }
 
@@ -79,8 +81,20 @@ static int lua_resume(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
-	src->isPlaying = true;
-	src->tick = (osGetTime()-src->tick);
+	if (!src->isPlaying){
+		src->isPlaying = true;
+		src->tick = (osGetTime()-src->tick);
+	}
+	return 0;
+}
+
+static int lua_reset(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	Timer* src = (Timer*)luaL_checkinteger(L, 1);
+	if (src->isPlaying) src->tick = osGetTime();
+	else src->tick = 0;
 	return 0;
 }
 
@@ -107,6 +121,7 @@ static const luaL_Reg Timer_functions[] = {
   {"destroy",						lua_destroy},
   {"pause",							lua_pause},
   {"resume",						lua_resume},
+  {"reset",							lua_reset},
   {"isPlaying",						lua_wisPlaying},
   {0, 0}
 };
