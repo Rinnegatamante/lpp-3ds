@@ -84,6 +84,13 @@ static int lua_circlepad(lua_State *L)
         return 2;
 }
 
+static int lua_headset(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushboolean(L,*(u8*)0x1FF810C0);
+	return 1;
+}
+
 static int lua_touchpad(lua_State *L)
 {
         if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
@@ -123,7 +130,8 @@ static const luaL_Reg Controls_functions[] = {
   {"readCirclePad",						lua_circlepad},	
   {"readTouch",							lua_touchpad},	
   {"readCstickPad",						lua_cstickpad},	
-  {"getVolume",							lua_volume},	
+  {"getVolume",							lua_volume},
+  {"headsetStatus",						lua_headset},	  
   {0, 0}
 };
 
