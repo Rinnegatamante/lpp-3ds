@@ -66,6 +66,11 @@ static int lua_download(lua_State *L){
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
 		httpcBeginRequest(&context);
+		httpcReqStatus loading;
+		httpcGetRequestState(&context, &loading);
+		while (loading != 0x7){
+			httpcGetRequestState(&context, &loading);
+		}
 		u32 statuscode=0;
 		u32 contentsize=0;
 		httpcGetResponseStatusCode(&context, &statuscode, 0);
@@ -96,6 +101,11 @@ static int lua_downstring(lua_State *L){
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
 		httpcBeginRequest(&context);
+		httpcReqStatus loading;
+		httpcGetRequestState(&context, &loading);
+		while (loading != 0x7){
+			httpcGetRequestState(&context, &loading);
+		}
 		u32 statuscode=0;
 		u32 contentsize=0;
 		httpcGetResponseStatusCode(&context, &statuscode, 0);
