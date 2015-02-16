@@ -1255,6 +1255,16 @@ static int lua_startcard(lua_State *L) {
 	return 0;
 }
 
+static int lua_freespace(lua_State *L) {
+int argc = lua_gettop(L);
+if (argc != 0) return luaL_error(L, "wrong number of arguments");
+u32 freeBlocks;
+u32 blockSize;
+FSUSER_GetSdmcArchiveResource(NULL, NULL, &blockSize, NULL, &freeBlocks);
+lua_pushnumber(L,freeBlocks*blockSize);
+return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1289,6 +1299,7 @@ static const luaL_Reg System_functions[] = {
   {"checkStatus",			lua_appstatus},
   {"reboot",				lua_reboot},
   {"launchGamecard",		lua_startcard},
+  {"getFreeSpace",			lua_freespace},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
