@@ -196,18 +196,14 @@ int x, y;
 if (result->bitperpixel == 24){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-			flip_bitmap[(x + y * result->width)*3] = result->pixels[(x + (result->height - y - 1) * result->width)*3];
-			flip_bitmap[(x + y * result->width)*3 + 1] = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 1];
-			flip_bitmap[(x + y * result->width)*3 + 2] = result->pixels[(x + (result->height - y - 1) * result->width)*3 + 2];
+			int idx = (x+y * result->width)*3;
+			*(u32*)(&(flip_bitmap[idx])) = ((*(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]) & 0x00FFFFFF) | (*(u32*)(&(flip_bitmap[idx])) & 0xFF000000));
 		}
 	}
 }else if(result->bitperpixel == 32){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
-			flip_bitmap[(x + y * result->width)*4] = result->pixels[(x + (result->height - y - 1) * result->width)*4];
-			flip_bitmap[(x + y * result->width)*4 + 1] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 1];
-			flip_bitmap[(x + y * result->width)*4 + 2] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 2];
-			flip_bitmap[(x + y * result->width)*4 + 3] = result->pixels[(x + (result->height - y - 1) * result->width)*4 + 3];
+			*(u32*)(&(flip_bitmap[(x+y * result->width)*4])) = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
 		}
 	}
 }
@@ -931,7 +927,7 @@ void DrawAlphaScreenLine(int x0, int y0, int x1, int y1, u32 color, int screen, 
     }
 }
 
-void DrawAlphaImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+void DrawAlphaImageLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 {
     int dy = y1 - y0;
     int dx = x1 - x0;
@@ -970,7 +966,7 @@ void DrawAlphaImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, i
     }
 }
 
-void Draw32bppImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+void Draw32bppImageLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 {
     int dy = y1 - y0;
     int dx = x1 - x0;
@@ -1009,7 +1005,7 @@ void Draw32bppImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, i
     }
 }
 
-void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen, int side)
+void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 {
     int dy = y1 - y0;
     int dx = x1 - x0;
