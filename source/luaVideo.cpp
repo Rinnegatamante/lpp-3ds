@@ -42,7 +42,7 @@
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
-int MAX_RAM_ALLOCATION = 1048576;
+int MAX_RAM_ALLOCATION = 524288;
 
 struct BMPV{
 	Handle sourceFile;
@@ -311,8 +311,7 @@ int argc = lua_gettop(L);
 				}
 			}
 			if (!GW_MODE){
-			if (src->audiobuf2 == NULL){
-				
+			if (src->audiobuf2 == NULL){				
 					FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
 					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 			}else{
