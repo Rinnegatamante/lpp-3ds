@@ -167,7 +167,6 @@ AccessControlInfo:
    - ir:USER
    - ir:u
    - csnd:SND
-   - am:net
    - am:u
    - ns:s
    
