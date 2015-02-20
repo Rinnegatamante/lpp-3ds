@@ -124,15 +124,15 @@ int main(int argc, char **argv)
 							if(hidKeysDown() & KEY_A){
 								strcpy(cur_dir,start_dir);
 								restore=1;
-								if (isCSND){
-									CSND_shutdown();
-									isCSND = false;
-								}
 							}else if(hidKeysDown() & KEY_B){
 								restore=2;
 							}
 							gfxFlushBuffers();
 							gfxSwapBuffers();
+						}
+						if (isCSND){
+							CSND_shutdown();
+							isCSND = false;
 						}
 						if (restore==2){
 							break;
