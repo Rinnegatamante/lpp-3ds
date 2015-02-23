@@ -1198,6 +1198,50 @@ static int lua_ZipExtract(lua_State *L) {
 	return 1;
 }
 
+static int lua_RarExtract(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 2)
+		return luaL_error(L, "wrong number of arguments.");
+	const char *FileToExtract = luaL_checkstring(L, 1);
+	const char *DirTe = luaL_checkstring(L, 2);
+	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FS_path TEMP_PATH=FS_makePath(PATH_CHAR, DirTe);
+	FSUSER_CreateDirectory(NULL,sdmcArchive,TEMP_PATH);
+	char tmpFile2[1024];
+	char tmpPath2[1024];
+	sdmcInit();
+	strcpy(tmpPath2,"sdmc:");
+	strcat(tmpPath2,(char*)DirTe);
+	chdir(tmpPath2);
+	strcpy(tmpFile2,"sdmc:");
+	strcat(tmpFile2,(char*)FileToExtract);
+	unrar_t* inp;
+	unrar_open( &inp, tmpFile2 );
+	Handle fileHandle;
+	u32 bytesWritten;
+	while (!unrar_done(inp)){
+		unrar_info_t* file_info = (unrar_info_t*)malloc(sizeof(unrar_info_t));
+		file_info = (unrar_info_t*)unrar_info(inp);
+		u8* buffer = (u8*)malloc(file_info->size);
+		unrar_extract(inp, buffer, file_info->size);
+		char fname[256];
+		strcpy(fname,DirTe);
+		strcat(fname,file_info->name);
+		FS_path filePath=FS_makePath(PATH_CHAR, fname);
+		FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		FSFILE_Write(fileHandle, &bytesWritten, 0, buffer, file_info->size, 0x10001);
+		FSFILE_Close(fileHandle);
+		free(buffer);
+		free(file_info);
+		unrar_next(inp);
+	}
+	unrar_close(inp);
+	sdmcExit();
+	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	return 0;
+}
+
 static int lua_model(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
@@ -1322,6 +1366,7 @@ static const luaL_Reg System_functions[] = {
   {"extractCIA",			lua_ciainfo},
   {"getRegion",				lua_getRegion},
   {"extractZIP",			lua_ZipExtract},
+  {"extractRAR",			lua_RarExtract},
   {"getModel",				lua_model},
   {"showHomeMenu",			lua_syscall1},
   {"checkStatus",			lua_appstatus},

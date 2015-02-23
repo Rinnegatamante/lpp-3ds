@@ -65,6 +65,7 @@ extern "C" {
  */
 
 #include "zlib.h"
+#include "unrar/unrar.h"
 
 /**
  * A zip
