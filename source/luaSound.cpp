@@ -67,8 +67,8 @@ static int lua_openwav(lua_State *L)
     int argc = lua_gettop(L);
     if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1);
-	bool mem_size = false;
-	if (argc == 2) mem_size = lua_toboolean(L, 2);
+	u32 mem_size = 0;
+	if (argc == 2) mem_size = luaL_checkinteger(L, 2);
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
@@ -136,23 +136,19 @@ static int lua_openwav(lua_State *L)
 		wav_file->mem_size = mem_size;
 		wav_file->samplerate = samplerate;
 		if (audiotype == 1){
-			if (mem_size){
+			if (mem_size > 0){
 				wav_file->moltiplier = 1;
 				wav_file->isPlaying = false;
-				u32 buf_size = size-(pos+4);
-				while (buf_size > STREAM_MAX_ALLOC){
-					buf_size = buf_size / 2;
-				}
-				wav_file->mem_size = buf_size;
+				wav_file->mem_size = (size-(pos+4))/mem_size;
 				wav_file->sourceFile = fileHandle;
 				wav_file->startRead = (pos+4);
 				if (raw_enc == 0x11){ // ADPCM Decoding
-					u32 buffer_headers_num = (buf_size) / wav_file->bytepersample;
-					u8* tmp_audiobuf = (u8*)linearAlloc(buf_size);
-					FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, buf_size);
-					wav_file->audiobuf = (u8*)linearAlloc(buf_size-buffer_headers_num*4);
+					u32 buffer_headers_num = (wav_file->mem_size) / wav_file->bytepersample;
+					u8* tmp_audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+					FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, wav_file->mem_size);
+					wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size-buffer_headers_num*4);
 					int z=0,i=0;
-					while (i < buf_size){
+					while (i < wav_file->mem_size){
 						wav_file->audiobuf[z] = tmp_audiobuf[i];
 						z++;
 						i++;
@@ -160,8 +156,8 @@ static int lua_openwav(lua_State *L)
 					}
 					linearFree(tmp_audiobuf);
 				}else{ // PCM-16 Decoding
-					wav_file->audiobuf = (u8*)linearAlloc(buf_size);
-					FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, buf_size);
+					wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+					FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, wav_file->mem_size);
 				}
 				wav_file->audiobuf2 = NULL;
 				wav_file->size = size;
@@ -201,11 +197,7 @@ static int lua_openwav(lua_State *L)
 				wav_file->isPlaying = false;
 				wav_file->startRead = (pos+4);
 				wav_file->size = size;
-				u32 buf_size = size-(pos+4);
-				while (buf_size > STREAM_MAX_ALLOC){
-					buf_size = buf_size / 2;
-				}
-				wav_file->mem_size = buf_size;
+				wav_file->mem_size = (size-(pos+4))/mem_size;
 				tmp_buffer = (u8*)linearAlloc(wav_file->mem_size);
 				wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size/2);
 				wav_file->audiobuf2 = (u8*)linearAlloc(wav_file->mem_size/2);
