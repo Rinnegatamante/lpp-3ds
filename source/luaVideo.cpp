@@ -43,6 +43,7 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
 int MAX_RAM_ALLOCATION = 524288;
+int MAX_RAM_ALLOCATION_44100 = 524288*2;
 
 struct BMPV{
 	Handle sourceFile;
@@ -136,7 +137,10 @@ int argc = lua_gettop(L);
 	src->currentFrame = 0;
 	u32 bytesRead;
 	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
-		while(src->mem_size > MAX_RAM_ALLOCATION){
+		u32 BLOCK_SIZE;
+		if (src->samplerate >= 44100) BLOCK_SIZE = MAX_RAM_ALLOCATION_44100;
+		else BLOCK_SIZE = MAX_RAM_ALLOCATION;
+		while(src->mem_size > BLOCK_SIZE){
 			src->mem_size = src->mem_size / 2;
 		}
 		if (src->audiotype == 1){
@@ -602,6 +606,58 @@ int argc = lua_gettop(L);
 	return 0;
 }
 
+static int lua_JPGVshowFrame(lua_State *L){
+int argc = lua_gettop(L);
+    if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
+	u16 x = luaL_checkinteger(L, 1);
+	u16 y = luaL_checkinteger(L, 2);
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 3);
+	u32 frame_index = luaL_checkinteger(L, 4);
+	u8 screen = luaL_checkinteger(L, 5);
+	int side = 0;
+	if (argc == 6){
+	side = luaL_checkinteger(L,6);
+	}
+	u32 bytesRead;
+	u64 offset;
+	u64 size;
+	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(frame_index*8), &offset, 8);
+	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index+1)*8), &size, 8);
+	size = size - offset;
+	unsigned char* frame = (unsigned char*)malloc(size);
+	FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+	Bitmap* tmp_framebuf = decodeJpg(frame, size);
+	free(frame);
+	RAW2FB(x,y,tmp_framebuf,screen,side);
+	return 0;
+}
+
+static int lua_BMPVshowFrame(lua_State *L){
+int argc = lua_gettop(L);
+    if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
+	u16 x = luaL_checkinteger(L, 1);
+	u16 y = luaL_checkinteger(L, 2);
+	BMPV* src = (BMPV*)luaL_checkinteger(L, 3);
+	u32 frame_index = luaL_checkinteger(L, 4);
+	u8 screen = luaL_checkinteger(L, 5);
+	int side = 0;
+	if (argc == 6){
+	side = luaL_checkinteger(L,6);
+	}
+	u32 bytesRead;
+	Bitmap bitmap;
+	bitmap.width = src->width;
+	bitmap.height = src->height;
+	bitmap.bitperpixel = 24;
+	u32 frame_size = src->width * src->height * 3;
+	u8* tmp_buffer;
+	FSFILE_Read(src->sourceFile, &bytesRead, 28+src->audio_size+(src->currentFrame*frame_size), tmp_buffer, frame_size);
+	bitmap.pixels = tmp_buffer;
+	PrintScreenBitmap(x,y,&bitmap,screen,side);
+	free(bitmap.pixels);
+	return 0;
+}
+
 static int lua_getFPS(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -819,6 +875,7 @@ static const luaL_Reg BMPV_functions[] = {
   {"unload",			lua_unloadBMPV},
   {"getFPS",			lua_getFPS},
   {"getFrame",			lua_getCF},
+  {"showFrame",			lua_BMPVshowFrame},
   {"getSize",			lua_getSize},
   {"getSrate",			lua_getSrate},
   {"isPlaying",			lua_isPlaying},
@@ -836,6 +893,7 @@ static const luaL_Reg JPGV_functions[] = {
   {"unload",			lua_unloadJPGV},
   {"getFPS",			lua_getFPS2},
   {"getFrame",			lua_getCF2},
+  {"showFrame",			lua_JPGVshowFrame},
   {"getSize",			lua_getSize2},
   {"getSrate",			lua_getSrate2},
   {"isPlaying",			lua_isPlaying2},
