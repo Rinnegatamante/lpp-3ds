@@ -1336,6 +1336,61 @@ static int lua_launchCia(lua_State *L){
 	return 0;
 }
 
+static int lua_gettime(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u64 time = (osGetTime() / 1000) % 86400;
+	u8 hours = time / 3600;
+	u8 minutes = (time % 3600) / 60;
+	u8 seconds = time % 60;
+	lua_pushinteger(L,hours);
+	lua_pushinteger(L,minutes);
+	lua_pushinteger(L,seconds);
+	return 3;
+}
+
+u32 month_seconds[4] = {2592000,2419200,2678400,2505600}; // 30-28-31-29 days
+u8 day_values[7] = {4,5,6,7,1,2,3};
+
+static int lua_getdate(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u64 time = (osGetTime() / 1000) - 3629059200; // Time from 1st January 2015
+	u32 day_value = ((time / 86400) % 7);
+	u32 year = 2015;
+	u8 day = 1;
+	u8 month = 1;
+	u32 control;
+	if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) control = 31622400;
+	else control = 31536000;
+	while (time > control){
+		year = year + 1;
+		time = time - control;
+		if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) control = 31622400;
+		else control = 31536000;
+	}
+	bool extended = false;
+	if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) extended = true;
+	control = month_seconds[2];
+	while (time > control){
+		month = month + 1;
+		time = time - control;
+		if ((month == 11) || (month == 4) || (month == 6) || (month == 9)) control = month_seconds[0];
+		else if (month == 2){
+			if (extended) control = month_seconds[3];
+			else control = month_seconds[1];
+		}else{
+		control = month_seconds[2];
+		}
+	}
+	day = day + time / 86400;
+	lua_pushinteger(L,day_values[day_value]);
+	lua_pushinteger(L,day);
+	lua_pushinteger(L,month);
+	lua_pushinteger(L,year);
+	return 4;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1373,6 +1428,8 @@ static const luaL_Reg System_functions[] = {
   {"reboot",				lua_reboot},
   {"launchGamecard",		lua_startcard},
   {"getFreeSpace",			lua_freespace},
+  {"getTime",				lua_gettime},
+  {"getDate",				lua_getdate},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
