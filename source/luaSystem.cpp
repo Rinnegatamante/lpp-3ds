@@ -172,6 +172,14 @@ static int lua_isGW(lua_State *L)
 	return 1;
 }
 
+static int lua_is3DSX(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushboolean(L,is3DSX);
+	return 1;
+}
+
 static int lua_getRegion(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -1107,7 +1115,7 @@ static int lua_listCia(lua_State *L){
 		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushinteger(L, 1);
 		else if(((TitleIDs[i-1].category) & 0x6) == 0x6) lua_pushinteger(L, 3);
 		else if(((TitleIDs[i-1].category) & 0x2) == 0x2) lua_pushinteger(L, 2);
-		else lua_pushnumber(L, 0);
+		else lua_pushinteger(L, 0);
 		lua_settable(L, -3);
 		lua_settable(L, -3);
 		i++;
@@ -1245,7 +1253,9 @@ static int lua_RarExtract(lua_State *L) {
 static int lua_model(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
-	lua_pushinteger(L,*((u8*)0x1FF81066)); // 0 = 3DS | 3 = N3DS
+	u8 model;
+	CFGU_GetSystemModel(&model);
+	lua_pushinteger(L,model);
 	return 1;
 }
 	
@@ -1293,10 +1303,38 @@ return (Result)cmdbuf[1];
 static int lua_startcard(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
-	srvGetServiceHandle(&nsHandle, "ns:s"); 
-	NS_RebootToTitle(mediatype_GAMECARD,0);
-	svcCloseHandle(nsHandle);
+	amInit();
+	char product_id[16];
+	AM_GetTitleProductCode(mediatype_GAMECARD, 0, product_id);
+	amExit();
+	if (product_id[0] == 'C' and product_id[1] == 'T' and product_id[2] == 'R'){
+		u8 buf0[0x300];
+		u8 buf1[0x20];
+		memset(buf0, 0, 0x300);
+		memset(buf1, 0, 0x20);
+		aptOpenSession();
+		APT_PrepareToDoAppJump(NULL, 0, 0, mediatype_GAMECARD);
+		APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
+		aptCloseSession();
+	}else{
+		srvGetServiceHandle(&nsHandle, "ns:s"); 
+		NS_RebootToTitle(mediatype_GAMECARD,0);
+		svcCloseHandle(nsHandle);
+	}
+	for (;;){}
 	return 0;
+}
+
+static int lua_getcard(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	amInit();
+	char product_id[16];
+	AM_GetTitleProductCode(mediatype_GAMECARD, 0, product_id);
+	amExit();
+	if (product_id[0] == 'C' and product_id[1] == 'T' and product_id[2] == 'R') lua_pushstring(L,product_id);
+	else lua_pushstring(L,"");
+	return 1;
 }
 
 static int lua_freespace(lua_State *L) {
@@ -1312,11 +1350,12 @@ return 1;
 static int lua_launchCia(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	u32 delete_id = luaL_checknumber(L,1);
-	u32 mediatype = luaL_checknumber(L,2);
+	u32 delete_id = luaL_checkinteger(L,1);
+	u32 mediatype = luaL_checkinteger(L,2);
 	mediatypes_enum media;
 	if (mediatype == 1) media = mediatype_SDMC;
-	else media = mediatype_NAND;
+	else if (mediatype == 0) media = mediatype_NAND;
+	else media = mediatype_GAMECARD;
 	amInit();
 	u32 cia_nums;
 	AM_GetTitleCount(media, &cia_nums);
@@ -1333,6 +1372,7 @@ static int lua_launchCia(lua_State *L){
 	APT_PrepareToDoAppJump(NULL, 0, id, mediatype);
 	APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
 	aptCloseSession();
+	for (;;){}
 	return 0;
 }
 
@@ -1395,7 +1435,9 @@ static int lua_getdate(lua_State *L){
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {"getFirmware",			lua_getFW},
+  {"getGWRomID",			lua_getcard},
   {"isGWMode",				lua_isGW},
+  {"is3DSXMode",			lua_is3DSX},
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
   {"currentDirectory",		lua_curdir},
