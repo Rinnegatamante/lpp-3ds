@@ -41,6 +41,8 @@ const char *errMsg;
 unsigned char *buffer;
 char cur_dir[256];
 char start_dir[256];
+bool is3DSX;
+
 int main(int argc, char **argv)
 {
 	srvInit();	
@@ -61,10 +63,12 @@ int main(int argc, char **argv)
 	u64 size;
 	u32 bytesRead;
 	int restore;
+	bool is3DSX = false;
 	
 	// Set main script
 	char path[256];
-	if (argc > 0){	
+	if (argc > 0){
+		is3DSX = true;
 		int latest_slash = 0;
 		int i=5;
 		while (argv[0][i]  != '\0'){

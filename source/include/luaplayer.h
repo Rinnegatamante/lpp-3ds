@@ -57,6 +57,7 @@ void luaNetwork_init(lua_State *L);
 void stackDump (lua_State *L);
 
 extern bool GW_MODE;
+extern bool is3DSX;
 extern bool isCSND;
 extern char cur_dir[256];
 
