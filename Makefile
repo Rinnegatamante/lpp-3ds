@@ -33,7 +33,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/include/lua	source	source/include/lodepng/	source/include/unrar/	source/include/libjpeg
+SOURCES		:=	source/include/lua	source	source/include/ftp	source/include/lodepng/	source/include/unrar/	source/include/libjpeg
 DATA		:=	data
 INCLUDES	:=	include
 

@@ -31,35 +31,56 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-#ifndef __LUAPLAYER_H
-#define __LUAPLAYER_H
-
 #include <stdlib.h>
-//#include <tdefs.h> //Not needed for compilation via Ubuntu (complains it's missing)
-#include "lua/lua.hpp"
+#include <string.h>
+#include <unistd.h>
+#include <3ds.h>
+#include "include/luaplayer.h"
+#include "include/ftp/ftp.h"
 
-extern void luaC_collectgarbage (lua_State *L);
+static int connfd;
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+static int lua_initFTP(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    ftp_init();
+	connfd = -1;
+    return 0;
+}
 
-const char *runScript(const char* script, bool isStringBuffer);
-void luaC_collectgarbage (lua_State *L);
+static int lua_termFTP(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    ftp_exit();
+    return 0;
+}
 
-void luaScreen_init(lua_State *L);
-void luaControls_init(lua_State *L);
-void luaSystem_init(lua_State *L);
-void luaTimer_init(lua_State *L);
-void luaSound_init(lua_State *L);
-void luaSocket_init(lua_State *L);
-void luaVideo_init(lua_State *L);
-void luaNetwork_init(lua_State *L);
+static int lua_checkFTPcommand(lua_State *L){
+	int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if(connfd<0)connfd=ftp_getConnection();
+		else{
+			int ret=ftp_frame(connfd);
+			if(ret==1)
+			{
+				sprintf(shared_ftp,"Client has disconnected. Wait for next client...");
+				connfd=-1;
+			}
+	}
+	lua_pushstring(L, shared_ftp);
+	return 1;
+}
 
-void stackDump (lua_State *L);
+//Register our Socket Functions
+static const luaL_Reg Socket_functions[] = {
+  {"initFTP",						lua_initFTP},
+  {"termFTP",						lua_termFTP},
+  {"updateFTP",						lua_checkFTPcommand},
+  {0, 0}
+};
 
-extern bool GW_MODE;
-extern bool is3DSX;
-extern bool isCSND;
-extern char cur_dir[256];
-
-#endif
+void luaSocket_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Socket_functions, 0);
+	lua_setglobal(L, "Socket");
+}
