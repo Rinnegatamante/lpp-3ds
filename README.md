@@ -20,7 +20,8 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br>- Video system for reproducing video files with native support to BMPV/JPGV video files
 <br>- Timer system
 <br>- Advanced arithmetical functions
-<br>- Internet connectivity features through Network module (Like downloading files)
+<br>- Internet connectivity features through Network module (Like downloading files, sending mails)
+<br>- Socketing functions (Like FTP server)
 <br>- Read access to different 3DS info (Firmware, Mac Address, Kernel Version, Region, etc.)
 <br>- Built-in Keyboard system
 <br>- Native support to 3DSX homebrews and SMDH homebrew datas
@@ -29,7 +30,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br>- Access to some 3DS syscalls (Reboot System, Launching Cartridges, etc.)
 <br><br>
 <b>Credits:</b><br>
-- Smealum for ctrulib<br>
+- Smealum for ctrulib and ftpony src<br>
 - StapleButter for debug font<br>
 - Lode Vandevenne for lodepng<br>
 - Jean-loup Gailly and Mark Adler for zlib<br>
