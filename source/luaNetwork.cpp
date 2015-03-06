@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
@@ -54,6 +54,16 @@ static int lua_macaddr(lua_State *L){
 	sprintf(mac_address,"%02X:%02X:%02X:%02X:%02X:%02X",*mac_byte,*(mac_byte+1),*(mac_byte+2),*(mac_byte+3),*(mac_byte+4),*(mac_byte+5));
 	mac_address[17] = 0;
 	lua_pushstring(L,mac_address);
+	return 1;
+}
+
+static int lua_ipaddr(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u32 ip=(u32)gethostid();
+	char ip_address[64];
+	sprintf(ip_address,"%lu.%lu.%lu.%lu", ip & 0xFF, (ip>>8)&0xFF, (ip>>16)&0xFF, (ip>>24)&0xFF);
+	lua_pushstring(L,ip_address);
 	return 1;
 }
 
@@ -199,6 +209,7 @@ static int lua_sendmail(lua_State *L){ //BETA func
 static const luaL_Reg Network_functions[] = {
   {"isWifiEnabled",			lua_wifistat},
   {"getMacAddress",			lua_macaddr},
+  {"getIPAddress",			lua_ipaddr},
   {"downloadFile",			lua_download},
   {"requestString",			lua_downstring},
   {"sendMail",				lua_sendmail},
