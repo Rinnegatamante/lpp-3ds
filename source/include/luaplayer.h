@@ -54,11 +54,12 @@ void luaSound_init(lua_State *L);
 void luaSocket_init(lua_State *L);
 void luaVideo_init(lua_State *L);
 void luaNetwork_init(lua_State *L);
-
+Result amInit();
+Result amExit();
 void stackDump (lua_State *L);
 
 extern bool GW_MODE;
-extern bool is3DSX;
+extern bool CIA_MODE;
 extern bool isCSND;
 extern char cur_dir[256];
 

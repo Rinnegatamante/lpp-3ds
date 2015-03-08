@@ -164,19 +164,13 @@ static int lua_checkexist(lua_State *L)
 	return 1;
 }
 
-static int lua_isGW(lua_State *L)
+static int lua_checkbuild(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushboolean(L,GW_MODE);
-	return 1;
-}
-
-static int lua_is3DSX(lua_State *L)
-{
-    int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushboolean(L,is3DSX);
+	if (GW_MODE) lua_pushinteger(L,1);
+	else if (CIA_MODE) lua_pushinteger(L,2);
+	else lua_pushinteger(L,0);
 	return 1;
 }
 
@@ -1350,22 +1344,11 @@ return 1;
 static int lua_launchCia(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	u32 delete_id = luaL_checkinteger(L,1);
+	u32 unique_id = luaL_checkinteger(L,1);
 	u32 mediatype = luaL_checkinteger(L,2);
-	mediatypes_enum media;
-	if (mediatype == 1) media = mediatype_SDMC;
-	else if (mediatype == 0) media = mediatype_NAND;
-	else media = mediatype_GAMECARD;
-	amInit();
-	u32 cia_nums;
-	AM_GetTitleCount(media, &cia_nums);
-	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleList(media,cia_nums,TitleIDs);
-	u64 id = TitleIDs[delete_id-1].uniqueid | ((u64)TitleIDs[delete_id-1].category << 32) | ((u64)TitleIDs[delete_id-1].platform << 48);
-	free(TitleIDs);
-	amExit();
 	u8 buf0[0x300];
 	u8 buf1[0x20];
+	u64 id = unique_id | ((u64)0x00040000 << 32);
 	memset(buf0, 0, 0x300);
 	memset(buf1, 0, 0x20);
 	aptOpenSession();
@@ -1436,11 +1419,10 @@ static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {"getFirmware",			lua_getFW},
   {"getGWRomID",			lua_getcard},
-  {"isGWMode",				lua_isGW},
-  {"is3DSXMode",			lua_is3DSX},
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
   {"currentDirectory",		lua_curdir},
+  {"checkBuild",			lua_checkbuild},
   {"renameDirectory",		lua_rendir},
   {"createDirectory",		lua_createdir},
   {"deleteDirectory",		lua_deldir},
