@@ -44,6 +44,7 @@ static int lua_initFTP(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
     ftp_init();
+	sprintf(shared_ftp,"Waiting for connection...");
 	connfd = -1;
     return 0;
 }
