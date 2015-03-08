@@ -42,8 +42,9 @@
 #include "include/luaplayer.h"
 
 static lua_State *L;
-bool GW_MODE;
+bool CIA_MODE;
 bool isCSND;
+bool GW_MODE;
 
 // Fake Sound Module for GW Mode to prevent interpreter error with generic scripts
 static int nil_func(lua_State *L){ return 0; }
@@ -83,11 +84,13 @@ const char *runScript(const char* script, bool isStringBuffer)
 	
 	// Check if user is in GW mode
 	if (CSND_initialize(NULL)==0){
-	CSND_shutdown();
-	GW_MODE = false;
-	}else{
-	GW_MODE = true;
-	}
+		CSND_shutdown();
+		GW_MODE = false;
+	}else GW_MODE = true;
+	if (amInit()==0){
+		CIA_MODE = true;
+		amExit();
+	}else CIA_MODE = false;
 	isCSND = false;
 	
 	// Modules
