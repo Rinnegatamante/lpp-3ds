@@ -51,7 +51,6 @@ void luaControls_init(lua_State *L);
 void luaSystem_init(lua_State *L);
 void luaTimer_init(lua_State *L);
 void luaSound_init(lua_State *L);
-void luaSocket_init(lua_State *L);
 void luaVideo_init(lua_State *L);
 void luaNetwork_init(lua_State *L);
 Result amInit();

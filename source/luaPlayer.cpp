@@ -96,7 +96,6 @@ const char *runScript(const char* script, bool isStringBuffer)
 	// Modules
 	luaSystem_init(L);
 	luaScreen_init(L);
-	luaSocket_init(L);
 	luaControls_init(L);
 	luaNetwork_init(L);
 	luaTimer_init(L);

@@ -36,6 +36,41 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
+#include "include/ftp/ftp.h"
+
+static int connfd;
+
+static int lua_initFTP(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    ftp_init();
+	sprintf(shared_ftp,"Waiting for connection...");
+	connfd = -1;
+    return 0;
+}
+
+static int lua_termFTP(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    ftp_exit();
+    return 0;
+}
+
+static int lua_checkFTPcommand(lua_State *L){
+	int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if(connfd<0)connfd=ftp_getConnection();
+		else{
+			int ret=ftp_frame(connfd);
+			if(ret==1)
+			{
+				sprintf(shared_ftp,"Client has disconnected. Wait for next client...");
+				connfd=-1;
+			}
+	}
+	lua_pushstring(L, shared_ftp);
+	return 1;
+}
 
 static int lua_wifistat(lua_State *L){
 	int argc = lua_gettop(L);
@@ -207,6 +242,9 @@ static int lua_sendmail(lua_State *L){ //BETA func
 
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
+  {"initFTP",				lua_initFTP},
+  {"termFTP",				lua_termFTP},
+  {"updateFTP",				lua_checkFTPcommand},
   {"isWifiEnabled",			lua_wifistat},
   {"getMacAddress",			lua_macaddr},
   {"getIPAddress",			lua_ipaddr},
