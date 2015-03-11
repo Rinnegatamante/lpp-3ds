@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
@@ -32,6 +32,7 @@
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <3ds.h>
@@ -1217,4 +1218,30 @@ Bitmap* decodeJpg(unsigned char* in,u64 size)
     result->height = height;
     result->pixels = bgr_buffer;
     return result;
+}
+
+void saveJpg(char *filename, u32 *pixels, u32 width, u32 height){
+	FILE *outfile = fopen(filename, "wb");
+	struct jpeg_error_mgr jerr;
+	struct jpeg_compress_struct cinfo;
+	JSAMPROW row_pointer[1];
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_compress(&cinfo);
+	jpeg_stdio_dest(&cinfo, outfile);
+	cinfo.image_width = width;
+	cinfo.image_height = height;
+	cinfo.input_components = 3;
+	cinfo.in_color_space = JCS_RGB;
+	jpeg_set_defaults(&cinfo);
+	cinfo.num_components = 3;
+	cinfo.dct_method = JDCT_FLOAT;
+	jpeg_set_quality(&cinfo, 100, TRUE);
+	jpeg_start_compress(&cinfo, TRUE);
+	while( cinfo.next_scanline < cinfo.image_height ){
+		row_pointer[0] = (unsigned char*)&pixels[ (cinfo.next_scanline * cinfo.image_width * cinfo.input_components) / 4];
+		jpeg_write_scanlines( &cinfo, row_pointer, 1 );
+	}
+	jpeg_finish_compress( &cinfo );
+	jpeg_destroy_compress( &cinfo );
+	fclose(outfile);
 }
