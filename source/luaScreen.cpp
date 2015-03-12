@@ -203,38 +203,65 @@ static int lua_flipBitmap(lua_State *L)
 static int lua_saveimg(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+    if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	char* text = (char*)(luaL_checkstring(L, 2));
-	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, text);
-	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
-	if(ret) return luaL_error(L, "error opening file");
-	u32 bytesWritten;
-	u8 moltiplier = src->bitperpixel / 8;
-	u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*moltiplier);
-	memset(tempbuf, 0, 0x36+(src->width)*(src->height)*moltiplier);
-	tempbuf[0x36+(src->width)*(src->height)*moltiplier]=0;
-	FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*moltiplier));
-	*(u16*)&tempbuf[0x0] = 0x4D42;
-	*(u32*)&tempbuf[0x2] = 0x36 + (src->width)*(src->height)*moltiplier;
-	*(u32*)&tempbuf[0xA] = 0x36;
-	*(u32*)&tempbuf[0xE] = 0x28;
-	*(u32*)&tempbuf[0x12] = src->width;
-	*(u32*)&tempbuf[0x16] = src->height;
-	if (moltiplier == 3) *(u32*)&tempbuf[0x1A] = 0x00180001;
-	else *(u32*)&tempbuf[0x1A] = 0x00200001;
-	*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*moltiplier;
-	int i=0;
-	while (i<((src->width)*(src->height)*moltiplier)){
-	tempbuf[0x36+i] = src->pixels[i];
-	i++;
+	int compression = lua_toboolean(L, 3);
+	if (compression == 0){ //BMP Format
+		Handle fileHandle;
+		FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+		FS_path filePath=FS_makePath(PATH_CHAR, text);
+		Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		if(ret) return luaL_error(L, "error opening file");
+		u32 bytesWritten;
+		u8 moltiplier = src->bitperpixel / 8;
+		u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*moltiplier);
+		memset(tempbuf, 0, 0x36+(src->width)*(src->height)*moltiplier);
+		tempbuf[0x36+(src->width)*(src->height)*moltiplier]=0;
+		FSFILE_SetSize(fileHandle, (u16)(0x36+(src->width)*(src->height)*moltiplier));
+		*(u16*)&tempbuf[0x0] = 0x4D42;
+		*(u32*)&tempbuf[0x2] = 0x36 + (src->width)*(src->height)*moltiplier;
+		*(u32*)&tempbuf[0xA] = 0x36;
+		*(u32*)&tempbuf[0xE] = 0x28;
+		*(u32*)&tempbuf[0x12] = src->width;
+		*(u32*)&tempbuf[0x16] = src->height;
+		if (moltiplier == 3) *(u32*)&tempbuf[0x1A] = 0x00180001;
+		else *(u32*)&tempbuf[0x1A] = 0x00200001;
+		*(u32*)&tempbuf[0x22] = (src->width)*(src->height)*moltiplier;
+		int i=0;
+		while (i<((src->width)*(src->height)*moltiplier)){
+			tempbuf[0x36+i] = src->pixels[i];
+			i++;
+		}
+		FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + (src->width)*(src->height)*moltiplier, 0x10001);
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		free(tempbuf);
+	}else{ // JPG Format
+		u8 moltiplier = src->bitperpixel / 8;
+		u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*moltiplier);
+		flip_pixels = flipBitmap(flip_pixels, src);
+		if (moltiplier == 4){ // 32bpp image - Need to delete alpha channel
+			u8* tmp = flip_pixels;
+			flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
+			u32 i = 0;
+			u32 j = 0;
+			while ((i+1) < ((src->width)*(src->height)*(moltiplier))){
+				flip_pixels[j++] = tmp[i];
+				flip_pixels[j++] = tmp[i+1];
+				flip_pixels[j++] = tmp[i+2];
+				i = i + 4;
+			}
+			free(tmp);
+		}
+		sdmcInit();
+		char tmpPath2[1024];
+		strcpy(tmpPath2,"sdmc:");
+		strcat(tmpPath2,(char*)text);
+		saveJpg(tmpPath2,(u32*)flip_pixels,src->width,src->height);
+		free(flip_pixels);
+		sdmcExit();
 	}
-	FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + (src->width)*(src->height)*moltiplier, 0x10001);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
-	free(tempbuf);
 	return 0;
 }
 
@@ -574,7 +601,7 @@ static const luaL_Reg Screen_functions[] = {
   {"freeImage",						lua_free},
   {"flipImage",						lua_flipBitmap},
   {"createImage",					lua_newBitmap},
-  {"saveBitmap",					lua_saveimg},
+  {"saveImage",						lua_saveimg},
   {"getImageWidth",					lua_getWidth},
   {"getImageHeight",				lua_getHeight},  
   {"drawPartialImage",				lua_partial},  
