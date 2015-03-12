@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
@@ -36,6 +36,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/luaGraphics.h"
+#include "include/ftp/ftp.h"
 
 const char *errMsg;
 unsigned char *buffer;
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
 	while(aptMainLoop())
 	{
 		restore=0;		
-		char error[256];
+		char error[2048];
 		
 		// Load main script
 		FS_path filePath=FS_makePath(PATH_CHAR, path);
@@ -103,41 +104,65 @@ int main(int argc, char **argv)
 		errMsg = runScript((const char*)buffer, true);
 		free(buffer);
 		
-		if (errMsg != NULL);
-                {
-				// Fake error to force interpreter shutdown
-				if (strstr(errMsg, "lpp_exit_04")){
-					break;
+		if (errMsg != NULL);{
+		
+			// Fake error to force interpreter shutdown
+			if (strstr(errMsg, "lpp_exit_04")) break;
+			
+		}
+		bool ftp_state = false;
+		int connfd;
+		while (restore==0){
+			gspWaitForVBlank();
+			RefreshScreen();
+			ClearScreen(0);
+			ClearScreen(1);
+			strcpy(error,"Error: ");
+			strcat(error,errMsg);
+			if (ftp_state){ 
+				u32 ip=(u32)gethostid();
+				char ip_address[64];
+				strcat(error,"\n\nPress A to restart\nPress B to exit\nPress Y to enable FTP server\n\nFTP state: ON\nIP: ");
+				sprintf(ip_address,"%lu.%lu.%lu.%lu", ip & 0xFF, (ip>>8)&0xFF, (ip>>16)&0xFF, (ip>>24)&0xFF);
+				strcat(error,ip_address);
+				strcat(error,"\nPort: 5000");
+				if(connfd<0)connfd=ftp_getConnection();
+				else{
+					int ret=ftp_frame(connfd);
+					if(ret==1) connfd=-1;
 				}
-				
-				strcpy(error,"Error: ");
-				strcat(error,errMsg);
-				strcat(error,"\n\nPress A to restart\nPress B to exit");
+			}else strcat(error,"\n\nPress A to restart\nPress B to exit\nPress Y to enable FTP server\n\nFTP state: OFF");
+			DebugOutput(error);
+			hidScanInput();
+			if(hidKeysDown() & KEY_A){
+				strcpy(cur_dir,start_dir);
+				restore=1;
+			}else if(hidKeysDown() & KEY_B){
+				restore=2;
+			}else if(hidKeysDown() & KEY_Y){
+				if (!ftp_state){
+					u32 wifiStatus;
+					if ((u32)ACU_GetWifiStatus(NULL, &wifiStatus) !=  0xE0A09D2E){
+						if (wifiStatus != 0){
+							ftp_init();
+							connfd = -1;
+							ftp_state = true;
+						}
+					}
 				}
-
-						while (restore==0){
-							gspWaitForVBlank();
-							RefreshScreen();
-							ClearScreen(0);
-							ClearScreen(1);
-							DebugOutput(error);
-							hidScanInput();
-							if(hidKeysDown() & KEY_A){
-								strcpy(cur_dir,start_dir);
-								restore=1;
-							}else if(hidKeysDown() & KEY_B){
-								restore=2;
-							}
-							gfxFlushBuffers();
-							gfxSwapBuffers();
-						}
-						if (isCSND){
-							CSND_shutdown();
-							isCSND = false;
-						}
-						if (restore==2){
-							break;
-						}
+			}
+			
+			gfxFlushBuffers();
+			gfxSwapBuffers();
+		}
+		if (ftp_state) ftp_exit();
+		if (isCSND){
+			CSND_shutdown();
+			isCSND = false;
+		}
+		if (restore==2){
+			break;
+		}
 	}
 	fsExit();
 	irrstExit();
