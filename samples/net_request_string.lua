@@ -8,18 +8,8 @@ end
 while true do
 	if not checked then
 		if Network.isWifiEnabled() then
-		--Temp Timer for waiting establishing Internet connection
-		--It will be substituted nearly with a proper function
-			wait = Timer.new()
-			checked = true
-			timer = true
-		end
-	elseif timer then
-		if Network.isWifiEnabled() then
-			if Timer.getTime(wait) >= 8000 then
-				last_version = "Last version: " .. Network.requestString("http://rinnegatamante.netsons.org/ORGANIZ3D.txt")
-				timer = false
-			end
+			last_version = "Last version: " .. Network.requestString("http://rinnegatamante.netsons.org/ORGANIZ3D.txt")
+			timer = false
 		else
 			checked = false
 		end
