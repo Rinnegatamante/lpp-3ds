@@ -61,6 +61,7 @@ static int lua_exit(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if (isCSND) CSND_shutdown();
 	char string[20];
 	strcpy(string,"lpp_exit_0456432");
 	return luaL_error(L, string); // NOTE: This is a fake error
@@ -193,8 +194,6 @@ static int lua_screenshot(lua_State *L)
 	Handle fileHandle;
 	int x, y;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	char file_format[4];
-	memcpy(file_format, &screenpath[strlen(screenpath)-4], 3 );
 	if (compression == 0){ //BMP Format
 		FS_path filePath=FS_makePath(PATH_CHAR, screenpath);
 		Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
