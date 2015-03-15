@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
@@ -205,8 +205,6 @@ static int lua_openwav(lua_State *L)
 				size_tbp = wav_file->mem_size;
 			}else{
 				tmp_buffer = (u8*)linearAlloc((size-(pos+4)));
-				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
-				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
 				size_tbp = size-(pos+4);
 				wav_file->startRead = 0;
 				wav_file->size = (size_tbp)/2;
@@ -216,6 +214,8 @@ static int lua_openwav(lua_State *L)
 			u32 i=0;
 			u16 z;
 			if (raw_enc == 0x01){ //PCM16 Decoding
+				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
+				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
 				while (i < size_tbp){
 					z=0;
 					while (z < (wav_file->bytepersample/2)){
@@ -227,15 +227,21 @@ static int lua_openwav(lua_State *L)
 					off=off+(wav_file->bytepersample/2);
 				}
 			}else if (raw_enc == 0x11){ //ADPCM Decoding
+				u32 headers_num = (size_tbp) / wav_file->bytepersample;
+				wav_file->audiobuf = (u8*)linearAlloc((size_tbp-headers_num*8)/2);
+				wav_file->audiobuf2 = (u8*)linearAlloc((size_tbp-headers_num*8)/2);
+				int z=0,i=0;
 				while (i < size_tbp){
-					z=0;
-					while (z < (wav_file->bytepersample/4)){
-						wav_file->audiobuf[off+z] = tmp_buffer[i+z];
-						wav_file->audiobuf2[off+z] = tmp_buffer[i+z+(wav_file->bytepersample/4)];
-						z++;
-					}
-					i=i+wav_file->bytepersample/2;
-					off=off+(wav_file->bytepersample/4);
+					wav_file->audiobuf[z] = tmp_buffer[i++];
+					wav_file->audiobuf2[z++] = tmp_buffer[i+3];
+					wav_file->audiobuf[z] = tmp_buffer[i++];
+					wav_file->audiobuf2[z++] = tmp_buffer[i+3];
+					wav_file->audiobuf[z] = tmp_buffer[i++];
+					wav_file->audiobuf2[z++] = tmp_buffer[i+3];
+					wav_file->audiobuf[z] = tmp_buffer[i++];
+					wav_file->audiobuf2[z++] = tmp_buffer[i+3];
+					i=i+4;
+					if ((i % wav_file->bytepersample) == 0) i=i+8;
 				}
 			}
 			linearFree(tmp_buffer);
@@ -529,7 +535,7 @@ static int lua_streamWav(lua_State *L)
 		if ((src->moltiplier % 2) == 1){
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
-				if (src->encoding == CSND_ENCODING_IMA_ADPCM){ //ADPCM Decoding
+				if (src->encoding == CSND_ENCODING_IMA_ADPCM){ //ADPCM Decoding TODO
 					u32 buffer_headers_num = ((src->mem_size)/2) / src->bytepersample;
 					u8* tmp_audiobuf = (u8*)linearAlloc((src->mem_size)/2);
 					FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
@@ -603,7 +609,7 @@ static int lua_streamWav(lua_State *L)
 			u32 bytesRead;
 			//Update and flush second half-buffer
 			if (src->audiobuf2 == NULL){
-				if (src->encoding == CSND_ENCODING_IMA_ADPCM){ // ADPCM Decoding
+				if (src->encoding == CSND_ENCODING_IMA_ADPCM){ // ADPCM Decoding TODO
 					u32 buffer_headers_num = ((src->mem_size)/2) / src->bytepersample;
 					u8* tmp_audiobuf = (u8*)linearAlloc((src->mem_size)/2);
 					FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
