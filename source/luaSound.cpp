@@ -38,6 +38,9 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/luaAudio.h"
+#include "include/ogg/ogg.h"
+#include "include/ogg/codec.h"
+#include "include/ogg/vorbisfile.h"
 
 struct wav{
 u32 samplerate;
@@ -61,6 +64,50 @@ u8 encoding;
 };
 
 int STREAM_MAX_ALLOC = 524288;
+
+/* THIS IS A TEST FUNCTION TO TEST LIBOGG AND LIBVORBIS FUNCTIONALLITIES
+ IT OPENS A OGG MUSIC FILE AND EXTRACT DECODED AUDIOBUFFER IN A BIN FILE
+ DECODED BUFFER IS IN S_PCM16_LE CODEC
+*/
+static int lua_playogg(lua_State *L) 
+{	
+	char pcmout[4096];
+	const char *file_tbo = luaL_checkstring(L, 1);
+	char myFile[512];
+	strcpy(myFile,"sdmc:");
+	strcat(myFile,file_tbo);
+	sdmcInit();
+	int eof=0;
+	static OggVorbis_File vf;
+	static int current_section;
+	FILE* fp = fopen(myFile,"rb");
+	FILE* fout = fopen("sdmc:/pcm.bin","wb");
+	if(ov_open(fp, &vf, NULL, 0) != 0)
+	{
+		fclose(fp);
+		return luaL_error(L, "corrupt OGG file.");
+	}
+	while(!eof){
+    long ret=ov_read(&vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
+    if (ret == 0) {
+      /* EOF */
+      eof=1;
+    } else if (ret < 0) {
+      if(ret==OV_EBADLINK){
+        return luaL_error(L, "corrupt bitstream section.");
+      }
+
+      /* some other error in the stream.  Not a problem, just reporting it in
+         case we (the app) cares.  In this case, we don't. */
+    } else {
+      /* we don't bother dealing with sample rate changes, etc, but
+         you'll have to*/
+      fwrite(pcmout,1,ret,fout);
+    }
+  }
+	sdmcExit();
+	return 0;
+}
 
 static int lua_openwav(lua_State *L)
 {
@@ -864,6 +911,7 @@ int argc = lua_gettop(L);
 
 //Register our Sound Functions
 static const luaL_Reg Sound_functions[] = {
+  {"playOgg",				lua_playogg},
   {"openWav",				lua_openwav},
   {"openAiff",				lua_openaiff},
   {"close",					lua_closeWav},
