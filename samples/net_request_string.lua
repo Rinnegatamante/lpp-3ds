@@ -19,7 +19,6 @@ while true do
 	Screen.debugPrint(0,0,last_version,0xFFFFFF,TOP_SCREEN)
 	Controls.init()
 	if Controls.check(Controls.read(),KEY_A) then
-		Sound.term()
 		System.exit()
 	end
 	Screen.flip()
