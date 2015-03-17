@@ -65,15 +65,108 @@ u8 encoding;
 
 int STREAM_MAX_ALLOC = 524288;
 
-// Don't know why but i get a mute buffer (all bytes 0x0) if someone knows how to fix
-// please make a pull request on this repository
+static int lua_streamOgg(lua_State *L){
+	wav* src = (wav*)luaL_checkinteger(L, 1);
+	// Initializing libogg and vorbisfile
+	int eof=0;
+	static int current_section = src->startRead;
+	
+	u32 control = src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000);
+	if ((control >= src->size) && (src->isPlaying)){
+		CSND_setchannel_playbackstate(src->ch, 0);
+		if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+		CSND_sharedmemtype0_cmdupdatestate(0);
+		src->moltiplier = 1;
+		ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+		if (src->audiobuf2 == NULL){
+			char pcmout[4096];
+			int i = 0;
+			while(!eof){
+				long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+				if (ret == 0) {
+					eof=1;
+				} else if (ret < 0) {
+					if(ret==OV_EBADLINK){
+						return luaL_error(L, "corrupt bitstream section.");
+					}else{
+						return luaL_error(L, "error during streaming.");
+					}
+				} else {
+					memcpy(&src->audiobuf[i],pcmout,ret);
+					i = i + ret;
+					if (i >= (src->mem_size)) break;
+				}
+			}
+		}
+		if (!src->streamLoop){
+			src->isPlaying = false;
+			src->tick = (osGetTime()-src->tick);
+		}else{
+			src->tick = osGetTime();
+			CSND_setchannel_playbackstate(src->ch, 1);
+			if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 1);
+			CSND_sharedmemtype0_cmdupdatestate(0);
+		}
+	}else if ((control > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
+		if ((src->moltiplier % 2) == 1){
+			//Update and flush first half-buffer
+			if (src->audiobuf2 == NULL){
+				char pcmout[4096];
+				int i = 0;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) {
+						eof=1;
+					} else if (ret < 0) {
+						if(ret==OV_EBADLINK){
+							return luaL_error(L, "corrupt bitstream section.");
+						}else{
+							return luaL_error(L, "error during streaming.");
+						}
+					} else {
+						memcpy(&src->audiobuf[i],pcmout,ret);
+						i = i + ret;
+						if (i >= (src->mem_size/2)) break;
+					}
+				}
+				src->moltiplier = src->moltiplier + 1;
+			}
+		}else{
+			//Update and flush second half-buffer
+			if (src->audiobuf2 == NULL){
+				char pcmout[4096];
+				int i = 0;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) {
+						eof=1;
+					} else if (ret < 0) {
+						if(ret==OV_EBADLINK){
+							return luaL_error(L, "corrupt bitstream section.");
+						}else{
+							return luaL_error(L, "error during streaming.");
+						}
+					} else {
+						memcpy(&src->audiobuf[i+(src->mem_size/2)],pcmout,ret);
+						i = i + ret;
+						if (i >= (src->mem_size/2)) break;
+					}
+				}
+				src->moltiplier = src->moltiplier + 1;
+			}
+		}
+		src->startRead = current_section;
+	}
+	return 0;
+}
+
 static int lua_openogg(lua_State *L) 
 {	
     int argc = lua_gettop(L);
 	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1); //Filename
 	
-	// Future streaming support
+	// Streaming support
 	u32 mem_size = 0;
 	if (argc == 2) mem_size = luaL_checkinteger(L, 2);
 	
@@ -87,12 +180,12 @@ static int lua_openogg(lua_State *L)
 	
 	// Initializing libogg and vorbisfile
 	int eof=0;
-	static OggVorbis_File vf;
+	OggVorbis_File* vf = (OggVorbis_File*)malloc(sizeof(OggVorbis_File));
 	static int current_section;
 	
 	// Opening a valid OGG music file
 	FILE* fp = fopen(myFile,"rb");
-	if(ov_open(fp, &vf, NULL, 0) != 0)
+	if(ov_open(fp, vf, NULL, 0) != 0)
 	{
 		fclose(fp);
 		return luaL_error(L, "corrupt OGG file.");
@@ -100,14 +193,23 @@ static int lua_openogg(lua_State *L)
 	
 	// Allocating music info
 	wav *wav_file = (wav*)malloc(sizeof(wav));
-	vorbis_info* my_info = ov_info(&vf,-1);
+	vorbis_info* my_info = ov_info(vf,-1);
 	wav_file->samplerate = my_info->rate;
 	wav_file->big_endian = false;
-	wav_file->encoding = CSND_ENCODING_PCM16;
-	wav_file->size = ov_time_total(&vf,-1) * 2 * my_info->rate;
-	wav_file->audiobuf = (u8*)linearAlloc(wav_file->size);
+	wav_file->encoding = CSND_ENCODING_VORBIS;
+	wav_file->size = ov_time_total(vf,-1) * 2 * my_info->rate;
+	if (mem_size > 0){
+		wav_file->moltiplier = 1;
+		wav_file->mem_size = wav_file->size / 2;
+		while (wav_file->mem_size > STREAM_MAX_ALLOC){
+			wav_file->mem_size = wav_file->mem_size / 2;
+		}
+		wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+	}else{
+		wav_file->audiobuf = (u8*)linearAlloc(wav_file->size);
+		wav_file->mem_size = mem_size;
+	}
 	wav_file->audiobuf2 = NULL;
-	wav_file->mem_size = mem_size;
 	wav_file->startRead = 0;
 	strcpy(wav_file->author,"");
 	strcpy(wav_file->title,"");
@@ -115,10 +217,10 @@ static int lua_openogg(lua_State *L)
 	wav_file->bytepersample = 2;
 	
 	// Decoding OGG buffer
-	u32 i=0;
+	int i=0;
 	if (my_info->channels == 1){ //Mono buffer
 		while(!eof){
-			long ret=ov_read(&vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
+			long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
 			if (ret == 0) {
 			
 				// EOF
@@ -134,19 +236,23 @@ static int lua_openogg(lua_State *L)
 			} else {
 			
 				// Copying decoded block to PCM16 audiobuffer
-				int z;
-				for (z=0;z++;z<ret){
-					wav_file->audiobuf[i+z] = pcmout[z];
-				}
+				memcpy(&wav_file->audiobuf[i],pcmout,ret);
 				i = i + ret;
-				
+				if ((mem_size > 0) && (i >= wav_file->mem_size)) break;
 			}
 		}
 	}
 	
-	// Deallocate OGG decoder resources and close file
-	ov_clear(&vf);
-	sdmcExit();
+	if (mem_size == 0){
+	
+		// Deallocate OGG decoder resources and close file if not streaming
+		ov_clear(vf);
+		sdmcExit();
+		
+	}else{
+		wav_file->startRead = current_section;
+		wav_file->sourceFile = (u32)vf;
+	}
 	
 	// Push wav struct offset to LUA stack
 	lua_pushinteger(L,(u32)wav_file);
@@ -514,15 +620,20 @@ static int lua_playWav(lua_State *L)
 	int loop = luaL_checkinteger(L, 2);
 	u32 ch = luaL_checkinteger(L, 3);
 	u32 ch2;
+	bool non_native_encode = false;
+	u8 tmp_encode;
 	if (argc == 4) ch2 = luaL_checkinteger(L, 4);
+	if (src->encoding == CSND_ENCODING_VORBIS){
+		tmp_encode = src->encoding;
+		src->encoding = CSND_ENCODING_PCM16;
+		non_native_encode = true;
+	}
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
 		if (loop == 0) src->streamLoop = false;
 		else src->streamLoop = true;
-		GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 0xFFFF, 0xFFFF);
 		}else{
-		GSPGPU_FlushDataCache(NULL, src->audiobuf, src->size);
 		My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0xFFFF);
 		}
 		src->ch = ch;
@@ -533,13 +644,9 @@ static int lua_playWav(lua_State *L)
 		if (src->mem_size > 0){
 		if (loop == 0) src->streamLoop = false;
 		else src->streamLoop = true;
-		GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
-		GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
 		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 0xFFFF, 0);
 		My_CSND_playsound(ch2, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 0, 0xFFFF);
 		}else{
-		GSPGPU_FlushDataCache(NULL, src->audiobuf, src->size);
-		GSPGPU_FlushDataCache(NULL, src->audiobuf2, src->size);
 		My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0);
 		My_CSND_playsound(ch2, loop, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 0, 0xFFFF);
 		}
@@ -550,6 +657,9 @@ static int lua_playWav(lua_State *L)
 		CSND_setchannel_playbackstate(ch2, 1);
 		CSND_sharedmemtype0_cmdupdatestate(0);
 	}
+	if (non_native_encode){
+		src->encoding = tmp_encode;
+	}
 	src->isPlaying = true;
 	return 0;
 }
@@ -559,6 +669,7 @@ static int lua_streamWav(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	if (src->encoding == CSND_ENCODING_VORBIS) return lua_streamOgg(L);
 	u32 bytesRead;
 	u32 control;
 	if (src->encoding == CSND_ENCODING_IMA_ADPCM) control = (src->samplerate / 2) * ((osGetTime() - src->tick) / 1000);
@@ -586,7 +697,6 @@ static int lua_streamWav(lua_State *L)
 				i=i+2;
 			}
 			}
-			GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 		}else{
 			u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
 			FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, tmp_buffer, src->mem_size);
@@ -618,8 +728,6 @@ static int lua_streamWav(lua_State *L)
 			}
 			}
 			linearFree(tmp_buffer);
-			GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
-			GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
 		}
 	}else if (((control) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
 		if ((src->moltiplier % 2) == 1){
@@ -637,7 +745,6 @@ static int lua_streamWav(lua_State *L)
 						if ((i % src->bytepersample) == 0) i=i+4;
 					}
 					linearFree(tmp_audiobuf);
-					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size-buffer_headers_num*4);
 				}else{ //PCM-16 Decoding
 				FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
 				u64 i = 0;
@@ -653,7 +760,6 @@ static int lua_streamWav(lua_State *L)
 					i=i+2;
 				}
 				}
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 				}
 				src->moltiplier = src->moltiplier + 1;
 			}else{
@@ -692,8 +798,6 @@ static int lua_streamWav(lua_State *L)
 				}
 				}
 				linearFree(tmp_buffer);
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
-				GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
 			}
 		}else{
 			u32 bytesRead;
@@ -711,7 +815,6 @@ static int lua_streamWav(lua_State *L)
 						if ((i % src->bytepersample) == 0) i=i+4;
 					}
 					linearFree(tmp_audiobuf);
-					GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size-buffer_headers_num*4);
 				}else{ // PCM-16 Decoding
 				FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
 				if (src->big_endian){
@@ -723,7 +826,6 @@ static int lua_streamWav(lua_State *L)
 						i=i+2;
 					}
 				}
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, src->mem_size);
 				}
 				src->moltiplier = src->moltiplier + 1;
 			}else{
@@ -759,8 +861,6 @@ static int lua_streamWav(lua_State *L)
 				}
 				}
 				linearFree(tmp_buffer);
-				GSPGPU_FlushDataCache(NULL, src->audiobuf, (src->mem_size)/2);
-				GSPGPU_FlushDataCache(NULL, src->audiobuf2, (src->mem_size)/2);
 			}
 		}
 	}
