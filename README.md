@@ -19,6 +19,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br>- I/O features for SDMC and EXTDATA
 <br>- Video system for reproducing video files with native support to BMPV/JPGV video files
 <br>- Timer system
+<br>- Native 3D support
 <br>- Advanced arithmetical functions
 <br>- Internet connectivity features through Network module (Like downloading files, sending mails)
 <br>- Socketing functions (Like FTP server)
