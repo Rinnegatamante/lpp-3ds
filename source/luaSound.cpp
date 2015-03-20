@@ -43,6 +43,7 @@
 #include "include/ogg/vorbisfile.h"
 
 struct wav{
+u32 magic;
 u32 samplerate;
 u16 bytepersample;
 u8* audiobuf;
@@ -98,6 +99,7 @@ static int lua_openogg(lua_State *L)
 	
 	// Allocating music info
 	wav *wav_file = (wav*)malloc(sizeof(wav));
+	wav_file->magic = 0x4C534E44;
 	vorbis_info* my_info = ov_info(vf,-1);
 	wav_file->samplerate = my_info->rate;
 	wav_file->big_endian = false;
@@ -413,6 +415,7 @@ static int lua_openwav(lua_State *L)
 			}
 			linearFree(tmp_buffer);
 		}
+		wav_file->magic = 0x4C534E44;
 		lua_pushinteger(L,(u32)wav_file);
 	}
 	if (!mem_size){
@@ -569,6 +572,7 @@ static int lua_openaiff(lua_State *L)
 	}
 	linearFree(tmp_buffer);
 	}
+	wav_file->magic = 0x4C534E44;
 	lua_pushinteger(L,(u32)wav_file);
 	}
 	if (!mem_size){
@@ -594,6 +598,9 @@ static int lua_playWav(lua_State *L)
     int argc = lua_gettop(L);
     if ((argc != 3) && (argc != 4))	return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	int loop = luaL_checkinteger(L, 2);
 	u32 ch = luaL_checkinteger(L, 3);
 	u32 ch2;
@@ -844,6 +851,9 @@ static int lua_streamWav(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (src->encoding == CSND_ENCODING_VORBIS) return lua_streamOgg(L);
 	u32 bytesRead;
 	u32 control;
@@ -1047,6 +1057,9 @@ static int lua_closeWav(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (src->mem_size > 0){
@@ -1067,6 +1080,9 @@ static int lua_pause(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	CSND_setchannel_playbackstate(src->ch, 0);
 	if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
 	CSND_sharedmemtype0_cmdupdatestate(0);
@@ -1080,6 +1096,9 @@ static int lua_resume(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	CSND_setchannel_playbackstate(src->ch, 1);
 	if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 1);
 	CSND_sharedmemtype0_cmdupdatestate(0);
@@ -1092,6 +1111,9 @@ static int lua_wisPlaying(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushboolean(L, src->isPlaying);
 	return 1;
 }
@@ -1151,6 +1173,9 @@ static int lua_savemono(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	const char* file = luaL_checkstring(L, 2);
 	Handle fileHandle;
 	u32 bytesWritten;
@@ -1185,6 +1210,9 @@ static int lua_getSrate(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushinteger(L, src->samplerate);
 	return 1;
 }
@@ -1193,6 +1221,9 @@ static int lua_getTime(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (src->isPlaying){
 		lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
 	}else{
@@ -1205,6 +1236,9 @@ static int lua_getTotalTime(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if ((src->encoding == CSND_ENCODING_IMA_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate / 2));
 	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size*2) - src->startRead) / (src->bytepersample * src->samplerate));
 	else lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate));
@@ -1215,6 +1249,9 @@ static int lua_getTitle(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushstring(L, src->title);
 	return 1;
 }
@@ -1223,6 +1260,9 @@ static int lua_getAuthor(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushstring(L, src->author);
 	return 1;
 }
@@ -1231,6 +1271,9 @@ static int lua_getType(lua_State *L){
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	wav* src = (wav*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (src->audiobuf2 == NULL) lua_pushinteger(L, 1);
 	else lua_pushinteger(L, 2);
 	return 1;
