@@ -307,9 +307,6 @@ int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
-		if ((screen <= 1) && (y+src->height > 239)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 0) && (x+src->width > 399)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 1) && (x+src->width > 319)) return luaL_error(L,"out of framebuffer bounds");
 	#endif
 	if (argc == 5) side = luaL_checkinteger(L,5);
 	if (src->isPlaying){
@@ -438,7 +435,12 @@ int argc = lua_gettop(L);
 				FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 				src->framebuf = decodeJpg(frame, size);
 				free(frame);
-				if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
+				#ifndef SKIP_ERROR_HANDLING
+					if ((screen <= 1) && (y+src->framebuf->height > 239)) return luaL_error(L,"out of framebuffer bounds");
+					if ((screen == 0) && (x+src->framebuf->width > 399)) return luaL_error(L,"out of framebuffer bounds");
+					if ((screen == 1) && (x+src->framebuf->width > 319)) return luaL_error(L,"out of framebuffer bounds");
+				#endif
+				if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen); // TODO
 				else RAW2FB(x,y,src->framebuf,screen,side);
 			}
 		}
@@ -459,7 +461,12 @@ int argc = lua_gettop(L);
 			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 			src->framebuf = decodeJpg(frame, size);
 			free(frame);
-			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen);
+			#ifndef SKIP_ERROR_HANDLING
+				if ((screen <= 1) && (y+src->framebuf->height > 239)) return luaL_error(L,"out of framebuffer bounds");
+				if ((screen == 0) && (x+src->framebuf->width > 399)) return luaL_error(L,"out of framebuffer bounds");
+				if ((screen == 1) && (x+src->framebuf->width > 319)) return luaL_error(L,"out of framebuffer bounds");
+			#endif
+			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen); // TODO
 			else RAW2FB(x,y,src->framebuf,screen,side);
 		}
 	}
@@ -637,10 +644,7 @@ int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
-		if ((screen <= 1) && (y+src->height > 239)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 0) && (x+src->width > 399)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 1) && (x+src->width > 319)) return luaL_error(L,"out of framebuffer bounds");
-		if (frame_index > tot_frame) return luaL_error("out of video file bounds");
+		if (frame_index > src->tot_frame) return luaL_error(L, "out of video file bounds");
 	#endif
 	int side = 0;
 	if (argc == 6){
@@ -656,6 +660,11 @@ int argc = lua_gettop(L);
 	FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 	Bitmap* tmp_framebuf = decodeJpg(frame, size);
 	free(frame);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((screen <= 1) && (y+src->framebuf->height > 239)) return luaL_error(L,"out of framebuffer bounds");
+		if ((screen == 0) && (x+src->framebuf->width > 399)) return luaL_error(L,"out of framebuffer bounds");
+		if ((screen == 1) && (x+src->framebuf->width > 319)) return luaL_error(L,"out of framebuffer bounds");
+	#endif
 	RAW2FB(x,y,tmp_framebuf,screen,side);
 	return 0;
 }
@@ -674,7 +683,7 @@ int argc = lua_gettop(L);
 		if ((screen <= 1) && (y+src->height > 239)) return luaL_error(L,"out of framebuffer bounds");
 		if ((screen == 0) && (x+src->width > 399)) return luaL_error(L,"out of framebuffer bounds");
 		if ((screen == 1) && (x+src->width > 319)) return luaL_error(L,"out of framebuffer bounds");
-		if (frame_index > tot_frame) return luaL_error("out of video file bounds");
+		if (frame_index > src->tot_frame) return luaL_error(L,"out of video file bounds");
 	#endif
 	int side = 0;
 	if (argc == 6) side = luaL_checkinteger(L,6);

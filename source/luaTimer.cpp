@@ -128,7 +128,7 @@ static int lua_destroy(lua_State *L) {
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     Timer* timer = (Timer*)luaL_checkinteger(L,1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
+		if (timer->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	free(timer);
     return 1;
