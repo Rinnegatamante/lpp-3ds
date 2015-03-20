@@ -42,19 +42,12 @@
 int KEY_HOME = 0xFFFF;
 int KEY_POWER = 0xFFFE;
 
-static int lua_readInit(lua_State *L)
+static int lua_readC(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	hidScanInput();
 	irrstScanInput();
-	return 0;
-}
-
-static int lua_readC(lua_State *L)
-{
-    int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	lua_pushnumber(L, hidKeysHeld());
 	return 1;
 }
@@ -114,8 +107,6 @@ static int lua_cstickpad(lua_State *L)
 static int lua_volume(lua_State *L)
 {
         if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		angularRate cpos;
-		hidGyroRead(&cpos);
 		u8 value;
 		HIDUSER_GetSoundVolume(&value);
 		lua_pushnumber(L, value);
@@ -124,14 +115,13 @@ static int lua_volume(lua_State *L)
 
 //Register our Controls Functions
 static const luaL_Reg Controls_functions[] = {
-  {"init",                				lua_readInit},
   {"read",								lua_readC},		  
   {"check",								lua_check},	
   {"readCirclePad",						lua_circlepad},	
   {"readTouch",							lua_touchpad},	
   {"readCstickPad",						lua_cstickpad},	
   {"getVolume",							lua_volume},
-  {"headsetStatus",						lua_headset},	  
+  {"headsetStatus",						lua_headset},
   {0, 0}
 };
 
