@@ -280,9 +280,11 @@ BottomFB = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 
 void DrawScreenText(int x, int y, char* str, u32 color, int screen,int side){
 u8* buffer;
+u16 max_x = 320;
 if (screen == 0){
-if (side == 0) buffer = TopLFB;
-else buffer = TopRFB;
+	if (side == 0) buffer = TopLFB;
+	else buffer = TopRFB;
+	max_x = 400;
 }else if (screen == 1) buffer = BottomFB;
 unsigned short* ptr;
 unsigned short glyphsize;
@@ -309,6 +311,7 @@ for (cy = 0; cy < 12; cy++)
 unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
+if ((x+cx) >= max_x) return;
 if (val & (1 << cx))
 DrawPixel(buffer, x+cx, y+cy, color);
 }
@@ -320,7 +323,9 @@ x++;
 
 void DrawAlphaScreenText(int x, int y, char* str, u32 color, int screen,int side){
 u8* buffer;
+u16 max_x = 320;
 if (screen == 0){
+max_x = 400;
 if (side == 0) buffer = TopLFB;
 else buffer = TopRFB;
 }else if (screen == 1) buffer = BottomFB;
@@ -349,6 +354,7 @@ for (cy = 0; cy < 12; cy++)
 unsigned short val = ptr[4+cy];
 for (cx = 0; cx < glyphsize; cx++)
 {
+if ((x+cx) >= max_x) return;
 if (val & (1 << cx))
 DrawAlphaPixel(buffer, x+cx, y+cy, color);
 }
