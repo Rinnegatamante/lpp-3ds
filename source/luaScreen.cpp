@@ -54,6 +54,13 @@ static int lua_print(lua_State *L)
 	int screen = luaL_checkinteger(L,5);
 	int side=0;
 	if (argc == 6) side = luaL_checkinteger(L,6);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 227)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){ 
 	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen);
 	else if (alpha==255) DrawImageText(x,y,text,color,screen);
@@ -119,6 +126,7 @@ static int lua_loadimg(lua_State *L)
 		bitmap = OpenJPG(text);
 	}
 	if(!bitmap) return luaL_error(L, "Error loading image");
+	bitmap->magic = 0x4C494D47;
     lua_pushinteger(L, (u32)(bitmap));
 	return 1;
 }
@@ -133,6 +141,13 @@ static int lua_pbitmap(lua_State *L)
 	int screen= luaL_checkinteger(L, 4);
 	int side = 0;
 	if (argc == 5) side = luaL_checkinteger(L,5);
+	#ifndef SKIP_ERROR_HANDLING
+		if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0) || (y > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if (screen > 1) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
 	else{ 
 		if (screen == 0){
@@ -143,8 +158,8 @@ static int lua_pbitmap(lua_State *L)
 			if (partial_x || partial_y){
 				int width = file->width;
 				int height = file->height;
-				if (partial_x) width = 400;
-				if (partial_y) height = 240;
+				if (partial_x) width = 400-x;
+				if (partial_y) height = 240-y;
 				PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
 			}else PrintScreenBitmap(x,y,file,screen,side);
 		}else{
@@ -155,8 +170,8 @@ static int lua_pbitmap(lua_State *L)
 			if (partial_x || partial_y){
 				int width = file->width;
 				int height = file->height;
-				if (partial_x) width = 320;
-				if (partial_y) height = 240;
+				if (partial_x) width = 320-x;
+				if (partial_y) height = 240-y;
 				PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
 			}else PrintScreenBitmap(x,y,file,screen,side);
 		}
@@ -178,6 +193,16 @@ static int lua_partial(lua_State *L){
 	int screen= luaL_checkinteger(L, 8);
 	int side = 0;
 	if (argc == 5) side = luaL_checkinteger(L,9);
+	#ifndef SKIP_ERROR_HANDLING
+		if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((st_x < 0) || (st_y < 0)) return luaL_error(L, "out of image bounds");
+		if (((st_x + width) > file->width) || (((st_y + height) > file->height))) return luaL_error(L, "out of image bounds");
+		if ((screen == 0) && ((x+width) > 399)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x+width) > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y+height) > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
 	else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
 	gfxFlushBuffers();
@@ -191,6 +216,10 @@ static int lua_flipBitmap(lua_State *L)
 	u8* not_flipped;
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	Bitmap* dst = (Bitmap*)luaL_checkinteger(L, 2);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+		if (dst->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	not_flipped = dst->pixels;
 	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
 	dst->pixels = flipBitmap(flip_pixels, src);
@@ -206,6 +235,9 @@ static int lua_saveimg(lua_State *L)
     if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	char* text = (char*)(luaL_checkstring(L, 2));
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	int compression = lua_toboolean(L, 3);
 	if (compression == 0){ //BMP Format
 		Handle fileHandle;
@@ -274,6 +306,7 @@ static int lua_newBitmap(lua_State *L)
 	u32 color = luaL_checkinteger(L, 3);
 	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
 	bitmap->width = width_new;
+	bitmap->magic = 0x4C494D47;
 	bitmap->height = height_new;
 	u8* pixels_new = (u8*)malloc(width_new*height_new*4);
 	int i=0;
@@ -289,6 +322,9 @@ static int lua_free(lua_State *L)
 int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	free(src->pixels);
 	free(src);
 	return 0;
@@ -323,6 +359,9 @@ static int lua_clearScreen(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	int screen = luaL_checkinteger(L,1);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((screen != 1)|| (screen != 0)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	ClearScreen(screen);
 	gfxFlushBuffers();
 	return 0;
@@ -341,6 +380,13 @@ static int lua_fillRect(lua_State *L)
 	int screen = luaL_checkinteger(L,6);
 	int side=0;
 	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){
 	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen);
 	else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
@@ -367,6 +413,13 @@ static int lua_drawline(lua_State *L)
 	int screen = luaL_checkinteger(L,6);
 	int side=0;
 	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){
 	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageLine(x1,y1,x2,y2,color,screen);
 	else if (alpha==255) DrawImageLine(x1,y1,x2,y2,color,screen);
@@ -392,6 +445,13 @@ static int lua_fillEmptyRect(lua_State *L)
 	int screen = luaL_checkinteger(L,6);
 	int side=0;
 	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){ 
 	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen);
 	else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
@@ -415,6 +475,13 @@ static int lua_pixel(lua_State *L)
 	int screen = luaL_checkinteger(L,4);
 	int side=0;
 	if (argc == 5) side = luaL_checkinteger(L,5);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){
 	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
 	else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
@@ -441,6 +508,13 @@ static int lua_pixel2(lua_State *L)
 	int screen = luaL_checkinteger(L,3);
 	int side=0;
 	if (argc == 4) side = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (screen > 1){
 	lua_pushinteger(L,GetImagePixel(x,y,(Bitmap*)screen));
 	}else{
@@ -454,6 +528,9 @@ static int lua_getWidth(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushinteger(L,src->width);
 	return 1;
 }
@@ -463,6 +540,9 @@ static int lua_getHeight(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	lua_pushinteger(L,src->height);
 	return 1;
 }
@@ -522,6 +602,7 @@ static int lua_console(lua_State *L) {
     int screen = luaL_checkinteger(L, 1);
 	Console* console = (Console*)malloc(sizeof(Console));
 	console->screen = screen;
+	console->magic = 0x4C434E53;
 	strcpy(console->text,"");
     lua_pushinteger(L,(u32)console);
     return 1;
@@ -531,6 +612,9 @@ static int lua_conclear(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     Console* console = (Console*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (console->magic != 0x4C434E53) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	strcpy(console->text,"");
     return 0;
 }
@@ -539,6 +623,9 @@ static int lua_condest(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     Console* console = (Console*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (console->magic != 0x4C434E53) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	free(console);
     return 0;
 }
@@ -547,6 +634,9 @@ static int lua_conshow(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
     Console* console = (Console*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (console->magic != 0x4C434E53) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	int res = ConsoleOutput(console);
 	lua_pushinteger(L,res);
 	gfxFlushBuffers();
@@ -557,6 +647,9 @@ static int lua_conappend(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
     Console* console = (Console*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (console->magic != 0x4C434E53) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	char* string = (char*)luaL_checkstring(L, 2);
 	strcat(console->text,string);
     return 0;

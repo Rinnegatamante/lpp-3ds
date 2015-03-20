@@ -31,12 +31,14 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 struct Bitmap{
+	u32 magic;
 	u8* pixels;
 	int width;
 	int height;
 	u16 bitperpixel;
 };
 struct Console{
+	u32 magic;
 	int screen;
 	char text[1500];
 };
@@ -85,3 +87,4 @@ Bitmap* OpenJPG(const char* filename);
 Bitmap* decodeJpg(unsigned char* in,u64 size);
 void RAW2FB(int xp,int yp, Bitmap* result,int screen,int side);
 void saveJpg(char *filename, u32 *pixels, u32 width, u32 height);
+Bitmap* OpenTGA(const char* filename);
