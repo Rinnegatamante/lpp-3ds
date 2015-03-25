@@ -38,10 +38,20 @@ extern "C"{
 	#include "include/sf2d/sf2d.h"
 }
 
+struct gpu_text{
+	u32 magic;
+	u16 width;
+	u16 height;
+	sf2d_texture* tex;
+};
+
+int cur_screen;
+
 static int lua_init(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");	
     sf2d_init();
+	cur_screen = 2;
 	sf2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
     return 0;
 }
@@ -49,6 +59,7 @@ static int lua_init(lua_State *L) {
 static int lua_term(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	cur_screen = 2;
     sf2d_fini();
     return 0;
 }
@@ -61,6 +72,7 @@ static int lua_refresh(lua_State *L) {
 	if (argc == 2) side = luaL_checkinteger(L,2);
 	gfxScreen_t my_screen;
 	gfx3dSide_t eye;
+	cur_screen = screen;
 	if (screen == 0) my_screen = GFX_TOP;
 	else my_screen = GFX_BOTTOM;
 	if (side == 0) eye = GFX_LEFT;
@@ -90,6 +102,13 @@ static int lua_rect(lua_State *L) {
 	int x2 = luaL_checkinteger(L,2);
 	int y1 = luaL_checkinteger(L,3);
 	int y2 = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((cur_screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if (y1 > 240 || y2 > 240) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
 	if (x2 < x1){
 		int tmp = x2;
 		x2 = x1;
@@ -112,9 +131,38 @@ static int lua_line(lua_State *L) {
 	int x2 = luaL_checkinteger(L,2);
 	int y1 = luaL_checkinteger(L,3);
 	int y2 = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((cur_screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if (y1 > 240 || y2 > 240) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
 	u32 color = luaL_checkinteger(L,5);
     sf2d_draw_line(x1, y1, x2, y2, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
     return 0;
+}
+
+static int lua_emptyrect(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((cur_screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if (y1 > 240 || y2 > 240) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
+	u32 color = luaL_checkinteger(L,5);
+    sf2d_draw_line(x1, y1, x1, y2, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+    sf2d_draw_line(x2, y1, x2, y2, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+	sf2d_draw_line(x1, y2, x2, y2, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+	sf2d_draw_line(x1, y1, x2, y1, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+	return 0;
 }
 
 static int lua_loadimg(lua_State *L)
@@ -148,7 +196,7 @@ static int lua_loadimg(lua_State *L)
 	if(!bitmap) return luaL_error(L, "Error loading image");
 	if (bitmap->bitperpixel == 24){
 		int length = bitmap->width*bitmap->height;
-		u32* real_pixels = (u32*)malloc(length * 4);
+		u8* real_pixels = (u8*)malloc(length * 4);
 		int i = 0;
 		int z = 0;
 		while (i < length){
@@ -160,14 +208,19 @@ static int lua_loadimg(lua_State *L)
 			z++;
 		}
 		free(bitmap->pixels);
-		bitmap->pixels = (u8*)real_pixels;
+		bitmap->pixels = real_pixels;
 	}
 	sf2d_texture *tex = sf2d_create_texture(bitmap->width, bitmap->height, GPU_RGBA8, SF2D_PLACE_RAM);
 	sf2d_fill_texture_from_RGBA8(tex, (u32*)bitmap->pixels, bitmap->width, bitmap->height);
 	sf2d_texture_tile32(tex);
+	gpu_text* result = (gpu_text*)malloc(sizeof(gpu_text));
+	result->magic = 0x4C545854;
+	result->tex = tex;
+	result->width = bitmap->width;
+	result->height = bitmap->height;
 	free(bitmap->pixels);
 	free(bitmap);
-    lua_pushinteger(L, (u32)(tex));
+    lua_pushinteger(L, (u32)(result));
 	return 1;
 }
 
@@ -177,8 +230,16 @@ static int lua_drawimg(lua_State *L)
     if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkinteger(L,1);
 	int y = luaL_checkinteger(L,2);
-	sf2d_texture* texture = (sf2d_texture*)luaL_checkinteger(L,3);
-	sf2d_draw_texture(texture, x, y);
+	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,3);
+	#ifndef SKIP_ERROR_HANDLING
+		if (texture->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((cur_screen == 0) && (x + texture->width > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && (x + texture->width > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if (y + texture->height > 240) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
+	sf2d_draw_texture(texture->tex, x, y);
 	return 0;
 }
 
@@ -190,6 +251,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"loadImage",				lua_loadimg},
   {"drawImage",				lua_drawimg},
   {"fillRect",				lua_rect},
+  {"fillEmptyRect",			lua_emptyrect},
   {"drawLine",				lua_line},
   {"termBlend",				lua_end},
   {"flip",					lua_flip},
