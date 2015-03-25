@@ -696,6 +696,7 @@ static int lua_readsmdh(lua_State *L){
 		tile_size = tile_size + 64;
 		i = i + 48;
 	}
+	bitmap->magic = 0x4C494D47;
 	free(icon_buffer);
 	lua_newtable(L);
 	lua_newtable(L);
@@ -1303,6 +1304,7 @@ static int lua_reboot(lua_State *L) {
 	aptOpenSession();
 	APT_HardwareResetAsync(NULL);
 	aptCloseSession();
+	for(;;){}
 	return 0;
 }
 
