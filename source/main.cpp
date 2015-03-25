@@ -35,7 +35,7 @@
 #include <string.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/luaGraphics.h"
+#include "include/Graphics/Graphics.h"
 #include "include/ftp/ftp.h"
 
 const char *errMsg;
