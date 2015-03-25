@@ -50,6 +50,7 @@ bool GW_MODE;
 static int nil_func(lua_State *L){ return 0; }
 static const luaL_Reg Fake_Sound_functions[] = {
   {"openWav",				nil_func},
+  {"openOgg",				nil_func},
   {"openAiff",				nil_func},
   {"close",					nil_func},
   {"play",					nil_func},
@@ -96,6 +97,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 	// Modules
 	luaSystem_init(L);
 	luaScreen_init(L);
+	luaGraphics_init(L);
 	luaControls_init(L);
 	luaNetwork_init(L);
 	luaTimer_init(L);

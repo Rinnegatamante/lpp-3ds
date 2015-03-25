@@ -33,13 +33,13 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/include/lua	source	source/include/ftp	source/include/tga source/include/ogg	source/include/lodepng/	source/include/unrar/	source/include/libjpeg
+SOURCES		:=	source/include/lua	source	source/include/ftp	source/include/sf2d	source/include/tga source/include/ogg	source/include/lodepng/	source/include/unrar/	source/include/libjpeg
 DATA		:=	data
 INCLUDES	:=	include
 
-APP_TITLE	:=	Sunshell
+APP_TITLE	:=	Lua Player Plus 3DS
 APP_AUTHOR	:=	Rinnegatamante
-APP_DESCRIPTION	:=	Multifunction shell for 3DS.
+APP_DESCRIPTION	:=	Lua interpreter for 3DS.
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------

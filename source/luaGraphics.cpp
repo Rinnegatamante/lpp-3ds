@@ -1111,6 +1111,53 @@ Bitmap* loadPng(const char* filename)
 	return result;
 }
 
+Bitmap* decodePNGfile(const char* filename)
+{
+	Handle fileHandle;
+	Bitmap* result;
+	u64 size;
+	u32 bytesRead;
+	unsigned char* out;
+	unsigned char* in;
+	unsigned int w, h;
+	
+	FS_path filePath = FS_makePath(PATH_CHAR, filename);
+	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	
+	FSFILE_GetSize(fileHandle, &size);
+	
+	in = (unsigned char*)malloc(size);
+	
+	if(!in) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
+	}
+	
+	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+		
+		if(lodepng_decode32(&out, &w, &h, in, size) != 0) {
+			free(in);
+			return 0;
+		}
+	
+	free(in);
+	
+	result = (Bitmap*)malloc(sizeof(Bitmap));
+	if(!result) {
+		free(out);
+	}
+	
+	result->pixels = out;
+	result->width = w;
+	result->height = h;
+	result->bitperpixel = 32;
+	return result;
+}
+
 void linecpy(u8* screen,u16 x,u16 y,u16 width,u16 height, u8* image,u16 x_img,u16 y_img){
 	for (int i=y_img; i<y_img+height; i++){
 		for (int j=x_img; j<x_img+width; j++){
@@ -1195,6 +1242,98 @@ Bitmap* OpenJPG(const char* filename)
 	free(in);
 	result->pixels = flipped;
     return result;
+}
+
+Bitmap* decodeJPGfile(const char* filename)
+{
+    Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+	if (result == NULL) return 0;
+	u64 size;
+	u32 bytesRead;
+	Handle fileHandle;
+    struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = my_error_exit;
+    jpeg_create_decompress(&cinfo);
+	FS_path filePath = FS_makePath(PATH_CHAR, filename);
+	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
+	FSFILE_GetSize(fileHandle, &size);
+	unsigned char* in = (unsigned char*)malloc(size);
+	if(!in) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
+	}
+	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+    jpeg_mem_src(&cinfo, in, size);
+    jpeg_read_header(&cinfo, TRUE);
+    jpeg_start_decompress(&cinfo);
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_bytes = width * cinfo.num_components;
+    u8* bgr_buffer = (u8*) malloc(width*height*cinfo.num_components);
+    while (cinfo.output_scanline < cinfo.output_height) {
+        u8* buffer_array[1];
+        buffer_array[0] = bgr_buffer + (cinfo.output_scanline) * row_bytes;
+        jpeg_read_scanlines(&cinfo, buffer_array, 1);
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+    result->bitperpixel = 24;
+    result->width = width;
+    result->height = height;
+    result->pixels = bgr_buffer;
+	int i = 0;
+	while (i < (width*height*3)){
+		u8 tmp = result->pixels[i];
+		result->pixels[i] = result->pixels[i+2];
+		result->pixels[i+2] = tmp;
+		i=i+3;
+	}
+	free(in);
+    return result;
+}
+
+Bitmap* decodeBMPfile(const char* fname){
+	Handle fileHandle;
+	u64 size;
+	u32 bytesRead;
+	FS_path filePath=FS_makePath(PATH_CHAR, fname);
+	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSFILE_GetSize(fileHandle, &size);
+	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+	
+	if(!result) {
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		return 0;
+	}
+	
+	result->pixels = (u8*)malloc(size-0x36);
+	FSFILE_Read(fileHandle, &bytesRead, 0x36, result->pixels, size-0x36);
+	FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result->width), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result->height), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
+	FSFILE_Close(fileHandle);
+	svcCloseHandle(fileHandle);
+	u8* flipped = (u8*)malloc(result->width*result->height*result->bitperpixel);
+	flipped = flipBitmap(flipped, result);
+	free(result->pixels);
+	result->pixels = flipped;
+	int i = 0;
+	while (i < (result->width*result->height*result->bitperpixel)){
+		u8 tmp = result->pixels[i];
+		result->pixels[i] = result->pixels[i+2];
+		result->pixels[i+2] = tmp;
+		i=i+result->bitperpixel;
+	}
+	
+	return result;
 }
 
 Bitmap* decodeJpg(unsigned char* in,u64 size)

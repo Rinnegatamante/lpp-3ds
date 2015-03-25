@@ -1,0 +1,203 @@
+/*----------------------------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#------  This File is Part Of : ----------------------------------------------------------------------------------------#
+#------- _  -------------------  ______   _   --------------------------------------------------------------------------#
+#------ | | ------------------- (_____ \ | |  --------------------------------------------------------------------------#
+#------ | | ---  _   _   ____    _____) )| |  ____  _   _   ____   ____   ----------------------------------------------#
+#------ | | --- | | | | / _  |  |  ____/ | | / _  || | | | / _  ) / ___)  ----------------------------------------------#
+#------ | |_____| |_| |( ( | |  | |      | |( ( | || |_| |( (/ / | |  --------------------------------------------------#
+#------ |_______)\____| \_||_|  |_|      |_| \_||_| \__  | \____)|_|  --------------------------------------------------#
+#------------------------------------------------- (____/  -------------------------------------------------------------#
+#------------------------   ______   _   -------------------------------------------------------------------------------#
+#------------------------  (_____ \ | |  -------------------------------------------------------------------------------#
+#------------------------   _____) )| | _   _   ___   ------------------------------------------------------------------#
+#------------------------  |  ____/ | || | | | /___)  ------------------------------------------------------------------#
+#------------------------  | |      | || |_| ||___ |  ------------------------------------------------------------------#
+#------------------------  |_|      |_| \____|(___/   ------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#- Licensed under the GPL License --------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#- Copyright (c) Nanni <lpp.nanni@gmail.com> ---------------------------------------------------------------------------#
+#- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#- Credits : -----------------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
+#- StapleButter for debug font -----------------------------------------------------------------------------------------#
+#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
+#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
+#- xerpi for sf2dlib ---------------------------------------------------------------------------------------------------#
+#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
+#-----------------------------------------------------------------------------------------------------------------------*/
+#include <3ds.h>
+#include "include/luaplayer.h"
+#include "include/luaGraphics.h"
+extern "C"{
+	#include "include/sf2d/sf2d.h"
+}
+
+static int lua_init(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");	
+    sf2d_init();
+	sf2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
+    return 0;
+}
+
+static int lua_term(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    sf2d_fini();
+    return 0;
+}
+
+static int lua_refresh(lua_State *L) {
+    int argc = lua_gettop(L);
+	if ((argc != 1) && (argc != 2))  return luaL_error(L, "wrong number of arguments");
+	int screen = luaL_checkinteger(L,1);
+	int side=0;
+	if (argc == 2) side = luaL_checkinteger(L,2);
+	gfxScreen_t my_screen;
+	gfx3dSide_t eye;
+	if (screen == 0) my_screen = GFX_TOP;
+	else my_screen = GFX_BOTTOM;
+	if (side == 0) eye = GFX_LEFT;
+	else eye = GFX_RIGHT;
+    sf2d_start_frame(my_screen,eye);
+    return 0;
+}
+
+static int lua_end(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    sf2d_end_frame();
+    return 0;
+}
+
+static int lua_flip(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+    sf2d_swapbuffers();
+    return 0;
+}
+
+static int lua_rect(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	if (x2 < x1){
+		int tmp = x2;
+		x2 = x1;
+		x1 = tmp;
+	}
+	if (y2 < y1){
+		int tmp = y2;
+		y2 = y1;
+		y1 = tmp;
+	}
+	u32 color = luaL_checkinteger(L,5);
+    sf2d_draw_rectangle(x1, y1, x2-x1, y2-y1, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+    return 0;
+}
+
+static int lua_line(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
+    sf2d_draw_line(x1, y1, x2, y2, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+    return 0;
+}
+
+static int lua_loadimg(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	char* text = (char*)(luaL_checkstring(L, 1));
+	Handle fileHandle;
+	u32 bytesRead;
+	u16 magic;
+	u64 long_magic;
+	FS_path filePath=FS_makePath(PATH_CHAR, text);
+	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
+	Bitmap* bitmap;
+	if (magic == 0x5089){
+		FSFILE_Read(fileHandle, &bytesRead, 0, &long_magic, 8);
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		if (long_magic == 0x0A1A0A0D474E5089) bitmap = decodePNGfile(text);
+	}else if (magic == 0x4D42){
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		bitmap = decodeBMPfile(text);
+	}else if (magic == 0xD8FF){
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		bitmap = decodeJPGfile(text);
+	}
+	if(!bitmap) return luaL_error(L, "Error loading image");
+	if (bitmap->bitperpixel == 24){
+		int length = bitmap->width*bitmap->height;
+		u32* real_pixels = (u32*)malloc(length * 4);
+		int i = 0;
+		int z = 0;
+		while (i < length){
+			real_pixels[i] = bitmap->pixels[i-z];
+			real_pixels[i+1] = bitmap->pixels[i-z+1];
+			real_pixels[i+2] = bitmap->pixels[i-z+2];
+			real_pixels[i+3] = 0xFF;
+			i = i + 4;
+			z++;
+		}
+		free(bitmap->pixels);
+		bitmap->pixels = (u8*)real_pixels;
+	}
+	sf2d_texture *tex = sf2d_create_texture(bitmap->width, bitmap->height, GPU_RGBA8, SF2D_PLACE_RAM);
+	sf2d_fill_texture_from_RGBA8(tex, (u32*)bitmap->pixels, bitmap->width, bitmap->height);
+	sf2d_texture_tile32(tex);
+	free(bitmap->pixels);
+	free(bitmap);
+    lua_pushinteger(L, (u32)(tex));
+	return 1;
+}
+
+static int lua_drawimg(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	sf2d_texture* texture = (sf2d_texture*)luaL_checkinteger(L,3);
+	sf2d_draw_texture(texture, x, y);
+	return 0;
+}
+
+//Register our Graphics Functions
+static const luaL_Reg Graphics_functions[] = {
+  {"init",					lua_init},
+  {"term",					lua_term},
+  {"initBlend",				lua_refresh},
+  {"loadImage",				lua_loadimg},
+  {"drawImage",				lua_drawimg},
+  {"fillRect",				lua_rect},
+  {"drawLine",				lua_line},
+  {"termBlend",				lua_end},
+  {"flip",					lua_flip},
+  {0, 0}
+};
+
+void luaGraphics_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Graphics_functions, 0);
+	lua_setglobal(L, "Graphics");
+}
