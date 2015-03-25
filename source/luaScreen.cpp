@@ -37,7 +37,7 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/luaGraphics.h"
+#include "include/Graphics/Graphics.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
