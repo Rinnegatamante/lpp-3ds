@@ -34,6 +34,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 - Smealum for ctrulib and ftpony src<br>
 - StapleButter for debug font<br>
 - Lode Vandevenne for lodepng<br>
+- xerpi for sf2dlib<br>
 - Jean-loup Gailly and Mark Adler for zlib<br>
 - Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
 <br><br>
