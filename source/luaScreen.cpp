@@ -24,10 +24,11 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
+#- xerpi for sf2dlib ---------------------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -56,8 +57,8 @@ static int lua_print(lua_State *L)
 	if (argc == 6) side = luaL_checkinteger(L,6);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
-		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && (y > 227)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
@@ -143,10 +144,10 @@ static int lua_pbitmap(lua_State *L)
 	if (argc == 5) side = luaL_checkinteger(L,5);
 	#ifndef SKIP_ERROR_HANDLING
 		if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
-		if ((x < 0) || (y < 0) || (y > 239)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
-		if (screen > 1) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0) || (y > 240)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1) PrintImageBitmap(x,y,file,screen);
 	else{ 
@@ -198,9 +199,9 @@ static int lua_partial(lua_State *L){
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
 		if ((st_x < 0) || (st_y < 0)) return luaL_error(L, "out of image bounds");
 		if (((st_x + width) > file->width) || (((st_y + height) > file->height))) return luaL_error(L, "out of image bounds");
-		if ((screen == 0) && ((x+width) > 399)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && ((x+width) > 319)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && ((y+height) > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && ((x+width) > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x+width) > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y+height) > 240)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
@@ -360,7 +361,7 @@ static int lua_clearScreen(lua_State *L)
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	int screen = luaL_checkinteger(L,1);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((screen != 1)|| (screen != 0)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen != 1) && (screen != 0)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	ClearScreen(screen);
 	gfxFlushBuffers();
@@ -382,9 +383,9 @@ static int lua_fillRect(lua_State *L)
 	if (argc == 7) side = luaL_checkinteger(L,7);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
-		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
@@ -415,9 +416,9 @@ static int lua_drawline(lua_State *L)
 	if (argc == 7) side = luaL_checkinteger(L,7);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
-		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
@@ -447,9 +448,9 @@ static int lua_fillEmptyRect(lua_State *L)
 	if (argc == 7) side = luaL_checkinteger(L,7);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 0) && ((x1 > 399) || (x2 > 399))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && ((x1 > 319) || (x2 > 319))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && ((y1 > 239) || (y2 > 239))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){ 
@@ -477,9 +478,9 @@ static int lua_pixel(lua_State *L)
 	if (argc == 5) side = luaL_checkinteger(L,5);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
-		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && (y > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
@@ -510,9 +511,9 @@ static int lua_pixel2(lua_State *L)
 	if (argc == 4) side = luaL_checkinteger(L,4);
 	#ifndef SKIP_ERROR_HANDLING
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
-		if ((screen == 0) && (x > 399)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen == 1) && (x > 319)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen <= 1) && (y > 239)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
