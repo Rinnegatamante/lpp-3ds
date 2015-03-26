@@ -243,6 +243,19 @@ static int lua_drawimg(lua_State *L)
 	return 0;
 }
 
+static int lua_free(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (texture->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	sf2d_free_texture(texture->tex);
+	free(texture);
+	return 0;
+}
+
 //Register our Graphics Functions
 static const luaL_Reg Graphics_functions[] = {
   {"init",					lua_init},
@@ -255,6 +268,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"drawLine",				lua_line},
   {"termBlend",				lua_end},
   {"flip",					lua_flip},
+  {"freeImage",				lua_free},
   {0, 0}
 };
 
