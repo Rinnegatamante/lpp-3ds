@@ -11,7 +11,9 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br><br>
 <b>Interpreter features:</b>
 <br>- 2D Graphics system with different built-in functions for drawing text, creating debug consoles, filling rectangles, drawing pixels, etc.
+<br>- GPU rendering support through Graphics module
 <br>- Alpha channel support
+<br>- Native support to TTF fonts
 <br>- Native support to BMP/PNG/JPG images
 <br>- Sound system for reproducing audio files and recording audio with microphone
 <br>- Native support to WAV/AIFF/OGG audio files
@@ -35,6 +37,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 - StapleButter for debug font<br>
 - Lode Vandevenne for lodepng<br>
 - xerpi for sf2dlib<br>
+- Sean Barrett for stb_truetype<br>
 - Jean-loup Gailly and Mark Adler for zlib<br>
 - Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
 <br><br>
