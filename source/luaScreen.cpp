@@ -38,10 +38,16 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/Graphics/Graphics.h"
+#include "include/ttf/Font.hpp"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
+
+struct ttf{
+	u32 magic;
+	Font f;
+};
 
 static int lua_print(lua_State *L)
 {
@@ -656,6 +662,64 @@ static int lua_conappend(lua_State *L) {
     return 0;
 }
 
+static int lua_loadFont(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	char* text = (char*)(luaL_checkstring(L, 1));
+	char tmpPath2[1024];
+	strcpy(tmpPath2,"sdmc:");
+	strcat(tmpPath2,(char*)text);
+	Font F;
+	sdmcInit();
+    F.loadFromFile(tmpPath2);
+	sdmcExit();
+	F.setSize(16);
+	ttf* result = (ttf*)malloc(sizeof(ttf));
+	result->f = F;
+	result->magic = 0x4C464E54;
+	lua_pushinteger(L,(u32)result);
+    return 1;
+}
+
+static int lua_fsize(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	u8 size = luaL_checkinteger(L,2);
+	#ifndef SKIP_ERROR_HANDLING
+		if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	font->f.setSize(size);
+    return 0;
+}
+
+static int lua_fprint(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 6 && argc != 7) return luaL_error(L, "wrong number of arguments");
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	int x = luaL_checkinteger(L, 2);
+    int y = luaL_checkinteger(L, 3);
+	char* text = (char*)(luaL_checkstring(L, 4));
+	u32 color = luaL_checkinteger(L,5);
+	int screen = luaL_checkinteger(L,6);
+	int side=0;
+	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 227)) return luaL_error(L, "out of framebuffer bounds");
+		if (screen != 0 && screen != 1) return luaL_error(L, "wrong SCREEN value");
+	#endif
+	bool left_side = false;
+	bool top_screen = false;
+	if (screen == 0) top_screen = true;
+	if (side == 0) left_side = true;
+	font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side);
+    return 0;
+}
+
 //Register our Console Functions
 static const luaL_Reg Console_functions[] = {
   {"new",                				lua_console},
@@ -703,10 +767,21 @@ static const luaL_Reg Screen_functions[] = {
   {0, 0}
 };
 
+//Register our Font Functions
+static const luaL_Reg Font_functions[] = {
+  {"load",					lua_loadFont}, 
+  {"print",					lua_fprint}, 
+  {"setPixelSizes",			lua_fsize}, 
+  {0, 0}
+};
+
 void luaScreen_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Screen_functions, 0);
 	lua_setglobal(L, "Screen");
+	lua_newtable(L);
+	luaL_setfuncs(L, Font_functions, 0);
+	lua_setglobal(L, "Font");
 	lua_newtable(L);
 	luaL_setfuncs(L, Color_functions, 0);
 	lua_setglobal(L, "Color");
