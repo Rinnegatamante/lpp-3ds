@@ -3,7 +3,6 @@ blue = Color.new(0,0,255)
 green = Color.new(0,255,0)
 while true do
 	Screen.waitVblankStart()
-	Controls.init()
 	pad = Controls.read()
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)

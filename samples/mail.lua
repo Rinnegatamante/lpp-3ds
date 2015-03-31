@@ -24,7 +24,6 @@ while true do
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
 	Console.show(tmp)
-	Controls.init()
 	if Controls.check(Controls.read(),KEY_A) then
 		Console.destroy(tmp)
 		System.exit()

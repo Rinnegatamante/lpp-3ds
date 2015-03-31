@@ -4,7 +4,6 @@ does_reg_exist = false
 while true do
 	Screen.waitVblankStart()
 	Screen.refresh()
-	Controls.init()
 	pad = Controls.read()
 	Screen.clear(TOP_SCREEN)
 	Screen.debugPrint(0,0,"Press A to exit",Color.new(255,255,255),TOP_SCREEN)

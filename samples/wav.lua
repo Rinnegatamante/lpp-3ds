@@ -5,7 +5,6 @@ while true do
 	Screen.waitVblankStart()
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
-	Controls.init()
 	pad = Controls.read()
 	if (Controls.check(pad,KEY_A)) then
 		Sound.close(test)

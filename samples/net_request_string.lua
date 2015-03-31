@@ -17,7 +17,6 @@ while true do
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
 	Screen.debugPrint(0,0,last_version,0xFFFFFF,TOP_SCREEN)
-	Controls.init()
 	if Controls.check(Controls.read(),KEY_A) then
 		System.exit()
 	end

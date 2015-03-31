@@ -9,7 +9,6 @@ Screen.debugPrint(51,3,"Image...OK!",black,bitmap2)
 while true do
 	Screen.waitVblankStart()
 	Screen.refresh()
-	Controls.init()
 	pad = Controls.read()
 	if (Controls.check(pad,KEY_A)) then
 		System.exit()

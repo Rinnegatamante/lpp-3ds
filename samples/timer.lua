@@ -2,7 +2,6 @@ red = Color.new(255,0,0)
 timer = Timer.new()
 while true do
 	Screen.waitVblankStart()
-	Controls.init()
 	pad = Controls.read()
 	Screen.refresh()
 	Screen.clear(BOTTOM_SCREEN)
