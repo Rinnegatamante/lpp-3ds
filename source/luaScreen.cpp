@@ -47,6 +47,7 @@
 struct ttf{
 	u32 magic;
 	Font f;
+	unsigned char* buffer;
 };
 
 static int lua_print(lua_State *L)
@@ -671,10 +672,11 @@ static int lua_loadFont(lua_State *L) {
 	strcat(tmpPath2,(char*)text);
 	Font F;
 	sdmcInit();
-    F.loadFromFile(tmpPath2);
+    unsigned char* buffer = F.loadFromFile(tmpPath2);
 	sdmcExit();
 	F.setSize(16);
 	ttf* result = (ttf*)malloc(sizeof(ttf));
+	result->buffer = buffer;
 	result->f = F;
 	result->magic = 0x4C464E54;
 	lua_pushinteger(L,(u32)result);
@@ -690,6 +692,18 @@ static int lua_fsize(lua_State *L) {
 		if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	font->f.setSize(size);
+    return 0;
+}
+
+static int lua_unloadFont(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	#ifndef SKIP_ERROR_HANDLING
+		if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	free(font->buffer);
+	free(font);
     return 0;
 }
 
@@ -717,6 +731,7 @@ static int lua_fprint(lua_State *L) {
 	if (screen == 0) top_screen = true;
 	if (side == 0) left_side = true;
 	font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side);
+	gfxFlushBuffers();
     return 0;
 }
 
@@ -772,6 +787,7 @@ static const luaL_Reg Font_functions[] = {
   {"load",					lua_loadFont}, 
   {"print",					lua_fprint}, 
   {"setPixelSizes",			lua_fsize}, 
+  {"unload",				lua_unloadFont}, 
   {0, 0}
 };
 
