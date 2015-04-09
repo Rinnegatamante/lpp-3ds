@@ -21,7 +21,7 @@ Font::Font(const std::vector<unsigned char>& buffer)
 	loadFromMemory(buffer);
 }
 
-bool Font::loadFromFile(const std::string& filename)
+unsigned char* Font::loadFromFile(const std::string& filename)
 {
 	FILE* fp = fopen(filename.c_str(), "rb");
 	if (!fp)
@@ -41,7 +41,7 @@ bool Font::loadFromFile(const std::string& filename)
 
 	//free(buffer);
 
-	return ret;
+	return buffer;
 }
 
 bool Font::loadFromMemory(const unsigned char* buffer, unsigned int buffer_size)
