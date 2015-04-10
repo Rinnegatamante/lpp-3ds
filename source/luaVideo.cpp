@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <math.h>
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
@@ -97,6 +98,7 @@ struct JPGV{
 	u32* thread;
 	u8 audiocodec;
 	u32 stdio_handle;
+	u32 real_audio_size;
 };
 
 size_t jpgv_rc(void *ptr, size_t size, size_t nmemb, void *datasource){
@@ -104,7 +106,7 @@ size_t jpgv_rc(void *ptr, size_t size, size_t nmemb, void *datasource){
 }
 
 int jpgv_sk(void *datasource, ogg_int64_t offset, int whence){
-	if (whence == SEEK_SET) offset = offset + 0x18;
+	if (whence == SEEK_SET) offset = offset;
 	if (whence == SEEK_END){
 		fseek((FILE*)datasource,0x14,SEEK_SET);
 		u32 audiosize;
@@ -218,8 +220,8 @@ static void streamOGG(void* arg){
 			static int current_section;
 	
 			u32 control;
-			u32 total = src->audio_size;
-			u32 block_size = src->mem_size / 2;
+			u32 total = src->real_audio_size;
+			u32 block_size = src->mem_size / 8;
 			if (src->audiobuf2 == NULL) control = src->samplerate * 2 * ((osGetTime() - src->tick) / 1000);
 			else{
 				control = src->samplerate * 4 * ((osGetTime() - src->tick) / 1000);
@@ -281,17 +283,17 @@ static void streamOGG(void* arg){
 					CSND_sharedmemtype0_cmdupdatestate(0);
 				}
 			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
-				if ((src->moltiplier % 2) == 1){
-					//Update and flush first half-buffer
-					if (src->audiobuf2 == NULL){ //Mono file
-						
+				if (src->audiobuf2 == NULL){ //Mono file
 						int i = 0;
+						int j;
+						if (src->moltiplier % 8 == 0) j=((block_size) * 7);
+						else j=(block_size) * ((src->moltiplier - 1) % 8);
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
 							if (ret == 0) {
 								eof=1;
 							} else {
-								memcpy(&src->audiobuf[i],pcmout,ret);
+								memcpy(&src->audiobuf[j+i],pcmout,ret);
 								i = i + ret;
 								if (i >= (block_size)) break;
 							}
@@ -313,51 +315,9 @@ static void streamOGG(void* arg){
 				
 						// Separating left and right channels
 						int z;
-						int j=0;
-						for (z=0; z < (block_size); z=z+4){
-							src->audiobuf[j] = tmp_buf[z];
-							src->audiobuf[j+1] = tmp_buf[z+1];
-							src->audiobuf2[j] = tmp_buf[z+2];
-							src->audiobuf2[j+1] = tmp_buf[z+3];
-							j=j+2;
-						}
-						linearFree(tmp_buf);
-				
-					}
-					src->moltiplier = src->moltiplier + 1;
-				}else{
-					//Update and flush second half-buffer
-					if (src->audiobuf2 == NULL){ //Mono file
-						
-						int i = 0;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
-								memcpy(&src->audiobuf[i+block_size],pcmout,ret);
-								i = i + ret;
-								if (i >= block_size) break;
-							}
-						}
-					}else{ //Stereo file
-						u8* tmp_buf = (u8*)linearAlloc(block_size);
-						char pcmout[2048];
-						int i = 0;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-								if (i >= (block_size)) break;
-							}
-						}
-				
-						// Separating left and right channels
-						int z;
-						int j=block_size/2;
+						int j;
+						if (src->moltiplier % 8 == 0) j=((block_size / 2) * 7);
+						else j=(block_size / 2) * ((src->moltiplier - 1) % 8);
 						for (z=0; z < block_size; z=z+4){
 							src->audiobuf[j] = tmp_buf[z];
 							src->audiobuf[j+1] = tmp_buf[z+1];
@@ -369,7 +329,6 @@ static void streamOGG(void* arg){
 				
 					}
 					src->moltiplier = src->moltiplier + 1;
-				}
 			}
 	}
 }
@@ -408,6 +367,7 @@ static int lua_loadJPGV(lua_State *L)
 	JPGV_file->tick = 0;
 	JPGV_file->audiobuf = NULL;
 	JPGV_file->audiobuf2 = NULL;
+	JPGV_file->thread = NULL;
 	JPGV_file->mem_size = JPGV_file->audio_size;
 	JPGV_file->magic = 0x4C4A5056;
 	lua_pushinteger(L, (u32)JPGV_file);
@@ -424,7 +384,6 @@ int argc = lua_gettop(L);
 	#endif
 	int loop = luaL_checkinteger(L, 2);
 	int ch1 = luaL_checkinteger(L, 3);
-	u8 core = 1;
 	if (argc == 4){
 	int ch2 = luaL_checkinteger(L, 4);
 	src->ch2 = ch2;
@@ -449,6 +408,7 @@ int argc = lua_gettop(L);
 		}
 		vorbis_info* my_info = ov_info(vf,-1);
 		src->samplerate = my_info->rate;
+		src->real_audio_size = ov_time_total(vf,-1) * 2 * my_info->rate;
 		src->bytepersample = 2;
 		// Decoding OGG buffer
 	int i=0;
@@ -484,13 +444,14 @@ int argc = lua_gettop(L);
 			}
 		}
 	}else{ //Stereo buffer
-		src->audiotype = 2;
-		u8* tmp_buf;
-		u32 size_tbp;
+			src->audiotype = 2;
+			u8* tmp_buf;
+			u32 size_tbp;
 			src->moltiplier = 1;
 			src->bytepersample = 2;
 			src->mem_size = src->audio_size / 2;
-			u8 molt = 4;
+			u8 molt = 1;
+			if (src->samplerate <= 30000) molt = 4; // Temporary patch for low samplerates
 			while (src->mem_size > MAX_RAM_ALLOCATION * molt){
 				src->mem_size = src->mem_size / 2;
 			}
@@ -536,7 +497,6 @@ int argc = lua_gettop(L);
 		
 	}
 	src->stdio_handle = (u32)vf;
-	if (src->audiotype == 2) core = 1;
 	}
 	src->ch1 = ch1;
 	src->currentFrame = 0;
@@ -577,21 +537,17 @@ int argc = lua_gettop(L);
 			My_CSND_playsound(src->ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 0xFFFF, 0);
 			My_CSND_playsound(src->ch2, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 0, 0xFFFF);
 		}
-	src->tick = osGetTime();
 	CSND_setchannel_playbackstate(ch1, 1);
-	if (src->audiotype == 2){
-		CSND_setchannel_playbackstate(src->ch2, 1);
-	}
+	if (src->audiotype == 2) CSND_setchannel_playbackstate(src->ch2, 1);
 	CSND_sharedmemtype0_cmdupdatestate(0);
+	src->tick = osGetTime();
 	src->moltiplier = 1;
 	svcCreateEvent(&updateStream,0);
 	u32 *threadStack = (u32*)memalign(32, 8192);
 	src->thread = threadStack;
 	svcSignalEvent(updateStream);
-	Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, core);			
-	}else{
-	src->tick = osGetTime();
-	}
+	Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);			
+	}else src->tick = osGetTime();
 	return 0;
 }
 
@@ -684,16 +640,12 @@ int argc = lua_gettop(L);
 			My_CSND_playsound(src->ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 0xFFFF, 0);
 			My_CSND_playsound(src->ch2, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 0, 0xFFFF);
 		}
-	src->tick = osGetTime();
-	CSND_setchannel_playbackstate(ch1, 1);
-	if (src->audiotype == 2){
-		CSND_setchannel_playbackstate(src->ch2, 1);
-	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
-	src->moltiplier = 1;
-	}else{
-	src->tick = osGetTime();
-	}
+		CSND_setchannel_playbackstate(ch1, 1);
+		if (src->audiotype == 2) CSND_setchannel_playbackstate(src->ch2, 1);
+		CSND_sharedmemtype0_cmdupdatestate(0);
+		src->tick = osGetTime();
+		src->moltiplier = 1;
+	}else src->tick = osGetTime();
 	return 0;
 }
 
@@ -729,32 +681,9 @@ int argc = lua_gettop(L);
 					CSND_sharedmemtype0_cmdupdatestate(0);
 				}
 			}
-			if (!GW_MODE){
-			if (src->audiobuf2 == NULL){				
-					FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
-			}else{
-				u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buffer, src->mem_size);
-				u32 size_tbp = src->mem_size;
-				u32 off=0;
-				u32 i=0;
-				u16 z;
-				while (i < size_tbp){
-					z=0;
-					while (z < (src->bytepersample/2)){
-						src->audiobuf[off+z] = tmp_buffer[i+z];
-						src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
-						z++;
-					}
-					z=0;
-					i=i+src->bytepersample;
-					off=off+(src->bytepersample/2);
-				}
-			linearFree(tmp_buffer);
-			}
-			}
 		}else{
-			src->currentFrame =((osGetTime() - src->tick) * src->framerate / 1000);
+			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
+			src->currentFrame = (u32)floor(tmp);
 			if (src->currentFrame >= (src->tot_frame-5)) return 0;
 			else{
 				u32 bytesRead;
@@ -1161,18 +1090,20 @@ int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	closeStream = true;
-	svcSignalEvent(updateStream);
-	while (closeStream){} // Wait for thread exiting...
-	svcCloseHandle(updateStream);
-	svcCloseHandle(streamThread);
-	free(src->thread);
-	sdmcExit();
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
-	linearFree(src->audiobuf);
-	if (src->audiotype == 2){
-		linearFree(src->audiobuf2);
+	if (src->thread != NULL){
+		closeStream = true;
+		svcSignalEvent(updateStream);
+		while (closeStream){} // Wait for thread exiting...
+		svcCloseHandle(updateStream);
+		svcCloseHandle(streamThread);
+		free(src->thread);
+		sdmcExit();
 	}
+	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE && src->audiobuf != NULL){
+		linearFree(src->audiobuf);
+		if (src->audiotype == 2){
+			linearFree(src->audiobuf2);
+		}
 	}
 	FSFILE_Close(src->sourceFile);
 	svcCloseHandle(src->sourceFile);
