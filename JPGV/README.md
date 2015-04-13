@@ -40,7 +40,7 @@ You can find a simple converter from various video format to JPGV in this folder
 <tr>
 <td>0x0E</td>
 <td>2</td>
-<td>Audio codec (0x01 = PCM16, 0x02 = Vorbis)</td>
+<td>Audio codec (0x00 = PCM16, 0x01 = Vorbis)</td>
 </tr>
 <tr>
 <td>0x10</td>
