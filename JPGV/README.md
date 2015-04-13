@@ -1,7 +1,8 @@
 <b>Introduction:</b><br>
 JPGV (Jpeg Video) video format is a video format ideated from BMPV idea to make an easy-to-load video format with a good filesize.<br>
-Actually, audio buffer is coded in WAV format with PCM16 codec and video buffer is a sequence of JPG images for every frame.<br>
-Headers from WAV is truncated.<br>
+Supported audiocodecs = PCM16 and Vorbis.<br>
+Supported videocodecs = MJPEG<br>
+Note that if you use Vorbis audicodec, audio info are truncated in header and you'll find a complete OGG container as Audiobuffer.<br>
 You can find a simple converter from various video format to JPGV in this folder.<br>
 <br>
 <b>File infos:</b>
@@ -33,8 +34,13 @@ You can find a simple converter from various video format to JPGV in this folder
 </tr>
 <tr>
 <td>0x0C</td>
-<td>4</td>
+<td>2</td>
 <td>Audio buffer samplerate</td>
+</tr>
+<tr>
+<td>0x0E</td>
+<td>2</td>
+<td>Audio codec (0x01 = PCM16, 0x02 = Vorbis)</td>
 </tr>
 <tr>
 <td>0x10</td>
