@@ -243,6 +243,30 @@ static int lua_drawimg(lua_State *L)
 	return 0;
 }
 
+static int lua_partial(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 7) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+	int st_x = luaL_checkinteger(L, 3);
+    int st_y = luaL_checkinteger(L, 4);
+	int width = luaL_checkinteger(L, 5);
+    int height = luaL_checkinteger(L, 6);
+	gpu_text* file = (gpu_text*)luaL_checkinteger(L, 7);
+	#ifndef SKIP_ERROR_HANDLING
+		if (file->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((st_x < 0) || (st_y < 0)) return luaL_error(L, "out of image bounds");
+		if (((st_x + width) > file->width) || (((st_y + height) > file->height))) return luaL_error(L, "out of image bounds");
+		if ((cur_screen == 0) && ((x+width) > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && ((x+width) > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen <= 1) && ((y+height) > 240)) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
+	sf2d_draw_texture_part(file->tex, x, y, st_x, st_y, width, height);
+	return 0;
+}
+
 static int lua_free(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -263,6 +287,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"initBlend",				lua_refresh},
   {"loadImage",				lua_loadimg},
   {"drawImage",				lua_drawimg},
+  {"drawPartialImage",		lua_partial},
   {"fillRect",				lua_rect},
   {"fillEmptyRect",			lua_emptyrect},
   {"drawLine",				lua_line},
