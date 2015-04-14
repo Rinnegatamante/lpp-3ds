@@ -33,11 +33,11 @@ BUILD		:=	build
 SOURCES		:=	source/include/lua	source source/include source/include/Graphics \
 				source/include/ftp source/include/sf2d	source/include/tga source/include/ogg \
 				source/include/lodepng/	source/include/unrar/	source/include/libjpeg \
-				source/include/ttf
+				source/include/ttf source/include/khax
 DATA		:=	data
 INCLUDES	:=	include
 
-APP_TITLE	:=	Lua Player Plus 3DS
+APP_TITLE	:=	Lua Player Plus
 APP_AUTHOR	:=	Rinnegatamante
 APP_DESCRIPTION	:=	Lua interpreter for 3DS
 #---------------------------------------------------------------------------------

@@ -169,8 +169,7 @@ static int lua_checkbuild(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	if (GW_MODE) lua_pushinteger(L,1);
-	else if (CIA_MODE) lua_pushinteger(L,2);
+	if (CIA_MODE) lua_pushinteger(L,1);
 	else lua_pushinteger(L,0);
 	return 1;
 }
@@ -919,7 +918,7 @@ return (Result)cmdbuf[1];
 
 static int lua_installCia(lua_State *L){
 	int argc = lua_gettop(L);
-	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char* path = luaL_checkstring(L, 1);
 	Handle fileHandle;
 	Handle ciaHandle;

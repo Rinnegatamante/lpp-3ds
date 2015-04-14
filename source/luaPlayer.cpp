@@ -40,41 +40,10 @@
 #include <string.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
+#include "include/khax/khax.h"
 
 static lua_State *L;
-bool CIA_MODE;
 bool isCSND;
-bool GW_MODE;
-
-// Fake Sound Module for GW Mode to prevent interpreter error with generic scripts
-static int nil_func(lua_State *L){ return 0; }
-static const luaL_Reg Fake_Sound_functions[] = {
-  {"openWav",				nil_func},
-  {"openOgg",				nil_func},
-  {"openAiff",				nil_func},
-  {"close",					nil_func},
-  {"play",					nil_func},
-  {"init",					nil_func},
-  {"term",					nil_func},
-  {"pause",					nil_func},
-  {"getSrate",				nil_func},
-  {"getTime",				nil_func},
-  {"getTitle",				nil_func},
-  {"getAuthor",				nil_func},
-  {"getType",				nil_func},  
-  {"getTotalTime",			nil_func},
-  {"resume",				nil_func},
-  {"isPlaying",				nil_func},
-  {"updateStream",			nil_func},
-  {"register",				nil_func},
-  {"saveWav",				nil_func},
-  {0, 0}
-};
-void luaFakeSound_init(lua_State *L) {
-	lua_newtable(L);
-	luaL_setfuncs(L, Fake_Sound_functions, 0);
-	lua_setglobal(L, "Sound");
-}
 
 const char *runScript(const char* script, bool isStringBuffer)
 {
@@ -82,16 +51,6 @@ const char *runScript(const char* script, bool isStringBuffer)
 	
 	// Standard libraries
 	luaL_openlibs(L);
-	
-	// Check if user is in GW mode
-	if (CSND_initialize(NULL)==0){
-		CSND_shutdown();
-		GW_MODE = false;
-	}else GW_MODE = true;
-	if (amInit()==0){
-		CIA_MODE = true;
-		amExit();
-	}else CIA_MODE = false;
 	isCSND = false;
 	
 	// Modules
@@ -101,8 +60,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 	luaControls_init(L);
 	luaNetwork_init(L);
 	luaTimer_init(L);
-	if (!GW_MODE) luaSound_init(L);
-	else luaFakeSound_init(L);
+	luaSound_init(L);
 	luaVideo_init(L);
 	
 	int s = 0;

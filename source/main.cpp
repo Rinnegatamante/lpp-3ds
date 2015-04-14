@@ -37,11 +37,13 @@
 #include "include/luaplayer.h"
 #include "include/Graphics/Graphics.h"
 #include "include/ftp/ftp.h"
+#include "include/khax/khax.h"
 
 const char *errMsg;
 unsigned char *buffer;
 char cur_dir[256];
 char start_dir[256];
+bool CIA_MODE;
 
 int main(int argc, char **argv)
 {
@@ -90,6 +92,15 @@ int main(int argc, char **argv)
 	{
 		restore=0;		
 		char error[2048];
+		
+		// Check if user is in User mode and enables Kernel Access
+		if (amInit()==0){
+			CIA_MODE = true;
+			amExit();
+		}else{
+			CIA_MODE = false;
+			khaxInit();
+		}
 		
 		// Load main script
 		FS_path filePath=FS_makePath(PATH_CHAR, path);
@@ -164,6 +175,7 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+	if (!CIA_MODE) khaxExit();
 	fsExit();
 	irrstExit();
 	hidExit();
