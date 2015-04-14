@@ -952,13 +952,11 @@ static int lua_playWav(lua_State *L)
 	int loop = luaL_checkinteger(L, 2);
 	u32 ch = luaL_checkinteger(L, 3);
 	u32 ch2;
-	u8 core = 1;
 	bool non_native_encode = false;
 	ThreadFunc streamFunction = streamWAV;
 	u8 tmp_encode;
 	if (argc == 4) ch2 = luaL_checkinteger(L, 4);
 	if (src->encoding == CSND_ENCODING_VORBIS){
-		if (src->audiobuf2 != NULL) core = 1; // Need to use main core cause syscore cause random crashes (probably it invades on framebuffers?)
 		streamFunction = streamOGG;
 		tmp_encode = src->encoding;
 		src->encoding = CSND_ENCODING_PCM16;
@@ -972,7 +970,7 @@ static int lua_playWav(lua_State *L)
 		u32 *threadStack = (u32*)memalign(32, 8192);
 		src->thread = threadStack;
 		svcSignalEvent(updateStream);
-		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, core);
+		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
 		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 0xFFFF, 0xFFFF);
 		}else{
 		My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0xFFFF);
@@ -989,7 +987,7 @@ static int lua_playWav(lua_State *L)
 		u32 *threadStack = (u32*)memalign(32, 8192);
 		src->thread = threadStack;
 		svcSignalEvent(updateStream);
-		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, core);
+		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
 		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 0xFFFF, 0);
 		My_CSND_playsound(ch2, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 0, 0xFFFF);
 		}else{
