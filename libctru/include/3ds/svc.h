@@ -194,6 +194,7 @@ void __attribute__((noreturn)) svcExitProcess();
 s32  svcCreateThread(Handle* thread, ThreadFunc entrypoint, u32 arg, u32* stack_top, s32 thread_priority, s32 processor_id);
 void __attribute__((noreturn)) svcExitThread();
 void svcSleepThread(s64 ns);
+Result svcBackdoor(s32 (*callback)(void));
 s32  svcSetThreadPriority(Handle thread, s32 prio);
 s32  svcCreateMutex(Handle* mutex, bool initially_locked);
 s32  svcReleaseMutex(Handle handle);

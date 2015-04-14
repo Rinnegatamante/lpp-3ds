@@ -13,6 +13,13 @@ svcControlMemory:
 	ldr  r4, [sp], #4
 	bx   lr
 
+.global svcBackdoor
+.type svcBackdoor, %function
+svcBackdoor:
+    svc 0x7B
+    bx lr
+
+	
 .global svcQueryMemory
 .type svcQueryMemory, %function
 svcQueryMemory:
