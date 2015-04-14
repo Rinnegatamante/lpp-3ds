@@ -140,7 +140,7 @@ static void streamWAV(void* arg){
 			closeStream = false;
 			svcExitThread();
 		}
-		if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying) && (!GW_MODE)){
+		if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
 			if ((src->moltiplier % 2) == 1){
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
@@ -151,10 +151,9 @@ static void streamWAV(void* arg){
 				}
 				src->moltiplier = src->moltiplier + 1;
 			}else{
-				u8* tmp_buffer = (u8*)linearAlloc((src->mem_size)/2);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buffer, (src->mem_size)/2);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 				if (bytesRead != ((src->mem_size)/2)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buffer, (src->mem_size)/2);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
 				}
 				src->moltiplier = src->moltiplier + 1;
@@ -165,14 +164,13 @@ static void streamWAV(void* arg){
 				while (i < size_tbp){
 					z=0;
 					while (z < (src->bytepersample/2)){
-						src->audiobuf[off+z] = tmp_buffer[i+z];
-						src->audiobuf2[off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
+						src->audiobuf[off+z] = tmp_buf[i+z];
+						src->audiobuf2[off+z] = tmp_buf[i+z+(src->bytepersample/2)];
 						z++;
 					}
 					i=i+src->bytepersample;
 					off=off+(src->bytepersample/2);
 				}
-				linearFree(tmp_buffer);
 			}
 		}else{
 			u32 bytesRead;
@@ -181,8 +179,7 @@ static void streamWAV(void* arg){
 					FSFILE_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
 					src->moltiplier = src->moltiplier + 1;
 			}else{
-				u8* tmp_buffer = (u8*)linearAlloc((src->mem_size)/2);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buffer, (src->mem_size)/2);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
 				u32 size_tbp = (src->mem_size)/2;
 				u32 off=0;
@@ -191,14 +188,13 @@ static void streamWAV(void* arg){
 				while (i < size_tbp){
 					z=0;
 					while (z < (src->bytepersample/2)){
-						src->audiobuf[(src->mem_size)/4+off+z] = tmp_buffer[i+z];
-						src->audiobuf2[(src->mem_size)/4+off+z] = tmp_buffer[i+z+(src->bytepersample/2)];
+						src->audiobuf[(src->mem_size)/4+off+z] = tmp_buf[i+z];
+						src->audiobuf2[(src->mem_size)/4+off+z] = tmp_buf[i+z+(src->bytepersample/2)];
 						z++;
 					}
 				i=i+src->bytepersample;
 				off=off+(src->bytepersample/2);
 				}
-				linearFree(tmp_buffer);
 			}
 		}
 		}
@@ -254,7 +250,7 @@ static void streamOGG(void* arg){
 						} else {
 							memcpy(&src->audiobuf[i],pcmout,ret);
 							i = i + ret;
-							if (i >= (src->mem_size)) break;
+							if (i >= (package_max_size)) break;
 						}
 					}
 				}else{
@@ -294,19 +290,29 @@ static void streamOGG(void* arg){
 			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
 						int i = 0;
-						int j;
-						if (src->moltiplier % 8 == 0) j=((block_size) * 7);
-						else j=(block_size) * ((src->moltiplier - 1) % 8);
+						int j = src->audio_pointer;
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
 							if (ret == 0) {
 								eof=1;
 							} else {
-								memcpy(&src->audiobuf[j+i],pcmout,ret);
+								memcpy(&tmp_buf[i],pcmout,ret);
 								i = i + ret;
+								src->package_size = i;
 								if (i >= (package_max_size)) break;
 							}
 						}
+						if (j + src->package_size >= src->mem_size){
+							u32 frag_size = src->mem_size - j;
+							u32 frag2_size = src->package_size-frag_size;
+							memcpy(&src->audiobuf[j],tmp_buf,frag_size);
+							memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
+							src->audio_pointer = frag2_size;
+						}else{
+							memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
+							src->audio_pointer = j + src->package_size;
+						}
+						src->total_packages_size = src->total_packages_size + src->package_size;
 					}else{ //Stereo file
 						char pcmout[2048];
 						int i = 0;
@@ -324,8 +330,7 @@ static void streamOGG(void* arg){
 				
 						// Separating left and right channels
 						int z;
-						int j;
-						j = src->audio_pointer;
+						int j = src->audio_pointer;
 						for (z=0; z <= src->package_size; z=z+4){
 							src->audiobuf[j] = tmp_buf[z];
 							src->audiobuf[j+1] = tmp_buf[z+1];
@@ -357,7 +362,7 @@ static int lua_loadJPGV(lua_State *L)
 	if (magic == 0x5647504A){
 	JPGV* JPGV_file = (JPGV*)malloc(sizeof(JPGV));
 	FSFILE_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 4);
-	if (!GW_MODE) FSFILE_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
+	FSFILE_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 10,&(JPGV_file->bytepersample), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 12,&(JPGV_file->samplerate), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 14,&(JPGV_file->audiocodec), 2);
@@ -513,7 +518,7 @@ int argc = lua_gettop(L);
 	src->ch1 = ch1;
 	src->currentFrame = 0;
 	u32 bytesRead;
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 		u32 BLOCK_SIZE;
 		if (src->samplerate >= 44100) BLOCK_SIZE = MAX_RAM_ALLOCATION_44100;
 		else BLOCK_SIZE = MAX_RAM_ALLOCATION;
@@ -583,7 +588,7 @@ static int lua_loadBMPV(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 4, &(BMPV_file->framerate), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 8, &(BMPV_file->width), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 12,&(BMPV_file->height), 4);
-	if (!GW_MODE) FSFILE_Read(fileHandle, &bytesRead, 16,&(BMPV_file->audiotype), 2);
+	FSFILE_Read(fileHandle, &bytesRead, 16,&(BMPV_file->audiotype), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 18,&(BMPV_file->bytepersample), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 20,&(BMPV_file->samplerate), 4);
 	FSFILE_Read(fileHandle, &bytesRead, 24,&(BMPV_file->audio_size), 4);
@@ -623,7 +628,7 @@ int argc = lua_gettop(L);
 	src->ch1 = ch1;
 	src->currentFrame = 0;
 	u32 bytesRead;
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 		while(src->mem_size > MAX_RAM_ALLOCATION){
 			src->mem_size = src->mem_size / 2;
 		}
@@ -680,18 +685,14 @@ int argc = lua_gettop(L);
 		if (src->currentFrame >= (src->tot_frame - 5)){
 			if (src->loop == 1){
 				src->currentFrame = 0;
-				if (!GW_MODE){
-					src->moltiplier = 1;
-				}
+				src->moltiplier = 1;
 				src->tick = osGetTime();
 			}else{
 				src->isPlaying = false;
-				if (!GW_MODE){
-					src->moltiplier = 1;
-					CSND_setchannel_playbackstate(src->ch1, 0);
-					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-					CSND_sharedmemtype0_cmdupdatestate(0);
-				}
+				src->moltiplier = 1;
+				CSND_setchannel_playbackstate(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+				CSND_sharedmemtype0_cmdupdatestate(0);
 			}
 		}else{
 			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
@@ -767,24 +768,17 @@ int argc = lua_gettop(L);
 		if (src->currentFrame >= src->tot_frame){
 			if (src->loop == 1){
 				src->currentFrame = 0;
-				if (!GW_MODE){
 					src->moltiplier = 1;
-				}
 				src->tick = osGetTime();
 			}else{
 				src->isPlaying = false;
-				if (!GW_MODE){
-					src->moltiplier = 1;
-					CSND_setchannel_playbackstate(src->ch1, 0);
-					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-					CSND_sharedmemtype0_cmdupdatestate(0);
-				}
+				src->moltiplier = 1;
+				CSND_setchannel_playbackstate(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+				CSND_sharedmemtype0_cmdupdatestate(0);
 			}
-			if (!GW_MODE){
-			if (src->audiobuf2 == NULL){
-				
-					FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
-			}else{
+			if (src->audiobuf2 == NULL) FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
+			else{
 				u8* tmp_buffer = (u8*)linearAlloc(src->mem_size);
 				FSFILE_Read(src->sourceFile, &bytesRead, 28, tmp_buffer, src->mem_size);
 				u32 size_tbp = src->mem_size;
@@ -804,9 +798,8 @@ int argc = lua_gettop(L);
 				}
 			linearFree(tmp_buffer);
 			}
-			}
 		}else{
-			if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying) && (!GW_MODE)){
+			if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
 			if ((src->moltiplier % 2) == 1){
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
@@ -1082,7 +1075,7 @@ int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C424D56) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	linearFree(src->audiobuf);
 	if (src->audiotype == 2){
 		linearFree(src->audiobuf2);
@@ -1111,7 +1104,7 @@ int argc = lua_gettop(L);
 		free(src->thread);
 		sdmcExit();
 	}
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE && src->audiobuf != NULL){
+	if (src->samplerate != 0 && src->audio_size != 0 && src->audiobuf != NULL){
 		linearFree(src->audiobuf);
 		if (src->audiotype == 2){
 			linearFree(src->audiobuf2);
@@ -1119,7 +1112,7 @@ int argc = lua_gettop(L);
 	}
 	FSFILE_Close(src->sourceFile);
 	svcCloseHandle(src->sourceFile);
-	free(tmp_buf);
+	linearFree(tmp_buf);
 	free(src);
 	return 0;
 }
@@ -1133,7 +1126,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = false;
 	src->currentFrame = 0;
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 0);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 0);
@@ -1152,7 +1145,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = false;
 	src->currentFrame = 0;
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 0);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 0);
@@ -1171,7 +1164,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 0);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 0);
@@ -1190,7 +1183,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 0);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 0);
@@ -1209,7 +1202,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 1);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 1);
@@ -1228,7 +1221,7 @@ int argc = lua_gettop(L);
 	#endif
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0 && !GW_MODE){
+	if (src->samplerate != 0 && src->audio_size != 0){
 	CSND_setchannel_playbackstate(src->ch1, 1);
 	if (src->audiotype == 2){
 	CSND_setchannel_playbackstate(src->ch2, 1);
