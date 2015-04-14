@@ -16,6 +16,13 @@ extern "C" {
 
 // Defines
 
+/**
+ * @brief Creates a new RGBA8 color
+ * @param r the red component of the color to create
+ * @param g the green component of the color to create
+ * @param b the blue component of the color to create
+ * @param a the alpha component of the color to create
+ */
 #define RGBA8(r, g, b, a) ((((r)&0xFF)<<24) | (((g)&0xFF)<<16) | (((b)&0xFF)<<8) | (((a)&0xFF)<<0))
 
 // Enums
@@ -120,6 +127,18 @@ void sf2d_end_frame();
 void sf2d_swapbuffers();
 
 /**
+ * @brief Enables or disables the VBlank waiting
+ * @param enable whether to enable or disable the VBlank waiting
+ */
+void sf2d_set_vblank_wait(int enable);
+
+/**
+ * @brief Returns the FPS (frames per second)
+ * @return the current FPS
+ */
+float sf2d_get_fps();
+
+/**
  * @brief Allocates memory from a temporary pool. The pool will be emptied after a sf2d_swapbuffers call
  * @param size the number of bytes to allocate
  */
@@ -164,9 +183,24 @@ void sf2d_draw_line(int x0, int y0, int x1, int y1, u32 color);
  */
 void sf2d_draw_rectangle(int x, int y, int w, int h, u32 color);
 
-// Texture
 /**
- * @brief Creates an empty texture
+ * @brief Draws a rotated rectangle
+ * @param x x coordinate of the top left corner of the rectangle
+ * @param y y coordinate of the top left corner of the rectangle
+ * @param w rectangle width
+ * @param w rectangle height
+ * @param color the color to draw the rectangle
+ * @param rad rotation (in radians) to draw the rectangle
+ */
+void sf2d_draw_rectangle_rotate(int x, int y, int w, int h, u32 color, float rad);
+
+// Texture
+
+/**
+ * @brief Creates an empty texture.
+ * The returned texture has the data allocated,
+ * this means that the raw pixel data can be filled
+ * just after the return.
  * @param width the width of the texture
  * @param height the height of the texture
  * @param pixel_format the pixel_format of the texture
@@ -215,11 +249,47 @@ void sf2d_draw_texture(const sf2d_texture *texture, int x, int y);
 void sf2d_draw_texture_rotate(const sf2d_texture *texture, int x, int y, float rad);
 
 /**
+ * @brief Draws a part of a texture
+ * @param texture the texture to draw
+ * @param x the x coordinate to draw the texture to
+ * @param y the y coordinate to draw the texture to
+ * @param tex_x the starting point (x coordinate) where to start drawing
+ * @param tex_y the starting point (y coordinate) where to start drawing
+ * @param tex_w the width to draw from the starting point
+ * @param tex_h the height to draw from the starting point
+ */
+void sf2d_draw_texture_part(const sf2d_texture *texture, int x, int y, int tex_x, int tex_y, int tex_w, int tex_h);
+
+/**
+ * @brief Draws a texture with scaling
+ * @param texture the texture to draw
+ * @param x the x coordinate to draw the texture to
+ * @param y the y coordinate to draw the texture to
+ * @param x_scale the x scale
+ * @param y_scale the y scale
+ */
+void sf2d_draw_texture_scale(const sf2d_texture *texture, int x, int y, float x_scale, float y_scale);
+
+/**
+ * @brief Draws a part of a texture, with rotation and scaling
+ * @param texture the texture to draw
+ * @param x the x coordinate to draw the texture to
+ * @param y the y coordinate to draw the texture to
+ * @param rad rotation (in radians) to draw the texture
+ * @param tex_x the starting point (x coordinate) where to start drawing
+ * @param tex_y the starting point (y coordinate) where to start drawing
+ * @param tex_w the width to draw from the starting point
+ * @param tex_h the height to draw from the starting point
+ * @param x_scale the x scale
+ * @param y_scale the y scale
+ */
+void sf2d_draw_texture_rotate_cut_scale(const sf2d_texture *texture, int x, int y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale);
+
+/**
  * @brief Tiles a texture
  * @param texture the texture to tile
  * @param x the x coordinate to draw the texture to
  * @param y the y coordinate to draw the texture to
- * @param rad rotation (in radians) to draw the texture
  */
 void sf2d_texture_tile32(sf2d_texture *texture);
 

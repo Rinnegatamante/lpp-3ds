@@ -94,7 +94,7 @@ void sf2d_bind_texture(const sf2d_texture *texture, GPU_TEXUNIT unit)
 		GPU_TEVSOURCES(GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0),
 		GPU_TEVOPERANDS(0, 0, 0),
 		GPU_TEVOPERANDS(0, 0, 0),
-		GPU_MODULATE, GPU_MODULATE,
+		GPU_REPLACE, GPU_REPLACE,
 		0xFFFFFFFF
 	);
 
@@ -177,6 +177,135 @@ void sf2d_draw_texture_rotate(const sf2d_texture *texture, int x, int y, float r
 	for (i = 0; i < 4; i++) {
 		vertices[i].position = (sf2d_vector_3f){rot[i].x + x + w2, rot[i].y + y + h2, rot[i].z};
 	}
+
+	sf2d_bind_texture(texture, GPU_TEXUNIT0);
+
+	GPU_SetAttributeBuffers(
+		2, // number of attributes
+		(u32*)osConvertVirtToPhys((u32)vertices),
+		GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 2, GPU_FLOAT),
+		0xFFFC, //0b1100
+		0x10,
+		1, //number of buffers
+		(u32[]){0x0}, // buffer offsets (placeholders)
+		(u64[]){0x10}, // attribute permutations for each buffer
+		(u8[]){2} // number of attributes for each buffer
+	);
+
+	GPU_DrawArray(GPU_TRIANGLE_STRIP, 4);
+}
+
+void sf2d_draw_texture_part(const sf2d_texture *texture, int x, int y, int tex_x, int tex_y, int tex_w, int tex_h)
+{
+	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
+
+	vertices[0].position = (sf2d_vector_3f){(float)x,       (float)y,       0.5f};
+	vertices[1].position = (sf2d_vector_3f){(float)x+tex_w, (float)y,       0.5f};
+	vertices[2].position = (sf2d_vector_3f){(float)x,       (float)y+tex_h, 0.5f};
+	vertices[3].position = (sf2d_vector_3f){(float)x+tex_w, (float)y+tex_h, 0.5f};
+
+	float u0 = tex_x/(float)texture->pow2_w;
+	float v0 = tex_y/(float)texture->pow2_h;
+	float u1 = (tex_x+tex_w)/(float)texture->pow2_w;
+	float v1 = (tex_y+tex_h)/(float)texture->pow2_h;
+
+	vertices[0].texcoord = (sf2d_vector_2f){u0, v0};
+	vertices[1].texcoord = (sf2d_vector_2f){u1, v0};
+	vertices[2].texcoord = (sf2d_vector_2f){u0, v1};
+	vertices[3].texcoord = (sf2d_vector_2f){u1, v1};
+
+	sf2d_bind_texture(texture, GPU_TEXUNIT0);
+
+	GPU_SetAttributeBuffers(
+		2, // number of attributes
+		(u32*)osConvertVirtToPhys((u32)vertices),
+		GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 2, GPU_FLOAT),
+		0xFFFC, //0b1100
+		0x10,
+		1, //number of buffers
+		(u32[]){0x0}, // buffer offsets (placeholders)
+		(u64[]){0x10}, // attribute permutations for each buffer
+		(u8[]){2} // number of attributes for each buffer
+	);
+
+	GPU_DrawArray(GPU_TRIANGLE_STRIP, 4);
+}
+
+void sf2d_draw_texture_scale(const sf2d_texture *texture, int x, int y, float x_scale, float y_scale)
+{
+	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
+
+	int ws = texture->width * x_scale;
+	int hs = texture->height * y_scale;
+
+	vertices[0].position = (sf2d_vector_3f){(float)x,    (float)y,    0.5f};
+	vertices[1].position = (sf2d_vector_3f){(float)x+ws, (float)y,    0.5f};
+	vertices[2].position = (sf2d_vector_3f){(float)x,    (float)y+hs, 0.5f};
+	vertices[3].position = (sf2d_vector_3f){(float)x+ws, (float)y+hs, 0.5f};
+
+	float u = texture->width/(float)texture->pow2_w;
+	float v = texture->height/(float)texture->pow2_h;
+
+	vertices[0].texcoord = (sf2d_vector_2f){0.0f, 0.0f};
+	vertices[1].texcoord = (sf2d_vector_2f){u,    0.0f};
+	vertices[2].texcoord = (sf2d_vector_2f){0.0f, v};
+	vertices[3].texcoord = (sf2d_vector_2f){u,    v};
+
+	sf2d_bind_texture(texture, GPU_TEXUNIT0);
+
+	GPU_SetAttributeBuffers(
+		2, // number of attributes
+		(u32*)osConvertVirtToPhys((u32)vertices),
+		GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 2, GPU_FLOAT),
+		0xFFFC, //0b1100
+		0x10,
+		1, //number of buffers
+		(u32[]){0x0}, // buffer offsets (placeholders)
+		(u64[]){0x10}, // attribute permutations for each buffer
+		(u8[]){2} // number of attributes for each buffer
+	);
+
+	GPU_DrawArray(GPU_TRIANGLE_STRIP, 4);
+}
+
+void sf2d_draw_texture_rotate_cut_scale(const sf2d_texture *texture, int x, int y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale)
+{
+	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
+
+	//Don't even try to understand what I'm doing here (because I don't even understand it).
+	//Matrices are boring.
+
+	int w2 = (texture->width * x_scale)/2.0f;
+	int h2 = (texture->height * y_scale)/2.0f;
+
+	vertices[0].position = (sf2d_vector_3f){(float)-w2, (float)-h2, 0.5f};
+	vertices[1].position = (sf2d_vector_3f){(float) w2, (float)-h2, 0.5f};
+	vertices[2].position = (sf2d_vector_3f){(float)-w2, (float) h2, 0.5f};
+	vertices[3].position = (sf2d_vector_3f){(float) w2, (float) h2, 0.5f};
+
+	float u0 = tex_x/(float)texture->pow2_w;
+	float v0 = tex_y/(float)texture->pow2_h;
+	float u1 = (tex_x+tex_w)/(float)texture->pow2_w;
+	float v1 = (tex_y+tex_h)/(float)texture->pow2_h;
+
+	vertices[0].texcoord = (sf2d_vector_2f){u0, v0};
+	vertices[1].texcoord = (sf2d_vector_2f){u1, v0};
+	vertices[2].texcoord = (sf2d_vector_2f){u0, v1};
+	vertices[3].texcoord = (sf2d_vector_2f){u1, v1};
+
+	float m[4*4];
+	matrix_set_z_rotation(m, rad);
+	sf2d_vector_3f rot[4];
+
+	int i;
+	for (i = 0; i < 4; i++) {
+		vector_mult_matrix4x4(m, &vertices[i].position, &rot[i]);
+	}
+
+	vertices[0].position = (sf2d_vector_3f){rot[0].x + x + w2,           rot[0].y + y + h2,           rot[0].z};
+	vertices[1].position = (sf2d_vector_3f){rot[1].x + x * x_scale + w2, rot[1].y + y + h2,           rot[1].z};
+	vertices[2].position = (sf2d_vector_3f){rot[2].x + x + w2,           rot[2].y + y * y_scale + h2, rot[2].z};
+	vertices[3].position = (sf2d_vector_3f){rot[3].x + x * x_scale + w2, rot[3].y + y * y_scale + h2, rot[3].z};
 
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 
