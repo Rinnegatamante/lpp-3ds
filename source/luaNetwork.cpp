@@ -76,8 +76,8 @@ static int lua_wifistat(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u32 wifiStatus;
-	ACU_GetWifiStatus(NULL, &wifiStatus);
-	lua_pushboolean(L,wifiStatus);
+	if (ACU_GetWifiStatus(NULL, &wifiStatus) ==  0xE0A09D2E) lua_pushboolean(L,false);
+	else lua_pushboolean(L,wifiStatus);
 	return 1;
 }
 
