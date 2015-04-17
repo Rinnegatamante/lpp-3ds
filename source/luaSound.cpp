@@ -462,11 +462,47 @@ static int lua_openogg(lua_State *L)
 	wav_file->audio_pointer = 0;
 	strcpy(wav_file->author,"");
 	strcpy(wav_file->title,"");
+	
+	//Extracting metadatas
+	u32 restore = ftell(fp); //Save offset for libOgg
+	fseek(fp, 0x60, SEEK_SET);
+	u32 half_magic = 0xDEADBEEF;
+	u32 info_size = 0xDEADBEEF;
+	u32 offset;
+	char info_type[7];
+	int i = 0;
+	while (half_magic != 0x726F7603){
+		i++;
+		fread(&half_magic,4,1,fp);
+		fseek(fp,0x60+i, SEEK_SET);
+	}
+	fseek(fp, 0x06, SEEK_CUR);
+	fread(&info_size,4,1,fp);
+	fseek(fp, info_size + 4, SEEK_CUR);
+	fread(&info_size,4,1,fp);
+	while (info_size != 0x6F760501){
+		offset = ftell(fp);
+		fread(&info_type,6,1,fp);
+		if ((strcmp((const char*)&info_type,"ARTIST") == 0) || (strcmp((const char*)&info_type,"artist") == 0)){
+			fseek(fp,0x01,SEEK_CUR);
+			fread(&wav_file->author,info_size - 7,1,fp);
+			wav_file->author[info_size - 7] = 0;
+		}else if ((strcmp((const char*)&info_type,"TITLE=") == 0) || (strcmp((const char*)&info_type,"title=") == 0)){
+			fread(&wav_file->title,info_size - 6,1,fp);
+			wav_file->title[info_size - 6] = 0;
+		}
+		fseek(fp,offset+info_size, SEEK_SET);
+		fread(&info_size,4,1,fp);
+	}
+	fseek(fp, restore, SEEK_SET); // Restore libOgg offset
+	
+	
+	
 	wav_file->isPlaying = false;
 	wav_file->bytepersample = 2;
 	
 	// Decoding OGG buffer
-	int i=0;
+	i = 0;
 	if (my_info->channels == 1){ //Mono buffer
 		if (mem_size){
 			wav_file->moltiplier = 1;
@@ -589,7 +625,7 @@ static int lua_openwav(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	if(ret) return luaL_error(L, "error opening file");
+	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
 	u16 audiotype;
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
@@ -792,7 +828,7 @@ static int lua_openaiff(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	if(ret) return luaL_error(L, "error opening file");
+	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,bytesRead,jump,chunk=0x00000000;
 	u16 samplerate;
 	u16 audiotype;
