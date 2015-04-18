@@ -35,6 +35,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <b>Credits:</b><br>
 - Smealum for ctrulib and ftpony src<br>
 - StapleButter for debug font<br>
+- Myria for libkhax<br>
 - Lode Vandevenne for lodepng<br>
 - xerpi for sf2dlib<br>
 - Sean Barrett for stb_truetype<br>
@@ -43,4 +44,3 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br><br>
 NOTE: BMPV and JPGV video formats are made by me with the help of Aurelio.<br>
 More info about this formats and a simple converters in "BMPV" and "JPGV" folder of this repository.<br><br>
-<b>Note: If you get errors during compilation with luaAudio.cpp, just add prototypes of functions which compiler tells you to be not declared in libctru's CSND header.</b>
