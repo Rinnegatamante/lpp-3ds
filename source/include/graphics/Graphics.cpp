@@ -1177,8 +1177,6 @@ void RAW2FB(int xp,int yp, Bitmap* result,int screen,int side){
 	}else if (screen == 1) buffer = BottomFB;
 	int x=0, y=0;
 	linecpy(buffer,xp,yp,result->width,result->height, result->pixels,x,y);
-	free(result->pixels);
-	free(result);
 }
 
 struct my_error_mgr {

@@ -81,7 +81,8 @@ struct JPGV{
 	Handle sourceFile;
 	u32 currentFrame;
 	u32 tot_frame;
-	u32 framerate;
+	u16 framerate;
+	u16 is3D;
 	u64 tick;
 	u32 audio_size;
 	u16 bytepersample;
@@ -361,7 +362,8 @@ static int lua_loadJPGV(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x5647504A){
 	JPGV* JPGV_file = (JPGV*)malloc(sizeof(JPGV));
-	FSFILE_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 4);
+	FSFILE_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 2);
+	FSFILE_Read(fileHandle, &bytesRead, 6, &(JPGV_file->is3D), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 10,&(JPGV_file->bytepersample), 2);
 	FSFILE_Read(fileHandle, &bytesRead, 12,&(JPGV_file->samplerate), 2);
@@ -666,21 +668,111 @@ int argc = lua_gettop(L);
 	return 0;
 }
 
+void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
+	if (src->isPlaying){
+		if (src->currentFrame >= (src->tot_frame - 10)){
+			if (src->loop == 1){
+				src->currentFrame = 0;
+				src->moltiplier = 1;
+				src->tick = osGetTime();
+			}else{
+				src->isPlaying = false;
+				src->moltiplier = 1;
+				CSND_setchannel_playbackstate(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+				CSND_sharedmemtype0_cmdupdatestate(0);
+			}
+		}else{
+			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
+			src->currentFrame = (u32)floor(tmp);
+			if (src->currentFrame >= (src->tot_frame-10)) return;
+			else{
+				u32 bytesRead;
+				u64 offset_left;
+				u64 size_left;
+				u64 size_right;
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
+				u64 offset_right = size_left;
+				size_left = size_left - offset_left;
+				unsigned char* frame_left = (unsigned char*)malloc(size_left);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
+				src->framebuf = decodeJpg(frame_left, size_left);
+				free(frame_left);
+				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
+				free(src->framebuf->pixels);
+				free(src->framebuf);
+				if (use3D){
+					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
+					size_right = size_right - offset_right;
+					unsigned char* frame_right = (unsigned char*)malloc(size_right);
+					FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
+					src->framebuf = decodeJpg(frame_right, size_right);
+					free(frame_right);
+					if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,1);
+					free(src->framebuf->pixels);
+					free(src->framebuf);
+				}
+			}
+		}
+	}else{
+		if (src->tick != 0){	
+			u32 bytesRead;
+			u64 offset;
+			u64 size;
+			u64 size_right;
+			u64 offset_right;
+			if (src->currentFrame >= (src->tot_frame-10)){
+				//Dummy
+			}else{
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
+				if (use3D){
+					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
+					size_right = size_right - size;
+					offset_right = size;
+				}
+			}
+			size = size - offset;
+			unsigned char* frame = (unsigned char*)malloc(size);
+			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+			src->framebuf = decodeJpg(frame, size);
+			free(frame);
+			if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
+			free(src->framebuf->pixels);
+			free(src->framebuf);
+			if (use3D){
+				unsigned char* frame2 = (unsigned char*)malloc(size_right);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
+				src->framebuf = decodeJpg(frame2, size_right);
+				free(frame2);
+				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,1);
+				free(src->framebuf->pixels);
+				free(src->framebuf);
+			}
+		}
+	}
+}
+
 static int lua_drawJPGV(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
     if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkinteger(L, 1);
 	int y = luaL_checkinteger(L, 2);
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 3);
 	u32 bytesRead;
 	int screen = luaL_checkinteger(L, 4);
-	int side = 0;
+	bool use3D = false;
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
 	#endif
 	svcSignalEvent(updateStream);
-	if (argc == 5) side = luaL_checkinteger(L,5);
+	if (argc == 5) use3D = lua_toboolean(L,5);
+	if (src->is3D){
+		draw3DJPGV(x,y,src,screen,use3D);
+		return 0;
+	}
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 5)){
 			if (src->loop == 1){
@@ -714,8 +806,10 @@ int argc = lua_gettop(L);
 					if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
 					if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 				#endif
-				if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen); // TODO
-				else RAW2FB(x,y,src->framebuf,screen,side);
+				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
+				if (use3D) RAW2FB(x,y,src->framebuf,screen,1);
+				free(src->framebuf->pixels);
+				free(src->framebuf);
 			}
 		}
 	}else{
@@ -740,8 +834,9 @@ int argc = lua_gettop(L);
 				if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
 				if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 			#endif
-			if (screen > 1) PrintImageBitmap(x,y,src->framebuf,screen); // TODO
-			else RAW2FB(x,y,src->framebuf,screen,side);
+			if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
+			free(src->framebuf->pixels);
+			free(src->framebuf);
 		}
 	}
 	return 0;
@@ -890,6 +985,38 @@ int argc = lua_gettop(L);
 	return 0;
 }
 
+void draw3DJPGVFrame(u16 x,u16 y,JPGV* src,u32 frame_index,u8 screen,bool is3D){
+	u32 bytesRead;
+	u64 offset;
+	u64 size;
+	u64 offset2;
+	u64 size2;
+	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2)*8), &offset, 8);
+	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+1)*8), &size, 8);
+	if (is3D){
+		FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+2)*8), &size2, 8);
+		offset2 = size;
+		size2 = size2 - offset2;
+	}
+	size = size - offset;
+	unsigned char* frame = (unsigned char*)malloc(size);
+	FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+	Bitmap* tmp_framebuf = decodeJpg(frame, size);
+	free(frame);
+	RAW2FB(x,y,tmp_framebuf,screen,0);
+	free(tmp_framebuf->pixels);
+	free(tmp_framebuf);
+	if (is3D){
+		unsigned char* frame2 = (unsigned char*)malloc(size2);
+		FSFILE_Read(src->sourceFile, &bytesRead, offset2 + (src->tot_frame * 16), frame2, size2);
+		Bitmap* tmp_framebuf = decodeJpg(frame2, size2);
+		free(frame2);
+		RAW2FB(x,y,tmp_framebuf,screen,1);
+		free(tmp_framebuf->pixels);
+		free(tmp_framebuf);
+	}
+}
+
 static int lua_JPGVshowFrame(lua_State *L){
 int argc = lua_gettop(L);
     if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
@@ -903,9 +1030,13 @@ int argc = lua_gettop(L);
 		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
 		if (frame_index > src->tot_frame) return luaL_error(L, "out of video file bounds");
 	#endif
-	int side = 0;
+	bool is3D = false;
 	if (argc == 6){
-	side = luaL_checkinteger(L,6);
+		is3D = lua_toboolean(L,6);
+	}
+	if (src->is3D){
+		draw3DJPGVFrame(x,y,src,frame_index,screen,is3D);
+		return 0;
 	}
 	u32 bytesRead;
 	u64 offset;
@@ -922,7 +1053,10 @@ int argc = lua_gettop(L);
 		if ((screen == 0) && (x+tmp_framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
 		if ((screen == 1) && (x+tmp_framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 	#endif
-	RAW2FB(x,y,tmp_framebuf,screen,side);
+	RAW2FB(x,y,tmp_framebuf,screen,0);
+	if (is3D) RAW2FB(x,y,tmp_framebuf,screen,1);
+	free(tmp_framebuf->pixels);
+	free(tmp_framebuf);;
 	return 0;
 }
 
