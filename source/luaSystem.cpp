@@ -142,7 +142,7 @@ static int lua_openfile(lua_State *L)
 				ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 				break;
 		}
-		if(ret) return luaL_error(L, "error opening file");
+		//if(ret) return luaL_error(L, "error opening file");
 	}
 	lua_pushinteger(L,fileHandle);
 	return 1;
@@ -196,7 +196,7 @@ static int lua_screenshot(lua_State *L)
 	if (compression == 0){ //BMP Format
 		FS_path filePath=FS_makePath(PATH_CHAR, screenpath);
 		Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
-		if(ret) return luaL_error(L, "error opening file");
+		//if(ret) return luaL_error(L, "error opening file");
 		u32 bytesWritten;
 		u8* tempbuf = (u8*)malloc(0x36+576000);
 		memset(tempbuf, 0, 0x36+576000);
@@ -229,6 +229,19 @@ static int lua_screenshot(lua_State *L)
 				tempbuf[di++] = framebuf[si++];
 				tempbuf[di++] = framebuf[si++];
 			}
+			// Patch for wrong left/right borders colors
+			for (x = 0; x < 40; x++){
+				int di = 0x36 + (x + ((239 - y) * 400)) * 3;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+			}
+			for (x = 360; x < 400; x++){
+				int di = 0x36 + (x + ((239 - y) * 400)) * 3;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+			}
 		}
 		FSFILE_Write(fileHandle, &bytesWritten, 0, (u32*)tempbuf, 0x36 + 576000, 0x10001);
 		FSFILE_Close(fileHandle);
@@ -255,6 +268,19 @@ static int lua_screenshot(lua_State *L)
 				tempbuf[di++] = framebuf[si++];
 				tempbuf[di++] = framebuf[si++];
 			}
+			// Patch for wrong left/right borders colors
+			for (x = 0; x < 40; x++){
+				int di = (x + ((y+240)*400)) * 3;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+			}
+			for (x = 360; x < 400; x++){
+				int di = (x + ((y+240)*400)) * 3;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+				tempbuf[di++] = 0;
+			}
 		}
 		sdmcInit();
 		char tmpPath2[1024];
@@ -274,7 +300,7 @@ static int lua_getsize(lua_State *L)
 	Handle fileHandle = luaL_checknumber(L, 1);
 	u64 size;
 	Result ret=FSFILE_GetSize(fileHandle, &size);
-	if(ret) return luaL_error(L, "error getting size");
+	//if(ret) return luaL_error(L, "error getting size");
 	lua_pushnumber(L,size);
 	return 1;
 }
@@ -287,7 +313,7 @@ static int lua_closefile(lua_State *L)
 	Result ret=FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	if (argc == 2) FSUSER_CloseArchive(NULL, &main_extdata_archive);
-	if(ret) return luaL_error(L, "error closing file");
+	//if(ret) return luaL_error(L, "error closing file");
 	return 0;
 }
 
@@ -302,7 +328,7 @@ static int lua_readfile(lua_State *L)
 	unsigned char *buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
 	Result ret=FSFILE_Read(fileHandle, &bytesRead, init, buffer, size);
 	buffer[size] = 0;
-	if(ret || size!=bytesRead) return luaL_error(L, "error reading file");
+	//if(ret || size!=bytesRead) return luaL_error(L, "error reading file");
 	lua_pushlstring(L,(const char*)buffer,size);
 	free(buffer);
 	return 1;
@@ -319,7 +345,7 @@ static int lua_writefile(lua_State *L)
 	u64 size = luaL_checknumber(L, 4);
 	u32 bytesWritten;
 	Result ret=FSFILE_Write(fileHandle, &bytesWritten, init, text, size, FS_WRITE_FLUSH);
-	if(ret || size!=bytesWritten) return luaL_error(L, "error writing file");
+	//if(ret || size!=bytesWritten) return luaL_error(L, "error writing file");
 	return 0;
 }
 
@@ -1269,13 +1295,13 @@ static int lua_getcard(lua_State *L) {
 }
 
 static int lua_freespace(lua_State *L) {
-int argc = lua_gettop(L);
-if (argc != 0) return luaL_error(L, "wrong number of arguments");
-u32 freeBlocks;
-u32 blockSize;
-FSUSER_GetSdmcArchiveResource(NULL, NULL, &blockSize, NULL, &freeBlocks);
-lua_pushnumber(L,freeBlocks*blockSize);
-return 1;
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u32 freeBlocks;
+	u32 blockSize;
+	FSUSER_GetSdmcArchiveResource(NULL, NULL, &blockSize, NULL, &freeBlocks);
+	lua_pushnumber(L,(u64)((u64)freeBlocks*(u64)blockSize));
+	return 1;
 }
 
 static int lua_launchCia(lua_State *L){
