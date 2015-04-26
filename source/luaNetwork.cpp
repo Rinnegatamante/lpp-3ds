@@ -120,11 +120,11 @@ static int lua_download(lua_State *L){
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
 		httpcBeginRequest(&context);
-		/*httpcReqStatus loading;  <-- Seems to freeze on CIA build
+		httpcReqStatus loading;
 		httpcGetRequestState(&context, &loading);
-		while (loading != 0x7){
+		while (loading == 0x5){
 			httpcGetRequestState(&context, &loading);
-		}*/
+		}
 		u32 statuscode=0;
 		u32 contentsize=0;
 		httpcGetResponseStatusCode(&context, &statuscode, 0);
@@ -155,15 +155,17 @@ static int lua_downstring(lua_State *L){
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
 		httpcBeginRequest(&context);
-		/*httpcReqStatus loading; <-- Seems to freeze on CIA build
+		httpcReqStatus loading;
 		httpcGetRequestState(&context, &loading);
-		while (loading != 0x7){
+		while (loading == 0x5){
 			httpcGetRequestState(&context, &loading);
-		}*/
+		}
 		u32 statuscode=0;
 		u32 contentsize=0;
 		httpcGetResponseStatusCode(&context, &statuscode, 0);
-		if (statuscode != 200) luaL_error(L, "request error");
+		char text[128];
+		sprintf(text,"%i",statuscode);
+		if (statuscode != 200) luaL_error(L, text);
 		httpcGetDownloadSizeState(&context, NULL, &contentsize);
 		unsigned char *buffer = (unsigned char*)malloc(contentsize+1);
 		httpcDownloadData(&context, buffer, contentsize, NULL);
@@ -232,7 +234,7 @@ static int lua_sendmail(lua_State *L){ //BETA func
 		httpcBeginRequest(&context);
 		httpcReqStatus loading;
 		httpcGetRequestState(&context, &loading);
-		while (loading != 0x7){
+		while (loading == 0x5){
 			httpcGetRequestState(&context, &loading);
 		}
 		u32 statuscode=0;
@@ -249,8 +251,46 @@ static int lua_sendmail(lua_State *L){ //BETA func
 	return 1;
 }
 
+static int lua_initIRDA(lua_State *L){
+	int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u32* iru_mem = (u32*)linearAlloc(2048);
+	IRU_Initialize(iru_mem, 2048);
+	return 0;
+}
+
+static int lua_receive(lua_State *L){
+	int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	char result[2048];
+	u32 received_bytes = 0;
+	while (received_bytes == 0){
+		IRU_RecvData((u8*)&result, 2048, 0x00, &received_bytes, 1);
+	}
+	u32 confirm = 0xDEAD;
+	IRU_SendData((u8*)confirm, 4, 1);
+	lua_pushlstring(L,result,received_bytes);
+	return 1;
+}
+
+static int lua_send(lua_State *L){
+	int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *data = luaL_checkstring(L, 1);
+	u32 result = 0x0000;
+	u32 received_bytes;
+	while (result != 0xDEAD){
+		IRU_SendData((u8*)data, strlen(data), 1);
+		IRU_RecvData((u8*)&result, 4, 0x00, &received_bytes, 1);
+	}
+	return 0;
+}
+
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
+  {"initIRDA",				lua_initIRDA},
+  {"recvIRDA",				lua_receive},
+  {"sendIRDA",				lua_send},
   {"initFTP",				lua_initFTP},
   {"termFTP",				lua_termFTP},
   {"updateFTP",				lua_checkFTPcommand},
