@@ -50,11 +50,16 @@ int SDMC = 1;
 
 FS_archive main_extdata_archive;
 
-void unicodeToChar(char* dst, u16* src)
-{
-if(!src || !dst)return;
-while(*src)*(dst++)=(*(src++))&0xFF;
-*dst=0x00;
+void unicodeToChar(char* dst, u16* src){
+	if(!src || !dst)return;
+	while(*src)*(dst++)=(*(src++))&0xFF;
+	*dst=0x00;
+}
+
+void CharToUnicode(u16* dst, char* src){
+	if(!src || !dst)return;
+	while(*src)*(dst++)=(*src++);
+	*dst=0x00;
 }
 
 static int lua_exit(lua_State *L)
@@ -929,6 +934,7 @@ static int lua_listExtdataDir(lua_State *L){
 
 // AM service extension
 static Handle amHandle = 0;
+
 Result AM_GetTitleProductCode(u8 mediatype, u64 titleid, char* product_code)
 {
 Result ret = 0;
@@ -1377,6 +1383,33 @@ static int lua_getdate(lua_State *L){
 	return 4;
 }
 
+static int lua_addnews(lua_State *L){
+	int argc = lua_gettop(L);
+	if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
+	const char *title = luaL_checkstring(L, 1);
+	const char *text = luaL_checkstring(L, 2);
+	u8* image = NULL; // TODO: Image support currently not working
+	u32 img_size = 0;
+	if (argc == 3){
+		Bitmap* file = (Bitmap*)luaL_checkinteger(L, 3);
+		#ifndef SKIP_ERROR_HANDLING
+			if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+		#endif
+		image = file->pixels;
+		img_size = file->width * file->height * 3;
+	}
+	u16* uni_title = (u16*)malloc(strlen(title)*sizeof(u16));
+	u16* uni_text = (u16*)malloc(strlen(text)*sizeof(u16));
+	CharToUnicode(uni_title,(char*)title);
+	CharToUnicode(uni_text,(char*)text);
+	newsInit();
+	NEWSU_AddNotification(uni_title, strlen(title), uni_text, strlen(text), image, img_size, false);
+	newsExit();
+	free(uni_title);
+	free(uni_text);
+	return 0;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1417,6 +1450,7 @@ static const luaL_Reg System_functions[] = {
   {"getFreeSpace",			lua_freespace},
   {"getTime",				lua_gettime},
   {"getDate",				lua_getdate},
+  {"addNotification",		lua_addnews},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
