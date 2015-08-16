@@ -1325,7 +1325,7 @@ Bitmap* decodeBMPfile(const char* fname){
 	free(result->pixels);
 	result->pixels = flipped;
 	int i = 0;
-	while (i < (result->width*result->height*result->bitperpixel)){
+	while (i < (result->width*result->height*(result->bitperpixel / 8))){
 		u8 tmp = result->pixels[i];
 		result->pixels[i] = result->pixels[i+2];
 		result->pixels[i+2] = tmp;
