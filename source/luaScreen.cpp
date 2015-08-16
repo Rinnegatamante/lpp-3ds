@@ -229,7 +229,7 @@ static int lua_flipBitmap(lua_State *L)
 		if (dst->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	not_flipped = dst->pixels;
-	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
+	u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*(src->bitperpixel / 8));
 	dst->pixels = flipBitmap(flip_pixels, src);
 	dst->width = src->width;
 	dst->height = src->height;
