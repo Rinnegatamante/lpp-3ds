@@ -16,7 +16,6 @@ while true do
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
 	BMPV.draw(0,0,test,BOTTOM_SCREEN)
-	Controls.init()
 	pad = Controls.read()
 	if (Controls.check(pad,KEY_A)) then
 		Sound.term()
