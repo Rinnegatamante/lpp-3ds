@@ -97,18 +97,12 @@ static int lua_flip(lua_State *L) {
 
 static int lua_rect(lua_State *L) {
     int argc = lua_gettop(L);
-    if (argc != 5) return luaL_error(L, "wrong number of arguments");
+    if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
 	int x1 = luaL_checkinteger(L,1);
 	int x2 = luaL_checkinteger(L,2);
 	int y1 = luaL_checkinteger(L,3);
 	int y2 = luaL_checkinteger(L,4);
-	#ifndef SKIP_ERROR_HANDLING
-		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
-		if ((cur_screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
-		if ((cur_screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
-		if (y1 > 240 || y2 > 240) return luaL_error(L, "out of framebuffer bounds");
-		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
-	#endif
+	float radius = 0;
 	if (x2 < x1){
 		int tmp = x2;
 		x2 = x1;
@@ -120,8 +114,24 @@ static int lua_rect(lua_State *L) {
 		y1 = tmp;
 	}
 	u32 color = luaL_checkinteger(L,5);
-    sf2d_draw_rectangle(x1, y1, x2-x1, y2-y1, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
-    return 0;
+	if (argc == 6) radius = luaL_checknumber(L,6);
+	if (radius == 0){
+		#ifndef SKIP_ERROR_HANDLING
+			if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+			if ((cur_screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
+			if ((cur_screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
+			if (y1 > 240 || y2 > 240) return luaL_error(L, "out of framebuffer bounds");
+			if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+		#endif
+		sf2d_draw_rectangle(x1, y1, x2-x1, y2-y1, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+    }else{
+		#ifndef SKIP_ERROR_HANDLING
+			if ((x1 < 0) || (y1 < 0)) return luaL_error(L, "out of bounds");
+			if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+		#endif
+		sf2d_draw_rectangle_rotate(x1, y1, x2-x1, y2-y1, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF), radius);
+	}
+	return 0;
 }
 
 static int lua_line(lua_State *L) {
@@ -227,19 +237,56 @@ static int lua_loadimg(lua_State *L)
 static int lua_drawimg(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 3) return luaL_error(L, "wrong number of arguments");
+    if (argc != 3 && argc != 4 && argc != 5) return luaL_error(L, "wrong number of arguments");
 	int x = luaL_checkinteger(L,1);
 	int y = luaL_checkinteger(L,2);
 	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,3);
+	float scale_x = 1;
+	float scale_y = 1;
+	if (argc > 4){
+		scale_x = luaL_checknumber(L,4);
+		if (argc == 5) scale_y = luaL_checknumber(L,5);
+	}
+	if (scale_y != 1 or scale_x != 1){
+		#ifndef SKIP_ERROR_HANDLING
+		if (texture->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		#endif
+		sf2d_draw_texture_scale(texture->tex, x, y, scale_x, scale_y);
+	}else{
+		#ifndef SKIP_ERROR_HANDLING
+			if (texture->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+			if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+			if ((cur_screen == 0) && (x + texture->width > 400)) return luaL_error(L, "out of framebuffer bounds");
+			if ((cur_screen == 1) && (x + texture->width > 320)) return luaL_error(L, "out of framebuffer bounds");
+			if (y + texture->height > 240) return luaL_error(L, "out of framebuffer bounds");
+			if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+		#endif
+		sf2d_draw_texture(texture->tex, x, y);
+	}
+	return 0;
+}
+
+static int lua_drawimg_full(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 10) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+	int st_x = luaL_checkinteger(L, 3);
+    int st_y = luaL_checkinteger(L, 4);
+	int width = luaL_checkinteger(L, 5);
+    int height = luaL_checkinteger(L, 6);
+	float radius = luaL_checknumber(L, 7);
+	float scale_x = luaL_checknumber(L, 8);
+	float scale_y = luaL_checknumber(L, 9);
+	gpu_text* texture = (gpu_text*)luaL_checkinteger(L, 10);
 	#ifndef SKIP_ERROR_HANDLING
 		if (texture->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
-		if ((cur_screen == 0) && (x + texture->width > 400)) return luaL_error(L, "out of framebuffer bounds");
-		if ((cur_screen == 1) && (x + texture->width > 320)) return luaL_error(L, "out of framebuffer bounds");
-		if (y + texture->height > 240) return luaL_error(L, "out of framebuffer bounds");
 		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
 	#endif
-	sf2d_draw_texture(texture->tex, x, y);
+	sf2d_draw_texture_rotate_cut_scale(texture->tex, x, y, radius, st_x, st_y, width, height, scale_x, scale_y);
 	return 0;
 }
 
@@ -288,6 +335,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"loadImage",				lua_loadimg},
   {"drawImage",				lua_drawimg},
   {"drawPartialImage",		lua_partial},
+  {"drawImageExtended",		lua_drawimg_full},
   {"fillRect",				lua_rect},
   {"fillEmptyRect",			lua_emptyrect},
   {"drawLine",				lua_line},
