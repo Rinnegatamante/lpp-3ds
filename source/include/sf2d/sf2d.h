@@ -293,6 +293,15 @@ void sf2d_draw_texture_rotate_cut_scale(const sf2d_texture *texture, int x, int 
  */
 void sf2d_texture_tile32(sf2d_texture *texture);
 
+/**
+ * @brief Draws a filled circle
+ * @param x x coordinate of the center of the circle
+ * @param y y coordinate of the center of the circle
+ * @param radius the radius of the circle
+ * @param color the color to draw the circle
+ */
+void sf2d_draw_fill_circle(int x, int y, int radius, u32 color);
+
 #ifdef __cplusplus
 }
 #endif

@@ -134,6 +134,25 @@ static int lua_rect(lua_State *L) {
 	return 0;
 }
 
+static int lua_fillcircle(lua_State *L) {
+    int argc = lua_gettop(L);
+    if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int radius = luaL_checkinteger(L,3);
+	u32 color = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((cur_screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((cur_screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if (y > 240) return luaL_error(L, "out of framebuffer bounds");
+		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
+	#endif
+	sf2d_draw_fill_circle(x, y, radius, RGBA8((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF));
+	return 0;
+}
+
+
 static int lua_line(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 5) return luaL_error(L, "wrong number of arguments");
@@ -338,6 +357,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"drawImageExtended",		lua_drawimg_full},
   {"fillRect",				lua_rect},
   {"fillEmptyRect",			lua_emptyrect},
+  {"drawCircle",			lua_fillcircle},
   {"drawLine",				lua_line},
   {"termBlend",				lua_end},
   {"flip",					lua_flip},
