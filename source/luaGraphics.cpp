@@ -346,6 +346,30 @@ static int lua_free(lua_State *L)
 	return 0;
 }
 
+static int lua_getWidth(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	gpu_text* src = (gpu_text*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushinteger(L,src->width);
+	return 1;
+}
+
+static int lua_getHeight(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	gpu_text* src = (gpu_text*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushinteger(L,src->height);
+	return 1;
+}
+
 //Register our Graphics Functions
 static const luaL_Reg Graphics_functions[] = {
   {"init",					lua_init},
@@ -362,6 +386,8 @@ static const luaL_Reg Graphics_functions[] = {
   {"termBlend",				lua_end},
   {"flip",					lua_flip},
   {"freeImage",				lua_free},
+  {"getImageWidth",			lua_getWidth},
+  {"getImageHeight",		lua_getHeight}, 
   {0, 0}
 };
 
