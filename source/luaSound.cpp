@@ -78,7 +78,7 @@ int STREAM_MAX_ALLOC = 524288;
 char pcmout[2048];
 extern u8* tmp_buf;
 
-void streamOGG(void* arg){
+void streamOGG(void* arg){ //TODO: Solve looping sound issues
 	wav* src = (wav*)arg;
 	while(1) {
 		svcWaitSynchronization(updateStream, U64_MAX);
@@ -111,57 +111,70 @@ void streamOGG(void* arg){
 				total = total * 2;
 			}
 			if ((control >= total) && (src->isPlaying)){
-				CSND_setchannel_playbackstate(src->ch, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
-				src->moltiplier = 1;
-				ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-				if (src->audiobuf2 == NULL){
-					
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-							eof=1;
-						} else {
-							memcpy(&src->audiobuf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= (package_max_size)) break;
-						}
-					}
-				}else{
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-							eof=1;
-						} else {
-							memcpy(&tmp_buf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;	
-						}
-					}
-		
-					// Separating left and right channels
-					int z;
-					int j=0;
-					for (z=0; z < src->mem_size; z=z+4){
-						src->audiobuf[j] = tmp_buf[z];
-						src->audiobuf[j+1] = tmp_buf[z+1];
-						src->audiobuf2[j] = tmp_buf[z+2];
-						src->audiobuf2[j+1] = tmp_buf[z+3];
-						j=j+2;
-					}
-				}
 				if (!src->streamLoop){
+					CSND_setchannel_playbackstate(src->ch, 0);
+					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
+					CSND_sharedmemtype0_cmdupdatestate(0);
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
-				}else{
-					src->tick = osGetTime();
-					CSND_setchannel_playbackstate(src->ch, 1);
-					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 1);
-					CSND_sharedmemtype0_cmdupdatestate(0);
-				}
+				}else src->tick = osGetTime();
+				src->total_packages_size = 0;
+				src->moltiplier = 1;
+				ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+				if (src->audiobuf2 == NULL){ //Mono file
+						int i = 0;
+						int j = src->audio_pointer;
+						while(!eof){
+							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+							if (ret == 0) {
+								eof=1;
+							} else {
+								memcpy(&tmp_buf[i],pcmout,ret);
+								i = i + ret;
+								src->package_size = i;
+								if (i >= (package_max_size)) break;
+							}
+						}
+						if (j + src->package_size >= src->mem_size){
+							u32 frag_size = src->mem_size - j;
+							u32 frag2_size = src->package_size-frag_size;
+							memcpy(&src->audiobuf[j],tmp_buf,frag_size);
+							memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
+							src->audio_pointer = frag2_size;
+						}else{
+							memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
+							src->audio_pointer = j + src->package_size;
+						}
+						src->total_packages_size = src->total_packages_size + src->package_size;
+					}else{ //Stereo file
+						int i = 0;
+						while(!eof){
+							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+							if (ret == 0) {
+								eof=1;
+							} else {
+								memcpy(&tmp_buf[i],pcmout,ret);
+								i = i + ret;
+								src->package_size = i;
+								if (i >= (package_max_size)) break;
+							}
+						}
+				
+						// Separating left and right channels
+						int z;
+						int j = src->audio_pointer;
+						for (z=0; z <= src->package_size; z=z+4){
+							src->audiobuf[j] = tmp_buf[z];
+							src->audiobuf[j+1] = tmp_buf[z+1];
+							src->audiobuf2[j] = tmp_buf[z+2];
+							src->audiobuf2[j+1] = tmp_buf[z+3];
+							j=j+2;
+							if (j >= src->mem_size / 2) j = 0;
+						}
+						src->audio_pointer = j;
+						src->total_packages_size = src->total_packages_size + src->package_size;
+					}
+					src->moltiplier = src->moltiplier + 1;
 			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
 						int i = 0;
