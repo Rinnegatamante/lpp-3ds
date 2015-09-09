@@ -332,7 +332,7 @@ static void streamOGG(void* arg){
 						// Separating left and right channels
 						int z;
 						int j = src->audio_pointer;
-						for (z=0; z <= src->package_size; z=z+4){
+						for (z=0; z < src->package_size; z=z+4){
 							src->audiobuf[j] = tmp_buf[z];
 							src->audiobuf[j+1] = tmp_buf[z+1];
 							src->audiobuf2[j] = tmp_buf[z+2];
