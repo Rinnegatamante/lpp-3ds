@@ -68,6 +68,7 @@ struct wav{
 	u32 audio_pointer;
 	u32 package_size;
 	u32 total_packages_size;
+	u32 stream_packages_size;
 };
 
 volatile bool closeStream = false;
@@ -101,7 +102,10 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 			if (src->package_size == 0){
 				block_size = src->mem_size / 8;
 				package_max_size = block_size;
-			}else{ 
+			}else if (src->stream_packages_size > 0){
+				block_size = src->stream_packages_size;
+				package_max_size = src->mem_size / 8;
+			}else{
 				block_size = src->total_packages_size / (src->moltiplier - 1);
 				package_max_size = src->mem_size / 8;
 			}
@@ -111,12 +115,10 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 				total = total * 2;
 			}
 			if ((control >= total) && (src->isPlaying)){
-				ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
 				if (src->streamLoop){
 					src->tick = osGetTime();
-					control = -1;
 					src->moltiplier = 0;
-					src->startRead = 0;
+					control = 0;
 				}else{
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
@@ -158,7 +160,7 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 						// Separating left and right channels
 					int z;
 					int j = 0;
-					for (z=0; z <= src->mem_size; z=z+4){
+					for (z=0; z < src->mem_size; z=z+4){
 						src->audiobuf[j] = tmp_buf[z];
 						src->audiobuf[j+1] = tmp_buf[z+1];
 						src->audiobuf2[j] = tmp_buf[z+2];
@@ -170,7 +172,7 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 				src->moltiplier = 1;
 				}
 			}
-			if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
+			if ((control >= (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
 						int i = 0;
 						int j = src->audio_pointer;
@@ -201,11 +203,15 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
 							if (ret == 0) {
-								eof=1;
+								if (!src->streamLoop) eof=1;
+								else{
+									src->stream_packages_size = block_size;
+									ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+								}
 							} else {
 								memcpy(&tmp_buf[i],pcmout,ret);
 								i = i + ret;
-								src->package_size = i;
+							    src->package_size = i;
 								if (i >= (package_max_size)) break;
 							}
 						}
@@ -213,7 +219,7 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 						// Separating left and right channels
 						int z;
 						int j = src->audio_pointer;
-						for (z=0; z <= src->package_size; z=z+4){
+						for (z=0; z < src->package_size; z=z+4){
 							src->audiobuf[j] = tmp_buf[z];
 							src->audiobuf[j+1] = tmp_buf[z+1];
 							src->audiobuf2[j] = tmp_buf[z+2];
@@ -466,6 +472,7 @@ static int lua_openogg(lua_State *L)
 	wav_file->size = ov_time_total(vf,-1) * 2 * my_info->rate;
 	wav_file->startRead = 0;
 	wav_file->total_packages_size = 0;
+	wav_file->stream_packages_size = 0;
 	wav_file->package_size = 0;
 	wav_file->audio_pointer = 0;
 	strcpy(wav_file->author,"");
