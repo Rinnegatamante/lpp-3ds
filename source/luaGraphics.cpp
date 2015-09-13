@@ -225,7 +225,7 @@ static int lua_loadimg(lua_State *L)
 	if(!bitmap) return luaL_error(L, "Error loading image");
 	if (bitmap->bitperpixel == 24){
 		int length = bitmap->width * bitmap->height * 4;
-		u8* real_pixels = (u8*)malloc(length * 4);
+		u8* real_pixels = (u8*)malloc(length);
 		int i = 0;
 		int z = 0;
 		while (i < length){
