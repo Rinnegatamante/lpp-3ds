@@ -258,6 +258,9 @@ static int lua_convert(lua_State *L)
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	Bitmap* bitmap = (Bitmap*)(luaL_checkinteger(L, 1));
+	#ifndef SKIP_ERROR_HANDLING
+		if (bitmap->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	u8* real_pixels;
 	u8* flipped = (u8*)malloc(bitmap->width * bitmap->height * (bitmap->bitperpixel / 8));
 	flipped = flipBitmap(flipped, bitmap);
@@ -275,6 +278,7 @@ static int lua_convert(lua_State *L)
 			z = z + 3;
 		}
 	}else{
+		real_pixels = (u8*)malloc(length);
 		int i = 0;
 		while (i < length){
 			real_pixels[i] = flipped[i+2];
