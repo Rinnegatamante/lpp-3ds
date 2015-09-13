@@ -1329,7 +1329,7 @@ Bitmap* decodeBMPfile(const char* fname){
 		u8 tmp = result->pixels[i];
 		result->pixels[i] = result->pixels[i+2];
 		result->pixels[i+2] = tmp;
-		i=i+result->bitperpixel;
+		i= i + (result->bitperpixel / 8);
 	}
 	
 	return result;

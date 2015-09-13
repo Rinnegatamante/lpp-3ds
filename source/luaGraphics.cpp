@@ -224,17 +224,17 @@ static int lua_loadimg(lua_State *L)
 	}
 	if(!bitmap) return luaL_error(L, "Error loading image");
 	if (bitmap->bitperpixel == 24){
-		int length = bitmap->width*bitmap->height;
+		int length = bitmap->width * bitmap->height * 4;
 		u8* real_pixels = (u8*)malloc(length * 4);
 		int i = 0;
 		int z = 0;
 		while (i < length){
-			real_pixels[i] = bitmap->pixels[i-z];
-			real_pixels[i+1] = bitmap->pixels[i-z+1];
-			real_pixels[i+2] = bitmap->pixels[i-z+2];
+			real_pixels[i] = bitmap->pixels[z];
+			real_pixels[i+1] = bitmap->pixels[z+1];
+			real_pixels[i+2] = bitmap->pixels[z+2];
 			real_pixels[i+3] = 0xFF;
 			i = i + 4;
-			z++;
+			z = z + 3;
 		}
 		free(bitmap->pixels);
 		bitmap->pixels = real_pixels;
