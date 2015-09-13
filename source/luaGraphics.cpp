@@ -253,6 +253,49 @@ static int lua_loadimg(lua_State *L)
 	return 1;
 }
 
+static int lua_convert(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	Bitmap* bitmap = (Bitmap*)(luaL_checkinteger(L, 1));
+	u8* real_pixels;
+	u8* flipped = (u8*)malloc(bitmap->width * bitmap->height * (bitmap->bitperpixel / 8));
+	flipped = flipBitmap(flipped, bitmap);
+	int length = bitmap->width * bitmap->height * 4;
+	if (bitmap->bitperpixel == 24){		
+		real_pixels = (u8*)malloc(length);
+		int i = 0;
+		int z = 0;
+		while (i < length){
+			real_pixels[i] = flipped[z+2];
+			real_pixels[i+1] = flipped[z+1];
+			real_pixels[i+2] = flipped[z];
+			real_pixels[i+3] = 0xFF;
+			i = i + 4;
+			z = z + 3;
+		}
+	}else{
+		int i = 0;
+		while (i < length){
+			real_pixels[i] = flipped[i+2];
+			real_pixels[i+2] = flipped[i];
+			i = i + 4;
+		}
+	}
+	free(flipped);
+	sf2d_texture *tex = sf2d_create_texture(bitmap->width, bitmap->height, GPU_RGBA8, SF2D_PLACE_RAM);
+	sf2d_fill_texture_from_RGBA8(tex, (u32*)real_pixels, bitmap->width, bitmap->height);
+	sf2d_texture_tile32(tex);
+	gpu_text* result = (gpu_text*)malloc(sizeof(gpu_text));
+	result->magic = 0x4C545854;
+	result->tex = tex;
+	result->width = bitmap->width;
+	result->height = bitmap->height;
+	free(real_pixels);
+    lua_pushinteger(L, (u32)(result));
+	return 1;
+}
+
 static int lua_drawimg(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -388,6 +431,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"freeImage",				lua_free},
   {"getImageWidth",			lua_getWidth},
   {"getImageHeight",		lua_getHeight}, 
+  {"convertFrom",			lua_convert},
   {0, 0}
 };
 
