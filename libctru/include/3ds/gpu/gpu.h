@@ -30,8 +30,11 @@ void GPUCMD_Finalize();
 //tex param
 #define GPU_TEXTURE_MAG_FILTER(v) (((v)&0x1)<<1) //takes a GPU_TEXTURE_FILTER_PARAM
 #define GPU_TEXTURE_MIN_FILTER(v) (((v)&0x1)<<2) //takes a GPU_TEXTURE_FILTER_PARAM
-#define GPU_TEXTURE_WRAP_S(v) (((v)&0x3)<<8) //takes a GPU_TEXTURE_WRAP_PARAM
-#define GPU_TEXTURE_WRAP_T(v) (((v)&0x3)<<12) //takes a GPU_TEXTURE_WRAP_PARAM
+#define GPU_TEXTURE_WRAP_S(v) (((v)&0x3)<<12) //takes a GPU_TEXTURE_WRAP_PARAM
+#define GPU_TEXTURE_WRAP_T(v) (((v)&0x3)<<8) //takes a GPU_TEXTURE_WRAP_PARAM
+
+// Combiner buffer write config
+#define GPU_TEV_BUFFER_WRITE_CONFIG(stage0, stage1, stage2, stage3) (stage0 | (stage1 << 1) | (stage2 << 2) | (stage3 << 3))
 
 typedef enum
 {
@@ -41,8 +44,10 @@ typedef enum
 
 typedef enum
 {
-	GPU_CLAMP_TO_EDGE = 0x0,
-	GPU_REPEAT = 0x2,
+	GPU_CLAMP_TO_EDGE   = 0x0,
+	GPU_CLAMP_TO_BORDER = 0x1,
+	GPU_REPEAT          = 0x2,
+	GPU_MIRRORED_REPEAT = 0x3,
 }GPU_TEXTURE_WRAP_PARAM;
 
 typedef enum
@@ -91,10 +96,14 @@ typedef enum
 
 typedef enum
 {
-	GPU_KEEP = 0, 		// keep destination value
-	GPU_AND_NOT = 1, 	// destination & ~source
-	GPU_XOR = 5,		// destination ^ source
-	// 2 is the same as 1. Other values are too weird to even be usable.
+	GPU_STENCIL_KEEP = 0,       // old_stencil
+	GPU_STENCIL_ZERO = 1,       // 0
+	GPU_STENCIL_REPLACE = 2,    // ref
+	GPU_STENCIL_INCR = 3,       // old_stencil + 1 saturated to [0, 255]
+	GPU_STENCIL_DECR = 4,       // old_stencil - 1 saturated to [0, 255]
+	GPU_STENCIL_INVERT = 5,     // ~old_stencil
+	GPU_STENCIL_INCR_WRAP = 6,  // old_stencil + 1
+	GPU_STENCIL_DECR_WRAP = 7   // old_stencil - 1
 } GPU_STENCILOP;
 
 typedef enum
@@ -173,16 +182,57 @@ typedef enum{
 
 #define GPU_ATTRIBFMT(i, n, f) (((((n)-1)<<2)|((f)&3))<<((i)*4))
 
+/**
+* Texture combiners sources 
+*/
 typedef enum{
 	GPU_PRIMARY_COLOR = 0x00,
 	GPU_TEXTURE0 = 0x03,
 	GPU_TEXTURE1 = 0x04,
 	GPU_TEXTURE2 = 0x05,
 	GPU_TEXTURE3 = 0x06,
+	GPU_PREVIOUS_BUFFER = 0x0D,
 	GPU_CONSTANT = 0x0E,
 	GPU_PREVIOUS = 0x0F,
 }GPU_TEVSRC;
 
+/**
+* Texture RGB combiners operands
+*/
+typedef enum{
+	GPU_TEVOP_RGB_SRC_COLOR = 0x00,
+	GPU_TEVOP_RGB_ONE_MINUS_SRC_COLOR = 0x01,
+	GPU_TEVOP_RGB_SRC_ALPHA = 0x02,
+	GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA = 0x03,
+	GPU_TEVOP_RGB_SRC0_RGB = 0x04,
+	GPU_TEVOP_RGB_0x05 = 0x05,
+	GPU_TEVOP_RGB_0x06 = 0x06,
+	GPU_TEVOP_RGB_0x07 = 0x07,
+	GPU_TEVOP_RGB_SRC1_RGB = 0x08,
+	GPU_TEVOP_RGB_0x09 = 0x09,
+	GPU_TEVOP_RGB_0x0A = 0x0A,
+	GPU_TEVOP_RGB_0x0B = 0x0B,
+	GPU_TEVOP_RGB_SRC2_RGB = 0x0C,
+	GPU_TEVOP_RGB_0x0D = 0x0D,
+	GPU_TEVOP_RGB_0x0E = 0x0E,
+	GPU_TEVOP_RGB_0x0F = 0x0F,
+}GPU_TEVOP_RGB;
+
+
+/**
+* Texture ALPHA combiners operands
+*/
+typedef enum{
+	GPU_TEVOP_A_SRC_ALPHA = 0x00,
+	GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA = 0x01,
+	GPU_TEVOP_A_SRC0_RGB = 0x02,
+	GPU_TEVOP_A_SRC1_RGB = 0x04,
+	GPU_TEVOP_A_SRC2_RGB = 0x06,
+}GPU_TEVOP_A;
+
+/**
+* Texture combiner functions
+*/
 typedef enum{
 	GPU_REPLACE = 0x00,
 	GPU_MODULATE = 0x01,
@@ -217,9 +267,11 @@ void GPU_SetScissorTest(GPU_SCISSORMODE mode, u32 x, u32 y, u32 w, u32 h);
 void GPU_DepthMap(float zScale, float zOffset);
 void GPU_SetAlphaTest(bool enable, GPU_TESTFUNC function, u8 ref);
 void GPU_SetDepthTestAndWriteMask(bool enable, GPU_TESTFUNC function, GPU_WRITEMASK writemask); // GPU_WRITEMASK values can be ORed together
-void GPU_SetStencilTest(bool enable, GPU_TESTFUNC function, u8 ref, u8 mask, u8 replace);
+void GPU_SetStencilTest(bool enable, GPU_TESTFUNC function, u8 ref, u8 input_mask, u8 write_mask);
 void GPU_SetStencilOp(GPU_STENCILOP sfail, GPU_STENCILOP dfail, GPU_STENCILOP pass);
 void GPU_SetFaceCulling(GPU_CULLMODE mode);
+// Only the first four tev stages can write to the combiner buffer, use GPU_TEV_BUFFER_WRITE_CONFIG to build the parameters
+void GPU_SetCombinerBufferWrite(u8 rgb_config, u8 alpha_config);
 
 // these two can't be used together
 void GPU_SetAlphaBlending(GPU_BLENDEQUATION colorEquation, GPU_BLENDEQUATION alphaEquation, 
@@ -232,10 +284,17 @@ void GPU_SetBlendingColor(u8 r, u8 g, u8 b, u8 a);
 void GPU_SetAttributeBuffers(u8 totalAttributes, u32* baseAddress, u64 attributeFormats, u16 attributeMask, u64 attributePermutation, u8 numBuffers, u32 bufferOffsets[], u64 bufferPermutations[], u8 bufferNumAttributes[]);
 
 void GPU_SetTextureEnable(GPU_TEXUNIT units); // GPU_TEXUNITx values can be ORed together to enable multiple texture units
+
+
 void GPU_SetTexture(GPU_TEXUNIT unit, u32* data, u16 width, u16 height, u32 param, GPU_TEXCOLOR colorType);
+
+/**
+ * @param borderColor The color used for the border when using the @ref GPU_CLAMP_TO_BORDER wrap mode
+ */
+void GPU_SetTextureBorderColor(GPU_TEXUNIT unit,u32 borderColor);
 void GPU_SetTexEnv(u8 id, u16 rgbSources, u16 alphaSources, u16 rgbOperands, u16 alphaOperands, GPU_COMBINEFUNC rgbCombine, GPU_COMBINEFUNC alphaCombine, u32 constantColor);
 
-void GPU_DrawArray(GPU_Primitive_t primitive, u32 n);
+void GPU_DrawArray(GPU_Primitive_t primitive, u32 first, u32 count);
 void GPU_DrawElements(GPU_Primitive_t primitive, u32* indexArray, u32 n);
 void GPU_FinishDrawing();
 
