@@ -69,6 +69,7 @@ static int lua_exit(lua_State *L)
 	if (isCSND) CSND_shutdown();
 	char string[20];
 	strcpy(string,"lpp_exit_0456432");
+	luaL_dostring(L, "collectgarbage()");
 	return luaL_error(L, string); // NOTE: This is a fake error
 }
 
@@ -162,9 +163,7 @@ static int lua_checkexist(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	if (!ret){
-	FSFILE_Close(fileHandle);
-	}
+	if (!ret) FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	lua_pushboolean(L,!ret);
 	return 1;
