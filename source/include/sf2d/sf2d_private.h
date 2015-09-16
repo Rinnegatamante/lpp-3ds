@@ -4,6 +4,7 @@
 #include <3ds.h>
 #include "sf2d.h"
 
+
 void GPU_SetDummyTexEnv(u8 num);
 
 // Vector operations
