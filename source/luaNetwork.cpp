@@ -321,28 +321,6 @@ static int lua_createServerSocket(lua_State *L)
 	return 1;
 }
 
-static int lua_isConnected(lua_State *L)
-{
-	int argc = lua_gettop(L);
-	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-
-	Socket* my_socket = (Socket*)luaL_checkinteger(L, 1);
-	#ifndef SKIP_ERROR_HANDLING
-		if (my_socket->magic != 0xDEADDEAD) return luaL_error(L, "attempt to access wrong memory block type");
-	#endif
-	if (my_socket->serverSocket) {
-		lua_pushboolean(L, true);
-	}else{
-		int err = connect(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
-		if (err < 0) {
-			lua_pushboolean(L, false);
-		}else{
-			lua_pushboolean(L, true);
-		}
-	}
-	return 1;
-}
-
 static int lua_shutSock(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -387,8 +365,34 @@ static int lua_send(lua_State *L)
 	if (my_socket->serverSocket) return luaL_error(L, "send not allowed for server sockets.");
 	if (!text) return luaL_error(L, "Socket.send() expected a string.");
 	
-	int result = send(my_socket->sock, text, size, 0);
+	int result = sendto(my_socket->sock, text, size, 0, NULL, 0);
 	lua_pushinteger(L, result);
+	return 1;
+}
+
+static int lua_connect(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+
+	Socket* my_socket = (Socket*) malloc(sizeof(Socket));
+	my_socket->serverSocket = false;
+	my_socket->magic = 0xDEADDEAD;
+	
+	const char *host = luaL_checkstring(L, 1);
+	int port = luaL_checkinteger(L, 2);
+	my_socket->addrTo.sin_family = AF_INET;
+	my_socket->addrTo.sin_port = htons(port);
+	my_socket->addrTo.sin_addr.s_addr = inet_addr(host);
+
+	my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (my_socket->sock < 0) return luaL_error(L, "Failed creating socket.");
+	setSockNoBlock(my_socket->sock, 1);
+
+	int err = connect(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
+	if (err < 0 ) return luaL_error(L, "Failed connecting server.");
+	
+	lua_pushinteger(L, (u32)my_socket);
 	return 1;
 }
 
@@ -398,7 +402,10 @@ static int lua_accept(lua_State *L)
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 
 	Socket* my_socket = (Socket*)luaL_checkinteger(L, 1);
-
+	
+	#ifndef SKIP_ERROR_HANDLING
+		if (my_socket->magic != 0xDEADDEAD) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	if (!my_socket->serverSocket) return luaL_error(L, "accept allowed for server sockets only.");
 
 	struct sockaddr_in addrAccept;
@@ -423,6 +430,10 @@ static int lua_closeSock(lua_State *L)
 	if (argc != 1) return luaL_error(L, "Socket.close() takes one argument.");
 
 	Socket* my_socket = (Socket*)luaL_checkinteger(L, 1);
+	
+	#ifndef SKIP_ERROR_HANDLING
+		if (my_socket->magic != 0xDEADDEAD) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	closesocket(my_socket->sock);
 	free(my_socket);
 	return 0;
@@ -446,8 +457,9 @@ static const luaL_Reg Network_functions[] = {
 //Register our Socket Functions
 static const luaL_Reg Socket_functions[] = {
   {"init",				lua_initSock},
+  {"term",				lua_shutSock},
   {"createServerSocket",lua_createServerSocket},
-  {"isConnected",		lua_isConnected},
+  {"connect",			lua_connect},
   {"receive",			lua_recv},
   {"send",				lua_send},
   {"accept",			lua_accept},
