@@ -68,7 +68,7 @@ struct wav{
 	u32 audio_pointer;
 	u32 package_size;
 	u32 total_packages_size;
-	u32 stream_packages_size;
+	u32 loop_index;
 };
 
 volatile bool closeStream = false;
@@ -102,9 +102,6 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 			if (src->package_size == 0){
 				block_size = src->mem_size / 8;
 				package_max_size = block_size;
-			}else if (src->stream_packages_size > 0){
-				block_size = src->stream_packages_size;
-				package_max_size = src->mem_size / 8;
 			}else{
 				block_size = src->total_packages_size / (src->moltiplier - 1);
 				package_max_size = src->mem_size / 8;
@@ -114,18 +111,15 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 				control = src->samplerate * 4 * ((osGetTime() - src->tick) / 1000);
 				total = total * 2;
 			}
-			if ((control >= total) && (src->isPlaying)){
-				if (src->streamLoop){
-					src->tick = osGetTime();
-					src->moltiplier = 0;
-					control = 0;
-				}else{
+			if ((src->streamLoop) && (control >= total * src->loop_index)) src->loop_index = src->loop_index + 1;
+			if ((control >= total) && (src->isPlaying) && (!src->streamLoop)){
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
 					src->moltiplier = 1;
 					CSND_setchannel_playbackstate(src->ch, 0);
 					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
 					CSND_sharedmemtype0_cmdupdatestate(0);
+					ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
 					if (src->audiobuf2 == NULL){ //Mono file
 					int i = 0;
 					while(!eof){
@@ -170,7 +164,6 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 					}
 				}
 				src->moltiplier = 1;
-				}
 			}
 			if ((control >= (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
@@ -179,7 +172,8 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
 							if (ret == 0) {
-								eof=1;
+								if (!src->streamLoop) eof=1;
+								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
 							} else {
 								memcpy(&tmp_buf[i],pcmout,ret);
 								i = i + ret;
@@ -204,10 +198,7 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
 							if (ret == 0) {
 								if (!src->streamLoop) eof=1;
-								else{
-									src->stream_packages_size = block_size;
-									ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-								}
+								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
 							} else {
 								memcpy(&tmp_buf[i],pcmout,ret);
 								i = i + ret;
@@ -472,7 +463,7 @@ static int lua_openogg(lua_State *L)
 	wav_file->size = ov_time_total(vf,-1) * 2 * my_info->rate;
 	wav_file->startRead = 0;
 	wav_file->total_packages_size = 0;
-	wav_file->stream_packages_size = 0;
+	wav_file->loop_index = 1;
 	wav_file->package_size = 0;
 	wav_file->audio_pointer = 0;
 	strcpy(wav_file->author,"");
@@ -1240,9 +1231,11 @@ int argc = lua_gettop(L);
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
-		lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
+		if (src->streamLoop && src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L, ((osGetTime() - src->tick) / 1000) / src->loop_index);
+		else lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
 	}else{
-		lua_pushinteger(L, src->tick / 1000);
+		if (src->streamLoop && src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L, (src->tick / 1000) / src->loop_index);
+		else lua_pushinteger(L, src->tick / 1000);
 	}
 	return 1;
 }
