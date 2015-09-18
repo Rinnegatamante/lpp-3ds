@@ -98,10 +98,10 @@ static int lua_flip(lua_State *L) {
 static int lua_rect(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
-	int x1 = luaL_checkinteger(L,1);
-	int x2 = luaL_checkinteger(L,2);
-	int y1 = luaL_checkinteger(L,3);
-	int y2 = luaL_checkinteger(L,4);
+	float x1 = luaL_checknumber(L,1);
+	float x2 = luaL_checknumber(L,2);
+	float y1 = luaL_checknumber(L,3);
+	float y2 = luaL_checknumber(L,4);
 	float radius = 0;
 	if (x2 < x1){
 		int tmp = x2;
@@ -126,8 +126,8 @@ static int lua_rect(lua_State *L) {
 static int lua_fillcircle(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L,1);
-	int y = luaL_checkinteger(L,2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	int radius = luaL_checkinteger(L,3);
 	u32 color = luaL_checkinteger(L,4);
 	#ifndef SKIP_ERROR_HANDLING
@@ -141,10 +141,10 @@ static int lua_fillcircle(lua_State *L) {
 static int lua_line(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 5) return luaL_error(L, "wrong number of arguments");
-	int x1 = luaL_checkinteger(L,1);
-	int x2 = luaL_checkinteger(L,2);
-	int y1 = luaL_checkinteger(L,3);
-	int y2 = luaL_checkinteger(L,4);
+	float x1 = luaL_checknumber(L,1);
+	float x2 = luaL_checknumber(L,2);
+	float y1 = luaL_checknumber(L,3);
+	float y2 = luaL_checknumber(L,4);
 	#ifndef SKIP_ERROR_HANDLING
 		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
 	#endif
@@ -156,10 +156,10 @@ static int lua_line(lua_State *L) {
 static int lua_emptyrect(lua_State *L) {
     int argc = lua_gettop(L);
     if (argc != 5) return luaL_error(L, "wrong number of arguments");
-	int x1 = luaL_checkinteger(L,1);
-	int x2 = luaL_checkinteger(L,2);
-	int y1 = luaL_checkinteger(L,3);
-	int y2 = luaL_checkinteger(L,4);
+	float x1 = luaL_checknumber(L,1);
+	float x2 = luaL_checknumber(L,2);
+	float y1 = luaL_checknumber(L,3);
+	float y2 = luaL_checknumber(L,4);
 	#ifndef SKIP_ERROR_HANDLING
 		if (cur_screen != 1 && cur_screen != 0) return luaL_error(L, "you need to call initBlend to use GPU rendering");
 	#endif
@@ -278,8 +278,8 @@ static int lua_drawimg(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L,1);
-	int y = luaL_checkinteger(L,2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,3);
 	u32 color = 0;
 	if (argc == 4){ 
@@ -303,8 +303,8 @@ static int lua_drawimg_scale(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L,1);
-	int y = luaL_checkinteger(L,2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,3);
 	float scale_x = luaL_checknumber(L,4);
 	float scale_y = luaL_checknumber(L,5);
@@ -324,8 +324,8 @@ static int lua_drawimg_rotate(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 4 && argc != 5) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L,1);
-	int y = luaL_checkinteger(L,2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	gpu_text* texture = (gpu_text*)luaL_checkinteger(L,3);
 	float radius = luaL_checknumber(L,4);
 	u32 color;
@@ -344,12 +344,12 @@ static int lua_drawimg_full(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 10 && argc != 11) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L, 1);
-    int y = luaL_checkinteger(L, 2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	int st_x = luaL_checkinteger(L, 3);
     int st_y = luaL_checkinteger(L, 4);
-	int width = luaL_checkinteger(L, 5);
-    int height = luaL_checkinteger(L, 6);
+	float width = luaL_checknumbrt(L, 5);
+    float height = luaL_checknumbrt(L, 6);
 	float radius = luaL_checknumber(L, 7);
 	float scale_x = luaL_checknumber(L, 8);
 	float scale_y = luaL_checknumber(L, 9);
@@ -368,12 +368,12 @@ static int lua_drawimg_full(lua_State *L)
 static int lua_partial(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 7 && argc != 8) return luaL_error(L, "wrong number of arguments");
-	int x = luaL_checkinteger(L, 1);
-    int y = luaL_checkinteger(L, 2);
+	float x = luaL_checknumber(L,1);
+	float y = luaL_checknumber(L,2);
 	int st_x = luaL_checkinteger(L, 3);
     int st_y = luaL_checkinteger(L, 4);
-	int width = luaL_checkinteger(L, 5);
-    int height = luaL_checkinteger(L, 6);
+	float width = luaL_checknumbrt(L, 5);
+    float height = luaL_checknumbrt(L, 6);
 	gpu_text* file = (gpu_text*)luaL_checkinteger(L, 7);
 	u32 color;
 	if (argc == 8) color = luaL_checkinteger(L, 8);

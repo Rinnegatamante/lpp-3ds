@@ -28,12 +28,12 @@ static unsigned int nibbles_per_pixel(sf2d_texfmt format)
 	}
 }
 
-static int calc_buffer_size(sf2d_texfmt pixel_format, int width, int height)
+static int calc_buffer_size(sf2d_texfmt pixel_format, float width, float height)
 {
 	return width * height * (nibbles_per_pixel(pixel_format)>>1);
 }
 
-sf2d_texture *sf2d_create_texture(int width, int height, sf2d_texfmt pixel_format, sf2d_place place)
+sf2d_texture *sf2d_create_texture(float width, float height, sf2d_texfmt pixel_format, sf2d_place place)
 {
 	int pow2_w = next_pow2(width);
 	int pow2_h = next_pow2(height);
@@ -198,13 +198,13 @@ void sf2d_bind_texture_parameters(const sf2d_texture *texture, GPU_TEXUNIT unit,
 	);
 }
 
-static inline void sf2d_draw_texture_generic(const sf2d_texture *texture, int x, int y)
+static inline void sf2d_draw_texture_generic(const sf2d_texture *texture, float x, float y)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
 
-	int w = texture->width;
-	int h = texture->height;
+	float w = texture->width;
+	float h = texture->height;
 
 	vertices[0].position = (sf2d_vector_3f){(float)x,   (float)y,   SF2D_DEFAULT_DEPTH};
 	vertices[1].position = (sf2d_vector_3f){(float)x+w, (float)y,   SF2D_DEFAULT_DEPTH};
@@ -234,19 +234,19 @@ static inline void sf2d_draw_texture_generic(const sf2d_texture *texture, int x,
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture(const sf2d_texture *texture, int x, int y)
+void sf2d_draw_texture(const sf2d_texture *texture, float x, float y)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_generic(texture, x, y);
 }
 
-void sf2d_draw_texture_blend(const sf2d_texture *texture, int x, int y, u32 color)
+void sf2d_draw_texture_blend(const sf2d_texture *texture, float x, float y, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_generic(texture, x, y);
 }
 
-static inline void sf2d_draw_texture_rotate_hotspot_generic(const sf2d_texture *texture, int x, int y, float rad, float center_x, float center_y)
+static inline void sf2d_draw_texture_rotate_hotspot_generic(const sf2d_texture *texture, float x, float y, float rad, float center_x, float center_y)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
@@ -303,26 +303,26 @@ static inline void sf2d_draw_texture_rotate_hotspot_generic(const sf2d_texture *
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture_rotate_hotspot(const sf2d_texture *texture, int x, int y, float rad, float center_x, float center_y)
+void sf2d_draw_texture_rotate_hotspot(const sf2d_texture *texture, float x, float y, float rad, float center_x, float center_y)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_rotate_hotspot_generic(texture, x, y, rad, center_x, center_y);
 }
 
-void sf2d_draw_texture_rotate_hotspot_blend(const sf2d_texture *texture, int x, int y, float rad, float center_x, float center_y, u32 color)
+void sf2d_draw_texture_rotate_hotspot_blend(const sf2d_texture *texture, float x, float y, float rad, float center_x, float center_y, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_rotate_hotspot_generic(texture, x, y, rad, center_x, center_y);
 }
 
-void sf2d_draw_texture_rotate(const sf2d_texture *texture, int x, int y, float rad)
+void sf2d_draw_texture_rotate(const sf2d_texture *texture, float x, float y, float rad)
 {
 	sf2d_draw_texture_rotate_hotspot(texture, x, y, rad,
 		texture->width/2.0f,
 		texture->height/2.0f);
 }
 
-void sf2d_draw_texture_rotate_blend(const sf2d_texture *texture, int x, int y, float rad, u32 color)
+void sf2d_draw_texture_rotate_blend(const sf2d_texture *texture, float x, float y, float rad, u32 color)
 {
 	sf2d_draw_texture_rotate_hotspot_blend(texture, x, y, rad,
 		texture->width/2.0f,
@@ -330,7 +330,7 @@ void sf2d_draw_texture_rotate_blend(const sf2d_texture *texture, int x, int y, f
 		color);
 }
 
-static inline void sf2d_draw_texture_part_generic(const sf2d_texture *texture, int x, int y, int tex_x, int tex_y, int tex_w, int tex_h)
+static inline void sf2d_draw_texture_part_generic(const sf2d_texture *texture, float x, float y, int tex_x, int tex_y, int tex_w, int tex_h)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
@@ -365,25 +365,25 @@ static inline void sf2d_draw_texture_part_generic(const sf2d_texture *texture, i
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture_part(const sf2d_texture *texture, int x, int y, int tex_x, int tex_y, int tex_w, int tex_h)
+void sf2d_draw_texture_part(const sf2d_texture *texture, float x, float y, int tex_x, int tex_y, int tex_w, int tex_h)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_part_generic(texture, x, y, tex_x, tex_y, tex_w, tex_h);
 }
 
-void sf2d_draw_texture_part_blend(const sf2d_texture *texture, int x, int y, int tex_x, int tex_y, int tex_w, int tex_h, u32 color)
+void sf2d_draw_texture_part_blend(const sf2d_texture *texture, float x, float y, int tex_x, int tex_y, int tex_w, int tex_h, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_part_generic(texture, x, y, tex_x, tex_y, tex_w, tex_h);
 }
 
-static inline void sf2d_draw_texture_scale_generic(const sf2d_texture *texture, int x, int y, float x_scale, float y_scale)
+static inline void sf2d_draw_texture_scale_generic(const sf2d_texture *texture, float x, float y, float x_scale, float y_scale)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
 
-	int ws = texture->width * x_scale;
-	int hs = texture->height * y_scale;
+	float ws = texture->width * x_scale;
+	float hs = texture->height * y_scale;
 
 	vertices[0].position = (sf2d_vector_3f){(float)x,    (float)y,    SF2D_DEFAULT_DEPTH};
 	vertices[1].position = (sf2d_vector_3f){(float)x+ws, (float)y,    SF2D_DEFAULT_DEPTH};
@@ -413,13 +413,13 @@ static inline void sf2d_draw_texture_scale_generic(const sf2d_texture *texture, 
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture_scale(const sf2d_texture *texture, int x, int y, float x_scale, float y_scale)
+void sf2d_draw_texture_scale(const sf2d_texture *texture, float x, float y, float x_scale, float y_scale)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_scale_generic(texture, x, y, x_scale, y_scale);
 }
 
-void sf2d_draw_texture_scale_blend(const sf2d_texture *texture, int x, int y, float x_scale, float y_scale, u32 color)
+void sf2d_draw_texture_scale_blend(const sf2d_texture *texture, float x, float y, float x_scale, float y_scale, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_scale_generic(texture, x, y, x_scale, y_scale);
@@ -475,13 +475,13 @@ void sf2d_draw_texture_part_scale_blend(const sf2d_texture *texture, float x, fl
 	sf2d_draw_texture_part_scale_generic(texture, x, y, tex_x, tex_y, tex_w, tex_h, x_scale, y_scale);
 }
 
-static inline void sf2d_draw_texture_part_rotate_scale_generic(const sf2d_texture *texture, int x, int y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale)
+static inline void sf2d_draw_texture_part_rotate_scale_generic(const sf2d_texture *texture, float x, float y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
 
-	int w2 = (tex_w * x_scale)/2.0f;
-	int h2 = (tex_h * y_scale)/2.0f;
+	float w2 = (tex_w * x_scale)/2.0f;
+	float h2 = (tex_h * y_scale)/2.0f;
 
 	vertices[0].position = (sf2d_vector_3f){(float)-w2, (float)-h2, SF2D_DEFAULT_DEPTH};
 	vertices[1].position = (sf2d_vector_3f){(float) w2, (float)-h2, SF2D_DEFAULT_DEPTH};
@@ -523,25 +523,25 @@ static inline void sf2d_draw_texture_part_rotate_scale_generic(const sf2d_textur
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture_part_rotate_scale(const sf2d_texture *texture, int x, int y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale)
+void sf2d_draw_texture_part_rotate_scale(const sf2d_texture *texture, float x, float y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_part_rotate_scale_generic(texture, x, y, rad, tex_x, tex_y, tex_w, tex_h, x_scale, y_scale);
 }
 
-void sf2d_draw_texture_part_rotate_scale_blend(const sf2d_texture *texture, int x, int y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale, u32 color)
+void sf2d_draw_texture_part_rotate_scale_blend(const sf2d_texture *texture, float x, float y, float rad, int tex_x, int tex_y, int tex_w, int tex_h, float x_scale, float y_scale, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_part_rotate_scale_generic(texture, x, y, rad, tex_x, tex_y, tex_w, tex_h, x_scale, y_scale);
 }
 
-static inline void sf2d_draw_texture_depth_generic(const sf2d_texture *texture, int x, int y, signed short z)
+static inline void sf2d_draw_texture_depth_generic(const sf2d_texture *texture, float x, float y, signed short z)
 {
 	sf2d_vertex_pos_tex *vertices = sf2d_pool_malloc(4 * sizeof(sf2d_vertex_pos_tex));
 	if (!vertices) return;
 
-	int w = texture->width;
-	int h = texture->height;
+	float w = texture->width;
+	float h = texture->height;
 	float depth = z/32768.0f + 0.5f;
 
 	vertices[0].position = (sf2d_vector_3f){(float)x,   (float)y,   depth};
@@ -572,13 +572,13 @@ static inline void sf2d_draw_texture_depth_generic(const sf2d_texture *texture, 
 	GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
 }
 
-void sf2d_draw_texture_depth(const sf2d_texture *texture, int x, int y, signed short z)
+void sf2d_draw_texture_depth(const sf2d_texture *texture, float x, float y, signed short z)
 {
 	sf2d_bind_texture(texture, GPU_TEXUNIT0);
 	sf2d_draw_texture_depth_generic(texture, x, y, z);
 }
 
-void sf2d_draw_texture_depth_blend(const sf2d_texture *texture, int x, int y, signed short z, u32 color)
+void sf2d_draw_texture_depth_blend(const sf2d_texture *texture, float x, float y, signed short z, u32 color)
 {
 	sf2d_bind_texture_color(texture, GPU_TEXUNIT0, color);
 	sf2d_draw_texture_depth_generic(texture, x, y, z);
