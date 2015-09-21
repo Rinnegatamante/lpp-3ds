@@ -768,6 +768,7 @@ static int lua_launch(lua_State *L){
 	__system_retAddr = launchFile;
 	char string[20];
 	strcpy(string,"lpp_exit_0456432");
+	luaL_dostring(L, "collectgarbage()");
 	return luaL_error(L, string); // NOTE: This is a fake error
 }
 
@@ -1269,6 +1270,7 @@ static int lua_startcard(lua_State *L) {
 	char product_id[16];
 	AM_GetTitleProductCode(mediatype_GAMECARD, 0, product_id);
 	amExit();
+	luaL_dostring(L, "collectgarbage()");
 	if (product_id[0] == 'C' and product_id[1] == 'T' and product_id[2] == 'R'){
 		u8 buf0[0x300];
 		u8 buf1[0x20];
@@ -1319,6 +1321,7 @@ static int lua_launchCia(lua_State *L){
 	u64 id = unique_id | ((u64)0x00040000 << 32);
 	memset(buf0, 0, 0x300);
 	memset(buf1, 0, 0x20);
+	luaL_dostring(L, "collectgarbage()");
 	aptOpenSession();
 	APT_PrepareToDoAppJump(NULL, 0, id, mediatype);
 	APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
