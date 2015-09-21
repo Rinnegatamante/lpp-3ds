@@ -348,8 +348,8 @@ static int lua_drawimg_full(lua_State *L)
 	float y = luaL_checknumber(L,2);
 	int st_x = luaL_checkinteger(L, 3);
     int st_y = luaL_checkinteger(L, 4);
-	float width = luaL_checknumbrt(L, 5);
-    float height = luaL_checknumbrt(L, 6);
+	float width = luaL_checknumber(L, 5);
+    float height = luaL_checknumber(L, 6);
 	float radius = luaL_checknumber(L, 7);
 	float scale_x = luaL_checknumber(L, 8);
 	float scale_y = luaL_checknumber(L, 9);
@@ -372,8 +372,8 @@ static int lua_partial(lua_State *L){
 	float y = luaL_checknumber(L,2);
 	int st_x = luaL_checkinteger(L, 3);
     int st_y = luaL_checkinteger(L, 4);
-	float width = luaL_checknumbrt(L, 5);
-    float height = luaL_checknumbrt(L, 6);
+	float width = luaL_checknumber(L, 5);
+    float height = luaL_checknumber(L, 6);
 	gpu_text* file = (gpu_text*)luaL_checkinteger(L, 7);
 	u32 color;
 	if (argc == 8) color = luaL_checkinteger(L, 8);
