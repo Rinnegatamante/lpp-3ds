@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -21,6 +22,7 @@ const int commandPort=5000;
 int dataPort=5001;
 char currentPath[4096];
 u32 currentIP;
+u32* ftp_mem;
 
 int listenfd;
 
@@ -29,14 +31,15 @@ char shared_ftp[256];
 void ftp_init()
 {
 	Result ret;
-	ret=fsInit();
-	sprint(shared_ftp,"fsInit %08X", (unsigned int)ret);
+	//ret=fsInit();
+	//sprint(shared_ftp,"fsInit %08X", (unsigned int)ret);
 
 	sdmcArchive=(FS_archive){0x00000009, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FSUSER_OpenArchive(NULL, &sdmcArchive);
 	sprint(shared_ftp,"FSUSER_OpenArchive %08X", (unsigned int)ret);
-
-	ret=SOC_Initialize((u32*)memalign(0x1000, 0x100000), 0x100000);
+	
+	ftp_mem = (u32*)memalign(0x1000, 0x100000);
+	ret=SOC_Initialize(ftp_mem, 0x100000);
 	sprint(shared_ftp,"SOC_Initialize %08X", (unsigned int)ret);
 
 	sprintf(currentPath, "/");
@@ -49,6 +52,7 @@ void ftp_init()
 void ftp_exit()
 {
 	SOC_Shutdown();
+	free(ftp_mem);
 }
 
 int ftp_openCommandChannel()
