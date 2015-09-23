@@ -371,6 +371,31 @@ static int lua_getLang(lua_State *L)
     return 1;
 }
 
+static int lua_getUsername(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	char username_tmp[0x1C];
+	char username[0x0E];
+	CFGU_GetConfigInfoBlk2(0x1C, 0xA0000, (u8*)&username_tmp);
+	for (int i = 0; i < 0x0E; i++){
+		username[i] = username_tmp[i * 2];
+	}
+	lua_pushstring(L,username);
+    return 1;
+}
+
+static int lua_getBirth(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	u8 birthday[0x02];
+	CFGU_GetConfigInfoBlk2(0x02, 0xA0001, (u8*)&birthday);
+	lua_pushinteger(L,birthday[0x01]);
+	lua_pushinteger(L,birthday[0x00]);
+    return 2;
+}
+
 static int lua_getK(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -1452,6 +1477,8 @@ static const luaL_Reg System_functions[] = {
   {"getFreeSpace",			lua_freespace},
   {"getTime",				lua_gettime},
   {"getDate",				lua_getdate},
+  {"getUsername",			lua_getUsername},
+  {"getBirthday",			lua_getBirth},
   {"addNotification",		lua_addnews},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
