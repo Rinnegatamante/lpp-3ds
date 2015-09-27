@@ -32,7 +32,6 @@
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 #include <unistd.h>
@@ -110,9 +109,7 @@ static int lua_macaddr(lua_State *L){
 static int lua_ipaddr(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	SOC_Initialize((u32*)memalign(0x1000, 0x100000), 0x100000);
 	u32 ip=(u32)gethostid();
-	SOC_Shutdown();
 	char ip_address[64];
 	sprintf(ip_address,"%lu.%lu.%lu.%lu", ip & 0xFF, (ip>>8)&0xFF, (ip>>16)&0xFF, (ip>>24)&0xFF);
 	lua_pushstring(L,ip_address);

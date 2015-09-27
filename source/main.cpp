@@ -72,10 +72,8 @@ int main(int argc, char **argv)
 		int latest_slash = 0;
 		int i=5;
 		while (argv[0][i]  != '\0'){
-		if (argv[0][i] == '/'){
-		latest_slash = i;
-		}
-		i++;
+			if (argv[0][i] == '/') latest_slash = i;
+			i++;
 		}
 		strcpy(path,&argv[0][5]);
 		path[latest_slash-5] = 0;
