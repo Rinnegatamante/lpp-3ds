@@ -65,7 +65,6 @@ extern "C" {
  */
 
 #include "zlib.h"
-#include "unrar/unrar.h"
 
 /**
  * A zip
@@ -130,24 +129,6 @@ int ZipExtract(Zip *zip, const char *password);
  * @param file - A valid (previously read) ::ZipFile
  */
 void ZipFileFree(ZipFile *file);
-
-/** @} */
-
-/******************************************************************************
- ** UnRar *********************************************************************
- *******************************************************************************/
-
-/*
-Results:
-0: OK
-1: File doesnt exists
-2: File corrupt/Not rar
-3: Wrong password
-*/
-
-int mainRAR(int argc, char *argv[]);
-
-int rarExtract(const char *rarfile,const char *extDir,const char *pass);
 
 #ifdef __cplusplus
 }
