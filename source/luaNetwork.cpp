@@ -45,7 +45,6 @@
 #include "include/ftp/ftp.h"
 
 static int connfd;
-u32* sockmem;
 typedef struct
 {
 	u32 magic;
@@ -53,22 +52,6 @@ typedef struct
 	struct sockaddr_in addrTo;
 	bool serverSocket;
 } Socket;
-
-static int lua_initFTP(lua_State *L) {
-    int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments");
-    ftp_init();
-	sprintf(shared_ftp,"Waiting for connection...");
-	connfd = -1;
-    return 0;
-}
-
-static int lua_termFTP(lua_State *L) {
-    int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments");
-    ftp_exit();
-    return 0;
-}
 
 static int lua_checkFTPcommand(lua_State *L){
 	int argc = lua_gettop(L);
@@ -268,12 +251,9 @@ static int lua_initSock(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	sockmem = (u32*)memalign(0x1000, 0x100000);
-	Result ret = SOC_Initialize(sockmem, 0x100000);
-	if(ret != 0){
-		SOC_Shutdown();
-		free(sockmem);
-	}
+	ftp_init();
+	sprintf(shared_ftp,"Waiting for connection...");
+	connfd = -1;
 	return 0;
 }
 
@@ -322,8 +302,7 @@ static int lua_shutSock(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	SOC_Shutdown();
-	free(sockmem);
+	ftp_exit();
 	return 0;
 }
 
@@ -438,8 +417,6 @@ static int lua_closeSock(lua_State *L)
 
 //Register our Network Functions
 static const luaL_Reg Network_functions[] = {
-  {"initFTP",				lua_initFTP},
-  {"termFTP",				lua_termFTP},
   {"updateFTP",				lua_checkFTPcommand},
   {"isWifiEnabled",			lua_wifistat},
   {"getWifiLevel",			lua_wifilevel},
