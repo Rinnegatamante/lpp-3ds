@@ -1021,7 +1021,7 @@ int ZipClose(Zip* zip)
 	if(s->currentzipfileinfo != NULL)
 		ZipCloseCurrentFile(zip);
 
-	//printf("Fclose: %d\n", fclose(s->file));
+	fclose(s->file);
 
 	FreePatch(s);
 
