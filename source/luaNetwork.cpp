@@ -257,11 +257,6 @@ static int lua_initSock(lua_State *L)
 	return 0;
 }
 
-int setSockNoBlock(u32 s, u32 val)
-{
-	return setsockopt(s, SOL_SOCKET, 0x1009, (const char*)&val, sizeof(u32));
-}
-
 static int lua_createServerSocket(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -286,7 +281,7 @@ static int lua_createServerSocket(lua_State *L)
 		return luaL_error(L, "bind error.");
 	}
 
-	setSockNoBlock(my_socket->sock, 1);
+	fcntl(my_socket->sock, F_SETFL, O_NONBLOCK);
 
 	err = listen(my_socket->sock, 1);
 	if (err != 0) {
@@ -363,7 +358,7 @@ static int lua_connect(lua_State *L)
 
 	my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (my_socket->sock < 0) return luaL_error(L, "Failed creating socket.");
-	setSockNoBlock(my_socket->sock, 1);
+	fcntl(my_socket->sock, F_SETFL, O_NONBLOCK);
 
 	int err = connect(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
 	if (err < 0 ) return luaL_error(L, "Failed connecting server.");
