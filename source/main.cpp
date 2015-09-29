@@ -44,6 +44,7 @@ unsigned char *buffer;
 char cur_dir[256];
 char start_dir[256];
 bool CIA_MODE;
+bool ftp_state;
 
 int main(int argc, char **argv)
 {
@@ -61,6 +62,7 @@ int main(int argc, char **argv)
 	aptCloseSession();
 	fsInit();
 	hbInit();
+	ftp_state = false;
 	Handle fileHandle;
 	u64 size;
 	u32 bytesRead;
@@ -113,13 +115,11 @@ int main(int argc, char **argv)
 		errMsg = runScript((const char*)buffer, true);
 		free(buffer);
 		
-		if (errMsg != NULL);{
-		
-			// Fake error to force interpreter shutdown
-			if (strstr(errMsg, "lpp_exit_04")) break;
+		// Fake error to force interpreter shutdown
+		if (strstr(errMsg, "lpp_exit_04")) break;
 			
-		}
-		bool ftp_state = false;
+		if (ftp_state) ftp_exit();
+		ftp_state = false;
 		int connfd;
 		while (restore==0){
 			gspWaitForVBlank();

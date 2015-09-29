@@ -44,6 +44,7 @@
 #include "include/luaplayer.h"
 #include "include/ftp/ftp.h"
 
+extern bool ftp_state;
 static int connfd;
 typedef struct
 {
@@ -252,6 +253,7 @@ static int lua_initSock(lua_State *L)
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	ftp_init();
+	ftp_state = true;
 	sprintf(shared_ftp,"Waiting for connection...");
 	connfd = -1;
 	return 0;
@@ -298,6 +300,7 @@ static int lua_shutSock(lua_State *L)
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	ftp_exit();
+	ftp_state = false;
 	return 0;
 }
 
