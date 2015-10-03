@@ -357,8 +357,11 @@ static int lua_getFW(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushinteger(L,osGetFirmVersion());
-    return 1;
+	u32 fw_id = osGetFirmVersion();
+	lua_pushinteger(L,GET_VERSION_MAJOR(fw_id));
+	lua_pushinteger(L,GET_VERSION_MINOR(fw_id));
+	lua_pushinteger(L,GET_VERSION_REVISION(fw_id));
+    return 3;
 }
 
 static int lua_getLang(lua_State *L)
@@ -400,8 +403,11 @@ static int lua_getK(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushinteger(L,osGetKernelVersion());
-    return 1;
+	u32 fw_id = osGetKernelVersion();
+	lua_pushinteger(L,GET_VERSION_MAJOR(fw_id));
+	lua_pushinteger(L,GET_VERSION_MINOR(fw_id));
+	lua_pushinteger(L,GET_VERSION_REVISION(fw_id));
+    return 3;
 }
 
 static int lua_getCurrentDirectory(lua_State *L)
@@ -1393,10 +1399,18 @@ static int lua_addnews(lua_State *L){
 	return 0;
 }
 
+static int lua_freemem(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushinteger(L,linearSpaceFree());
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {"getFirmware",			lua_getFW},
+  {"getFreeMemory",			lua_freemem},
   {"getGWRomID",			lua_getcard},
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
