@@ -67,15 +67,16 @@ static int lua_print(lua_State *L)
 		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && (y > 227)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){ 
-	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen);
-	else if (alpha==255) DrawImageText(x,y,text,color,screen);
-	else DrawAlphaImageText(x,y,text,color,screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854) DrawGpuText(x,y,text,color,screen);
+		else if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageText(x,y,text,color,screen);
+		else if (alpha==255) DrawImageText(x,y,text,color,screen);
+		else DrawAlphaImageText(x,y,text,color,screen);
 	}else{ 
-	if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
-	else DrawAlphaScreenText(x,y,text,color,screen,side);
+		if (alpha=255) DrawScreenText(x,y,text,color,screen,side);
+		else DrawAlphaScreenText(x,y,text,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -154,10 +155,12 @@ static int lua_pbitmap(lua_State *L)
 		if ((x < 0) || (y < 0) || (y > 240)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (screen > 1) PrintImageBitmap(x,y,file,screen);
-	else{ 
+	if (screen > 1){ 
+		if (((gpu_text*)screen)->magic == 0x4C545854) PrintGpuBitmap(x,y,file,screen);
+		else PrintImageBitmap(x,y,file,screen);
+	}else{ 
 		if (screen == 0){
 			bool partial_x = false;
 			bool partial_y = false;
@@ -209,10 +212,12 @@ static int lua_partial(lua_State *L){
 		if ((screen == 0) && ((x+width) > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && ((x+width) > 320)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && ((y+height) > 240)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (screen > 1) PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
-	else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
+	if (screen > 1){
+		if (((gpu_text*)screen)->magic == 0x4C545854) PrintPartialGpuBitmap(x,y,st_x,st_y,width,height,file,screen);
+		else PrintPartialImageBitmap(x,y,st_x,st_y,width,height,file,screen);
+	}else PrintPartialScreenBitmap(x,y,st_x,st_y,width,height,file,screen,side);
 	gfxFlushBuffers();
 	return 0;
 }
@@ -393,15 +398,16 @@ static int lua_fillRect(lua_State *L)
 		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
-	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen);
-	else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
-	else FillAlphaImageRect(x1,x2,y1,y2,color,screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854) FillGpuRect(x1,x2,y1,y2,color,screen);
+		else if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageRect(x1,x2,y1,y2,color,screen);
+		else if (alpha==255) FillImageRect(x1,x2,y1,y2,color,screen);
+		else FillAlphaImageRect(x1,x2,y1,y2,color,screen);
 	}else{
-	if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
-	else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side);
+		if (alpha==255) FillScreenRect(x1,x2,y1,y2,color,screen,side);
+		else FillAlphaScreenRect(x1,x2,y1,y2,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -426,15 +432,16 @@ static int lua_drawline(lua_State *L)
 		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
-	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageLine(x1,y1,x2,y2,color,screen);
-	else if (alpha==255) DrawImageLine(x1,y1,x2,y2,color,screen);
-	else DrawAlphaImageLine(x1,y1,x2,y2,color,screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854) DrawGpuLine(x1,y1,x2,y2,color,screen);
+		else if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImageLine(x1,y1,x2,y2,color,screen);
+		else if (alpha==255) DrawImageLine(x1,y1,x2,y2,color,screen);
+		else DrawAlphaImageLine(x1,y1,x2,y2,color,screen);
 	}else{
-	if (alpha==255) DrawScreenLine(x1,y1,x2,y2,color,screen,side);
-	else DrawAlphaScreenLine(x1,y1,x2,y2,color,screen,side);
+		if (alpha==255) DrawScreenLine(x1,y1,x2,y2,color,screen,side);
+		else DrawAlphaScreenLine(x1,y1,x2,y2,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -458,15 +465,16 @@ static int lua_fillEmptyRect(lua_State *L)
 		if ((screen == 0) && ((x1 > 400) || (x2 > 400))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && ((x1 > 320) || (x2 > 320))) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && ((y1 > 240) || (y2 > 240))) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){ 
-	if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen);
-	else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
-	else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854) FillGpuEmptyRect(x1,x2,y1,y2,color,screen);
+		else if (((Bitmap*)screen)->bitperpixel == 32) Fill32bppImageEmptyRect(x1,x2,y1,y2,color,screen);
+		else if (alpha == 255) FillImageEmptyRect(x1,x2,y1,y2,color,screen);
+		else FillAlphaImageEmptyRect(x1,x2,y1,y2,color,screen);
 	}else{
-	if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
-	else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
+		if (alpha==255) FillScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
+		else FillAlphaScreenEmptyRect(x1,x2,y1,y2,color,screen,side);
 	}
 	gfxFlushBuffers();
 	return 0;
@@ -488,20 +496,21 @@ static int lua_pixel(lua_State *L)
 		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
-		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47)) return luaL_error(L, "attempt to access wrong memory block type");
+		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
-	if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
-	else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
-	else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854) sf2d_set_pixel(((gpu_text*)screen)->tex,x,y,color);
+		else if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
+		else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
+		else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen);
 	}else{
-	u8* buffer;
-	if (screen == 0){
-	if (side == 0) buffer = TopLFB;
-	else buffer = TopRFB;
-	}else if (screen == 1) buffer = BottomFB;
-	if (alpha == 255) DrawPixel(buffer,x,y,color);
-	else DrawAlphaPixel(buffer,x,y,color);
+		u8* buffer;
+		if (screen == 0){
+			if (side == 0) buffer = TopLFB;
+			else buffer = TopRFB;
+		}else if (screen == 1) buffer = BottomFB;
+		if (alpha == 255) DrawPixel(buffer,x,y,color);
+		else DrawAlphaPixel(buffer,x,y,color);
 	}
 	gfxFlushBuffers();
 	return 0;

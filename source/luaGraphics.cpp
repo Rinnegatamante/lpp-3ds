@@ -34,16 +34,6 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/Graphics/Graphics.h"
-extern "C"{
-	#include "include/sf2d/sf2d.h"
-}
-
-struct gpu_text{
-	u32 magic;
-	u16 width;
-	u16 height;
-	sf2d_texture* tex;
-};
 
 int cur_screen;
 

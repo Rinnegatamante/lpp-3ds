@@ -100,6 +100,16 @@ if (result->bitperpixel == 24){
 	}
 }
 
+void PrintGpuBitmap(int xp,int yp, Bitmap* result,int screen){
+	int x, y;
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+			u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+			sf2d_set_pixel(((gpu_text*)screen)->tex, xp+x, yp+y, color);
+		}		
+	}
+}
+
 void PrintScreenBitmap(int xp,int yp, Bitmap* result,int screen,int side){
 if(!result) return;
 u8* buffer = 0;
@@ -189,6 +199,28 @@ void PrintPartialImageBitmap(int xp,int yp,int st_x,int st_y,int width,int heigh
 		}
 	}
 	}
+}
+
+void PrintPartialGpuBitmap(int xp,int yp,int st_x,int st_y,int width,int height, Bitmap* result,int screen){
+	if(!result)
+		return;
+	int x, y;
+		if (result->bitperpixel == 24){
+			for (y = st_y; y < st_y + height; y++){
+				for (x = st_x; x < st_x + width; x++){
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
+				color = (color & 0x00FFFFFF) | (0xFF << 24);
+				sf2d_set_pixel(((gpu_text*)screen)->tex,xp+x-st_x,yp+y-st_y,color);
+				}
+				}
+		}else{
+		for (y = st_y; y < st_y + height; y++){
+		for (x = st_x; x < st_x + width; x++){
+				u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*4]);
+				sf2d_set_pixel(((gpu_text*)screen)->tex,xp+x-st_x,yp+y-st_y,color);
+			}
+		}
+		}
 }
 
 u8* flipBitmap(u8* flip_bitmap, Bitmap* result){
@@ -470,6 +502,41 @@ x++;
 }
 }
 
+void DrawGpuText(int x, int y, char* str, u32 color, int screen){
+unsigned short* ptr;
+unsigned short glyphsize;
+int i, cx, cy;
+for (i = 0; str[i] != '\0'; i++)
+{
+if (str[i] < 0x21)
+{
+x += 6;
+continue;
+}
+u16 ch = str[i];
+if (ch > 0x7E) ch = 0x7F;
+ptr = &font[(ch-0x20) << 4];
+glyphsize = ptr[0];
+if (!glyphsize)
+{
+x += 6;
+continue;
+}
+x++;
+for (cy = 0; cy < 12; cy++)
+{
+unsigned short val = ptr[4+cy];
+for (cx = 0; cx < glyphsize; cx++)
+{
+if (val & (1 << cx))
+sf2d_set_pixel(((gpu_text*)screen)->tex,x+cx, y+cy, color);
+}
+}
+x += glyphsize;
+x++;
+}
+}
+
 void DebugOutput(char* str){
 unsigned short* ptr;
 unsigned short glyphsize;
@@ -608,6 +675,28 @@ void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	}
 }
 
+void FillGpuRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (x1 <= x2){
+		while (y1 <= y2){
+			sf2d_set_pixel(((gpu_text*)screen)->tex,x1,y1,color);
+			y1++;
+		}
+		y1 = base_y;
+		x1++;
+	}
+}
+
 void FillAlphaImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	if (x1 > x2){
 	int temp_x = x1;
@@ -726,6 +815,30 @@ void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 	while (x1 <= x2){
 		DrawImagePixel(x1,base_y,color,(Bitmap*)screen);
 		DrawImagePixel(x1,y2,color,(Bitmap*)screen);
+		x1++;
+	}
+}
+
+void FillGpuEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+	if (x1 > x2){
+	int temp_x = x1;
+	x1 = x2;
+	x2 = temp_x;
+	}
+	if (y1 > y2){
+	int temp_y = y1;
+	y1 = y2;
+	y2 = temp_y;
+	}
+	int base_y = y1;
+	while (y1 <= y2){
+			sf2d_set_pixel(((gpu_text*)screen)->tex,x1,y1,color);
+			sf2d_set_pixel(((gpu_text*)screen)->tex,x2,y1,color);
+			y1++;
+		}
+	while (x1 <= x2){
+		sf2d_set_pixel(((gpu_text*)screen)->tex,x1,base_y,color);
+		sf2d_set_pixel(((gpu_text*)screen)->tex,x1,y2,color);
 		x1++;
 	}
 }
@@ -1048,6 +1161,45 @@ void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen)
             y0 += stepy;
             fraction += dx;
             DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+        }
+    }
+}
+
+void DrawGpuLine(int x0, int y0, int x1, int y1, u32 color, int screen)
+{
+    int dy = y1 - y0;
+    int dx = x1 - x0;
+    int stepx, stepy;
+   
+    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+    dy <<= 1;
+    dx <<= 1;
+   
+    y0 *= 1;
+    y1 *= 1;
+    DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+    if (dx > dy) {
+        int fraction = dy - (dx >> 1);
+        while (x0 != x1) {
+            if (fraction >= 0) {
+                y0 += stepy;
+                fraction -= dx;
+            }
+            x0 += stepx;
+            fraction += dy;
+            sf2d_set_pixel(((gpu_text*)screen)->tex,x0, y0, color);
+        }
+    } else {
+        int fraction = dx - (dy >> 1);
+        while (y0 != y1) {
+            if (fraction >= 0) {
+                x0 += stepx;
+                fraction -= dy;
+            }
+            y0 += stepy;
+            fraction += dx;
+            sf2d_set_pixel(((gpu_text*)screen)->tex,x0, y0, color);
         }
     }
 }
