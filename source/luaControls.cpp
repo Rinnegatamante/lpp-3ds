@@ -94,6 +94,28 @@ static int lua_touchpad(lua_State *L)
         return 2;
 }
 
+static int lua_gyro(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		angularRate cpos;
+		hidGyroRead(&cpos);
+		lua_pushnumber(L, cpos.x);
+		lua_pushnumber(L, cpos.y);
+		lua_pushnumber(L, cpos.z);
+        return 3;
+}
+
+static int lua_accel(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		accelVector cpos;
+		hidAccelRead(&cpos);
+		lua_pushnumber(L, cpos.x);
+		lua_pushnumber(L, cpos.y);
+		lua_pushnumber(L, cpos.z);
+        return 3;
+}
+
 static int lua_cstickpad(lua_State *L)
 {
         if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
@@ -102,6 +124,34 @@ static int lua_cstickpad(lua_State *L)
 		lua_pushnumber(L, cpos.dx);
 		lua_pushnumber(L, cpos.dy);
         return 2;
+}
+
+static int lua_eg(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		HIDUSER_EnableGyroscope();
+		return 0;
+}
+
+static int lua_ea(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		HIDUSER_EnableAccelerometer();
+		return 0;
+}
+
+static int lua_dg(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		HIDUSER_DisableGyroscope();
+		return 0;
+}
+
+static int lua_da(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		HIDUSER_DisableAccelerometer();
+		return 0;
 }
 
 static int lua_volume(lua_State *L)
@@ -117,8 +167,14 @@ static int lua_volume(lua_State *L)
 static const luaL_Reg Controls_functions[] = {
   {"read",								lua_readC},		  
   {"check",								lua_check},	
+  {"enableGyro",						lua_eg},	
+  {"enableAccel",						lua_ea},	
+  {"disableGyro",						lua_dg},	
+  {"disableAccel",						lua_da},	
   {"readCirclePad",						lua_circlepad},	
   {"readTouch",							lua_touchpad},	
+  {"readGyro",							lua_gyro},
+  {"readAccel",							lua_accel},	
   {"readCstickPad",						lua_cstickpad},	
   {"getVolume",							lua_volume},
   {"headsetStatus",						lua_headset},
