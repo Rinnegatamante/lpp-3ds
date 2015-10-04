@@ -94,9 +94,9 @@ int main(int argc, char **argv)
 		char error[2048];
 		
 		// Check if user is in User mode and enables Kernel Access
-		if (amInit()==0){
+		if (nsInit()==0){
 			CIA_MODE = true;
-			amExit();
+			nsExit();
 		}else{
 			CIA_MODE = false;
 			khaxInit();

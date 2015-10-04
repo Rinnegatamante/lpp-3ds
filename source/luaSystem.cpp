@@ -1233,23 +1233,6 @@ static int lua_reboot(lua_State *L) {
 	return 0;
 }
 
-static Handle nsHandle;
-
-Result NS_RebootToTitle(u8 mediatype, u64 titleid)
-{
-Result ret = 0;
-u32 *cmdbuf = getThreadCommandBuffer();
-cmdbuf[0] = 0x00100180;
-cmdbuf[1] = 0x1;
-cmdbuf[2] = titleid & 0xffffffff;
-cmdbuf[3] = (titleid >> 32) & 0xffffffff;
-cmdbuf[4] = mediatype;
-cmdbuf[5] = 0x0; // reserved
-cmdbuf[6] = 0x0;
-if((ret = svcSendSyncRequest(nsHandle))!=0)return ret;
-return (Result)cmdbuf[1];
-}
-
 static int lua_startcard(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
@@ -1268,9 +1251,9 @@ static int lua_startcard(lua_State *L) {
 		APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
 		aptCloseSession();
 	}else{
-		srvGetServiceHandle(&nsHandle, "ns:s"); 
+		nsInit();
 		NS_RebootToTitle(mediatype_GAMECARD,0);
-		svcCloseHandle(nsHandle);
+		nsExit();
 	}
 	for (;;){}
 	return 0;
@@ -1399,18 +1382,10 @@ static int lua_addnews(lua_State *L){
 	return 0;
 }
 
-static int lua_freemem(lua_State *L){
-	int argc = lua_gettop(L);
-	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushinteger(L,linearSpaceFree());
-	return 1;
-}
-
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
   {"getFirmware",			lua_getFW},
-  {"getFreeMemory",			lua_freemem},
   {"getGWRomID",			lua_getcard},
   {"getKernel",				lua_getK},
   {"takeScreenshot",		lua_screenshot},
