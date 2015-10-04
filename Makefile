@@ -7,7 +7,7 @@ $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>dev
 endif
 
 LPP_CTRULIB ?= $(CURDIR)/libctru
-
+LPP_LIBS ?= $(CURDIR)/source
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source/include/lua	source source/include source/include/Graphics \
-				source/include/ftp source/include/sf2d	source/include/tga source/include/ogg \
+				source/include/ftp source/include/sf2d source/include/ogg \
 				source/include/lodepng/	source/include/unrar/	source/include/libjpeg \
 				source/include/ttf source/include/khax
 DATA		:=	data
@@ -39,7 +39,7 @@ INCLUDES	:=	include
 
 APP_TITLE	:=	Lua Player Plus
 APP_AUTHOR	:=	Rinnegatamante
-APP_DESCRIPTION	:=	Lua interpreter for 3DS
+APP_DESCRIPTION	:=	Lua Interpreter for 3DS
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ LIBS	:= -lctru -lm -lz
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(LPP_CTRULIB)
+LIBDIRS	:= $(LPP_CTRULIB) $(LPP_LIBS)
 
 
 #---------------------------------------------------------------------------------
