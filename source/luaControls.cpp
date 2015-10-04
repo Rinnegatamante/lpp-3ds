@@ -41,6 +41,8 @@
 
 int KEY_HOME = 0xFFFF;
 int KEY_POWER = 0xFFFE;
+extern bool isTopLCDOn;
+extern bool isBottomLCDOn;
 
 static int lua_readC(lua_State *L)
 {
@@ -163,6 +165,40 @@ static int lua_volume(lua_State *L)
 		return 1;
 }
 
+static int lua_lcdon(lua_State *L)
+{
+        if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
+		u32 screen = luaL_checkinteger(L, 1);
+		GSPLCD_Screens flag;
+		if (screen == 0) flag = GSPLCD_TOP;
+		else if (screen==1) flag = GSPLCD_BOTTOM;
+		else return luaL_error(L, "wrong parameter.");
+		if (gspLcdInit() == 0){
+			GSPLCD_PowerOnBacklight(flag);
+			gspLcdExit();
+			if (flag == GSPLCD_TOP) isTopLCDOn = true;
+			else isBottomLCDOn = true;
+		}
+		return 1;
+}
+
+static int lua_lcdoff(lua_State *L)
+{
+        if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
+		u32 screen = luaL_checkinteger(L, 1);
+		GSPLCD_Screens flag;
+		if (screen == 0) flag = GSPLCD_TOP;
+		else if (screen==1) flag = GSPLCD_BOTTOM;
+		else return luaL_error(L, "wrong parameter.");
+		if (gspLcdInit() == 0){
+			GSPLCD_PowerOffBacklight(flag);
+			gspLcdExit();
+			if (flag == GSPLCD_TOP) isTopLCDOn = false;
+			else isBottomLCDOn = false;
+		}
+		return 1;
+}
+
 //Register our Controls Functions
 static const luaL_Reg Controls_functions[] = {
   {"read",								lua_readC},		  
@@ -178,6 +214,8 @@ static const luaL_Reg Controls_functions[] = {
   {"readCstickPad",						lua_cstickpad},	
   {"getVolume",							lua_volume},
   {"headsetStatus",						lua_headset},
+  {"enableScreen",						lua_lcdon},
+  {"disableScreen",						lua_lcdoff},
   {0, 0}
 };
 

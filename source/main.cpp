@@ -45,6 +45,8 @@ char cur_dir[256];
 char start_dir[256];
 bool CIA_MODE;
 bool ftp_state;
+bool isTopLCDOn;
+bool isBottomLCDOn;
 
 int main(int argc, char **argv)
 {
@@ -63,6 +65,8 @@ int main(int argc, char **argv)
 	fsInit();
 	hbInit();
 	ftp_state = false;
+	isTopLCDOn = true;
+	isBottomLCDOn = true;
 	Handle fileHandle;
 	u64 size;
 	u32 bytesRead;
@@ -114,6 +118,16 @@ int main(int argc, char **argv)
 		svcCloseHandle(fileHandle);
 		errMsg = runScript((const char*)buffer, true);
 		free(buffer);
+		
+		// Force LCDs power on
+		if ((!isTopLCDOn) || (!isBottomLCDOn)){
+			gspLcdInit();
+			if (!isTopLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_TOP);
+			if (!isBottomLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_BOTTOM);
+			gspLcdExit();
+			isTopLCDOn = true;
+			isBottomLCDOn = true;
+		}
 		
 		// Fake error to force interpreter shutdown
 		if (strstr(errMsg, "lpp_exit_04")) break;
