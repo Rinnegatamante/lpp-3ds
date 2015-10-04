@@ -423,6 +423,30 @@ static int lua_getHeight(lua_State *L)
 	return 1;
 }
 
+static int lua_pixel2(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int screen = luaL_checkinteger(L,3);
+	int side=0;
+	if (argc == 4) side = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen > 1) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	if (screen > 1){
+		u32 color = sf2d_get_pixel(((gpu_text*)screen)->tex, x, y);
+		u32 res = (color >> 16) & 0xFF | (((color >> 8) & 0xFF) << 8) | ((color & 0xFF) << 16) | (((color >> 24) & 0xFF) << 24);
+		lua_pushinteger(L,res);
+	}else lua_pushinteger(L,GetPixel(x,y,screen,side));
+	return 1;
+}
+
 //Register our Graphics Functions
 static const luaL_Reg Graphics_functions[] = {
   {"init",					lua_init},
@@ -443,6 +467,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"freeImage",				lua_free},
   {"getImageWidth",			lua_getWidth},
   {"getImageHeight",		lua_getHeight}, 
+  {"getPixel",				lua_pixel2}, 
   {"convertFrom",			lua_convert},
   {0, 0}
 };
