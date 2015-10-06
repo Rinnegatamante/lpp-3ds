@@ -47,6 +47,7 @@ bool CIA_MODE;
 bool ftp_state;
 bool isTopLCDOn;
 bool isBottomLCDOn;
+bool isNinjhax2;
 
 int main(int argc, char **argv)
 {
@@ -72,6 +73,16 @@ int main(int argc, char **argv)
 	u32 bytesRead;
 	int restore;
 	
+	// Check user build and enables kernel access
+		if (nsInit()==0){
+			CIA_MODE = true;
+			nsExit();
+		}else CIA_MODE = false;
+		isNinjhax2 = false;
+		if (!hbInit()) khaxInit();
+		else isNinjhax2 = true;
+	
+	
 	// Set main script
 	char path[256];
 	if (argc > 0){
@@ -95,16 +106,7 @@ int main(int argc, char **argv)
 	while(aptMainLoop())
 	{
 		restore=0;		
-		char error[2048];
-		
-		// Check if user is in User mode and enables Kernel Access
-		if (nsInit()==0){
-			CIA_MODE = true;
-			nsExit();
-		}else{
-			CIA_MODE = false;
-			khaxInit();
-		}
+		char error[2048];		
 		
 		// Load main script
 		FS_path filePath=FS_makePath(PATH_CHAR, path);
