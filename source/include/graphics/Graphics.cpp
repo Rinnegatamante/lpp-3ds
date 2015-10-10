@@ -39,7 +39,6 @@
 #include <3ds.h>
 #include "Graphics.h"
 #include "font.h"
-#define LODEPNG_COMPILE_PNG
 #include "../lodepng/lodepng.h"
 #include "../libjpeg/jpeglib.h"
 #include <setjmp.h>
