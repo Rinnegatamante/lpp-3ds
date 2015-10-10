@@ -1170,6 +1170,7 @@ static int lua_regsound(lua_State *L)
 	strcpy(wav_file->title,"");
 	wav_file->isPlaying = false;
 	wav_file->bytepersample = 2;
+	wav_file->magic = 0x4C534E44;
 	lua_pushinteger(L,(u32)wav_file);
 	return 1;
 }
