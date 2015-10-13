@@ -179,7 +179,7 @@ static int lua_lcdon(lua_State *L)
 			if (flag == GSPLCD_TOP) isTopLCDOn = true;
 			else isBottomLCDOn = true;
 		}
-		return 1;
+		return 0;
 }
 
 static int lua_lcdoff(lua_State *L)
@@ -196,6 +196,15 @@ static int lua_lcdoff(lua_State *L)
 			if (flag == GSPLCD_TOP) isTopLCDOn = false;
 			else isBottomLCDOn = false;
 		}
+		return 0;
+}
+
+static int lua_shell(lua_State *L)
+{
+        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+		u8 shell;
+		PTMU_GetShellState(NULL, &shell);
+		lua_pushboolean(L, shell);
 		return 1;
 }
 
@@ -214,6 +223,7 @@ static const luaL_Reg Controls_functions[] = {
   {"readCstickPad",						lua_cstickpad},	
   {"getVolume",							lua_volume},
   {"headsetStatus",						lua_headset},
+  {"shellStatus",						lua_shell},
   {"enableScreen",						lua_lcdon},
   {"disableScreen",						lua_lcdoff},
   {0, 0}
