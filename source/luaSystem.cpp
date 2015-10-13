@@ -47,6 +47,7 @@ int FWRITE = 1;
 int FCREATE = 2;
 int NAND = 0;
 int SDMC = 1;
+extern bool isNinjhax2;
 
 FS_archive main_extdata_archive;
 
@@ -302,11 +303,11 @@ static int lua_getsize(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	Handle fileHandle = luaL_checknumber(L, 1);
+	Handle fileHandle = luaL_checkinteger(L, 1);
 	u64 size;
 	Result ret=FSFILE_GetSize(fileHandle, &size);
 	//if(ret) return luaL_error(L, "error getting size");
-	lua_pushnumber(L,size);
+	lua_pushinteger(L,size);
 	return 1;
 }
 
@@ -314,7 +315,7 @@ static int lua_closefile(lua_State *L)
 {
     int argc = lua_gettop(L);
     if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
-	Handle fileHandle = luaL_checknumber(L, 1);
+	Handle fileHandle = luaL_checkinteger(L, 1);
 	Result ret=FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	if (argc == 2) FSUSER_CloseArchive(NULL, &main_extdata_archive);
@@ -326,9 +327,9 @@ static int lua_readfile(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 3) return luaL_error(L, "wrong number of arguments");
-	Handle fileHandle = luaL_checknumber(L, 1);
-	u64 init = luaL_checknumber(L, 2);
-	u64 size = luaL_checknumber(L, 3);
+	Handle fileHandle = luaL_checkinteger(L, 1);
+	u64 init = luaL_checkinteger(L, 2);
+	u64 size = luaL_checkinteger(L, 3);
 	u32 bytesRead;
 	unsigned char *buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
 	Result ret=FSFILE_Read(fileHandle, &bytesRead, init, buffer, size);
@@ -344,10 +345,10 @@ static int lua_writefile(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 4) return luaL_error(L, "wrong number of arguments");
-	Handle fileHandle = luaL_checknumber(L, 1);
-	u64 init = luaL_checknumber(L, 2);
+	Handle fileHandle = luaL_checkinteger(L, 1);
+	u64 init = luaL_checkinteger(L, 2);
 	const char *text = luaL_checkstring(L, 3);
-	u64 size = luaL_checknumber(L, 4);
+	u64 size = luaL_checkinteger(L, 4);
 	u32 bytesWritten;
 	Result ret=FSFILE_Write(fileHandle, &bytesWritten, init, text, size, FS_WRITE_FLUSH);
 	//if(ret || size!=bytesWritten) return luaL_error(L, "error writing file");
