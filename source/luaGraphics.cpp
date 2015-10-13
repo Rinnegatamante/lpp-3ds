@@ -115,7 +115,7 @@ static int lua_rect(lua_State *L) {
 
 static int lua_fillcircle(lua_State *L) {
     int argc = lua_gettop(L);
-    if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
+    if (argc != 4) return luaL_error(L, "wrong number of arguments");
 	float x = luaL_checknumber(L,1);
 	float y = luaL_checknumber(L,2);
 	int radius = luaL_checkinteger(L,3);
