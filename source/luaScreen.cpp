@@ -203,7 +203,7 @@ static int lua_partial(lua_State *L){
 	Bitmap* file = (Bitmap*)luaL_checkinteger(L, 7);
 	int screen= luaL_checkinteger(L, 8);
 	int side = 0;
-	if (argc == 5) side = luaL_checkinteger(L,9);
+	if (argc == 9) side = luaL_checkinteger(L,9);
 	#ifndef SKIP_ERROR_HANDLING
 		if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
