@@ -692,8 +692,8 @@ static int lua_openwav(lua_State *L)
 		FSFILE_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
 		if (raw_enc == 0x01) wav_file->encoding = CSND_ENCODING_PCM16;
 		else if (raw_enc == 0x11) wav_file->encoding = CSND_ENCODING_IMA_ADPCM;
-		wav_file->mem_size = mem_size;
 		wav_file->samplerate = samplerate;
+		wav_file->sourceFile = fileHandle;
 		if (audiotype == 1){
 			if (mem_size){
 				wav_file->moltiplier = 1;
@@ -702,7 +702,6 @@ static int lua_openwav(lua_State *L)
 				while (wav_file->mem_size > STREAM_MAX_ALLOC){
 					wav_file->mem_size = wav_file->mem_size / 2;
 				}
-				wav_file->sourceFile = fileHandle;
 				wav_file->startRead = (pos+4);
 				if (raw_enc == 0x11){ // ADPCM Decoding
 					u32 buffer_headers_num = (wav_file->mem_size) / wav_file->bytepersample;
@@ -752,12 +751,11 @@ static int lua_openwav(lua_State *L)
 			u32 size_tbp;
 			if (mem_size){
 				wav_file->moltiplier = 1;
-				wav_file->sourceFile = fileHandle;
 				wav_file->isPlaying = false;
 				wav_file->startRead = (pos+4);
 				wav_file->size = size;
 				wav_file->mem_size = (size-(pos+4));
-				while (wav_file->mem_size > STREAM_MAX_ALLOC * 10){
+				while (wav_file->mem_size > STREAM_MAX_ALLOC){
 					wav_file->mem_size = wav_file->mem_size / 2;
 				}
 				tmp_buf = (u8*)linearAlloc(wav_file->mem_size);
@@ -771,13 +769,13 @@ static int lua_openwav(lua_State *L)
 				wav_file->startRead = 0;
 				wav_file->size = (size_tbp)/2;
 				FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_buf, size-(pos+4));
+				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
+				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
 			}
 			u32 off=0;
 			u32 i=0;
 			u16 z;
-			if (raw_enc == 0x01){ //PCM16 Decoding
-				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
-				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
+			if (raw_enc == 0x01){ //PCM16 Decoding				
 				while (i < size_tbp){
 					z=0;
 					while (z < (wav_file->bytepersample/2)){
@@ -1007,35 +1005,33 @@ static int lua_playWav(lua_State *L)
 	}
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
-		if (loop == 0) src->streamLoop = false;
-		else src->streamLoop = true;
-		svcCreateEvent(&updateStream,0);
-		u32 *threadStack = (u32*)memalign(32, 8192);
-		src->thread = threadStack;
-		svcSignalEvent(updateStream);
-		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
-		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 0xFFFF, 0xFFFF);
-		}else{
-		My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0xFFFF);
-		}
+			if (loop == 0) src->streamLoop = false;
+			else src->streamLoop = true;
+			svcCreateEvent(&updateStream,0);
+			u32 *threadStack = (u32*)memalign(32, 8192);
+			src->thread = threadStack;
+			svcSignalEvent(updateStream);
+			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
+			My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 0xFFFF, 0xFFFF);
+		}else My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0xFFFF);
 		src->ch = ch;
 		src->tick = osGetTime();
 		CSND_setchannel_playbackstate(ch, 1);
 		CSND_sharedmemtype0_cmdupdatestate(0);
 	}else{
 		if (src->mem_size > 0){
-		if (loop == 0) src->streamLoop = false;
-		else src->streamLoop = true;
-		svcCreateEvent(&updateStream,0);
-		u32 *threadStack = (u32*)memalign(32, 8192);
-		src->thread = threadStack;
-		svcSignalEvent(updateStream);
-		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
-		My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 0xFFFF, 0);
-		My_CSND_playsound(ch2, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 0, 0xFFFF);
+			if (loop == 0) src->streamLoop = false;
+			else src->streamLoop = true;
+			svcCreateEvent(&updateStream,0);
+			u32 *threadStack = (u32*)memalign(32, 8192);
+			src->thread = threadStack;
+			svcSignalEvent(updateStream);
+			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
+			My_CSND_playsound(ch, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 0xFFFF, 0);
+			My_CSND_playsound(ch2, CSND_LOOP_ENABLE, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 0, 0xFFFF);
 		}else{
-		My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0);
-		My_CSND_playsound(ch2, loop, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 0, 0xFFFF);
+			My_CSND_playsound(ch, loop, src->encoding, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 0xFFFF, 0);
+			My_CSND_playsound(ch2, loop, src->encoding, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 0, 0xFFFF);
 		}
 		src->ch = ch;
 		src->ch2 = ch2;
@@ -1249,7 +1245,7 @@ int argc = lua_gettop(L);
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if ((src->encoding == CSND_ENCODING_IMA_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate / 2));
-	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size*2) - src->startRead) / (src->bytepersample * src->samplerate));
+	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size) - src->startRead) / ((src->bytepersample / 2) * src->samplerate));
 	else lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate));
 	return 1;
 }
