@@ -95,11 +95,11 @@ int main(int argc, char **argv)
 		path[latest_slash-5] = 0;
 		strcpy(start_dir,path);
 		strcpy(cur_dir,path); // Set current dir
-		strcat(path,"/sun_index.lua");
+		strcat(path,"/index.lua");
 	}else{
 		strcpy(start_dir,"/");
 		strcpy(cur_dir,"/"); // Set current dir for GW Mode
-		strcpy(path,"/sun_index.lua");
+		strcpy(path,"/index.lua");
 	}
 	
 	while(aptMainLoop())
