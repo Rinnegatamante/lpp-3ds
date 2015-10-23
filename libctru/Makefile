@@ -9,7 +9,7 @@ endif
 include $(DEVKITARM)/base_rules
 
 export LIBCTRU_MAJOR	:= 0
-export LIBCTRU_MINOR	:= 2
+export LIBCTRU_MINOR	:= 5
 export LIBCTRU_PATCH	:= 0
 
 
@@ -39,9 +39,10 @@ INCLUDES	:=	include
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=softfp
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
 
 CFLAGS	:=	-g -Wall -O2 -mword-relocations \
+			-fno-strict-aliasing \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
@@ -106,13 +107,13 @@ dist-bin: all
 	@tar -cjf libctru-$(VERSION).tar.bz2 include lib default_icon.png
 
 dist-src:
-	@tar -cjf libctru-src-$(VERSION).tar.bz2 include source Makefile Doxyfile Doxyfile.internal default_icon.png
+	@tar -cjf libctru-src-$(VERSION).tar.bz2 include source data Makefile Doxyfile Doxyfile.internal default_icon.png
 
 dist: dist-src dist-bin
 
 install: dist-bin
 	mkdir -p $(DEVKITPRO)/libctru
-	bzip2 -cd libctru-$(VERSION).tar.bz2 | tar -x -C $(DEVKITPRO)/libctru
+	bzip2 -cd libctru-$(VERSION).tar.bz2 | tar -xf - -C $(DEVKITPRO)/libctru
 
 dox:
 	@doxygen Doxyfile

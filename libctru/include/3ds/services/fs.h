@@ -129,6 +129,7 @@ typedef struct
 
 Result fsInit(void);
 Result fsExit(void);
+Handle *fsGetSessionHandle();
 
 FS_path FS_makePath(FS_pathType type, const char  *path);
 
@@ -142,11 +143,14 @@ Result FSUSER_CreateFile(Handle* handle, FS_archive archive, FS_path fileLowPath
 Result FSUSER_CreateDirectory(Handle* handle, FS_archive archive, FS_path dirLowPath);
 Result FSUSER_DeleteFile(Handle *handle, FS_archive archive, FS_path fileLowPath);
 Result FSUSER_DeleteDirectory(Handle *handle, FS_archive archive, FS_path dirLowPath);
+Result FSUSER_DeleteDirectoryRecursively(Handle *handle, FS_archive archive, FS_path dirLowPath);
 Result FSUSER_RenameFile(Handle *handle, FS_archive srcArchive, FS_path srcFileLowPath, FS_archive destArchive, FS_path destFileLowPath);
 Result FSUSER_RenameDirectory(Handle *handle, FS_archive srcArchive, FS_path srcDirLowPath, FS_archive destArchive, FS_path destDirLowPath);
 Result FSUSER_GetSdmcArchiveResource(Handle *handle, u32 *sectorSize, u32 *clusterSize, u32 *numClusters, u32 *freeClusters);
+Result FSUSER_GetNandArchiveResource(Handle *handle, u32 *sectorSize, u32 *clusterSize, u32 *numClusters, u32 *freeClusters);
 Result FSUSER_IsSdmcDetected(Handle *handle, u8 *detected);
 Result FSUSER_IsSdmcWritable(Handle *handle, u8 *writable);
+Result FSUSER_GetMediaType(Handle *handle, u8* mediatype);
 
 Result FSFILE_Close(Handle handle);
 Result FSFILE_Read(Handle handle, u32 *bytesRead, u64 offset, void *buffer, u32 size);

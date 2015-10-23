@@ -69,6 +69,15 @@ fsExit(void)
 	return svcCloseHandle(fsuHandle);
 }
 
+/*! Gets the fsuser service session handle.
+*
+*  @returns Handle
+*/
+Handle *fsGetSessionHandle()
+{
+	return &fsuHandle;
+}
+
 /*! Initialize FS service handle
  *
  *  If @a handle is NULL, this initializes @ref fsuHandle.
@@ -458,11 +467,60 @@ FSUSER_DeleteDirectory(Handle     *handle,
 	return cmdbuf[1];
 }
 
-/* stub */
+/*! Delete a directory and all sub directories/files recursively
+ *
+ *  @param[in] handle     fs:USER handle
+ *  @param[in] archive    Open archive
+ *  @param[in] dirLowPath Directory path
+ *
+ *  @returns error
+ *
+ *  @internal
+ *
+ *  #### Request
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code [0x08070142]
+ *  1          | 0
+ *  2          | archive.handleLow
+ *  3          | archive.handleHigh
+ *  4          | dirLowPath.type
+ *  5          | dirLowPath.size
+ *  6          | (dirLowPath.size << 14) \| 0x2
+ *  7          | dirLowPath.data
+ *
+ *  #### Response
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code
+ *  1          | Result code
+ */
 Result
-FSUSER_DeleteDirectoryRecursively(void)
+FSUSER_DeleteDirectoryRecursively(Handle     *handle,
+                                  FS_archive archive,
+                                  FS_path    dirLowPath)
 {
-	return -1;
+	if(!handle)
+		handle = &fsuHandle;
+
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = 0x08070142;
+	cmdbuf[1] = 0;
+	cmdbuf[2] = archive.handleLow;
+	cmdbuf[3] = archive.handleHigh;
+	cmdbuf[4] = dirLowPath.type;
+	cmdbuf[5] = dirLowPath.size;
+	cmdbuf[6] = (dirLowPath.size << 14) | 0x2;
+	cmdbuf[7] = (u32)dirLowPath.data;
+
+	Result ret = 0;
+	if((ret = svcSendSyncRequest(*handle)))
+		return ret;
+
+	return cmdbuf[1];
 }
 
 /*! Create a File
@@ -887,6 +945,68 @@ FSUSER_GetSdmcArchiveResource(Handle *handle,
 	return cmdbuf[1];
 }
 
+/*! Get NAND information
+ *
+ *  @param[in]  handle       fs:USER handle
+ *  @param[out] sectorSize   Sector size (bytes)
+ *  @param[out] clusterSize  Cluster size (bytes)
+ *  @param[out] numClusters  Total number of clusters
+ *  @param[out] freeClusters Number of free clusters
+ *
+ *  @returns error
+ *
+ *  @internal
+ *
+ *  #### Request
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code [0x08140000]
+ *
+ *  #### Response
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code
+ *  1          | Result code
+ *  2          | Sector (bytes)
+ *  3          | Cluster (bytes)
+ *  4          | Partition capacity (clusters)
+ *  5          | Free space (clusters)
+ */
+Result
+FSUSER_GetNandArchiveResource(Handle *handle,
+                              u32    *sectorSize,
+                              u32    *clusterSize,
+                              u32    *numClusters,
+                              u32    *freeClusters)
+{
+	if(!handle)
+		handle = &fsuHandle;
+
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = 0x08150000;
+
+	Result ret = 0;
+	if((ret = svcSendSyncRequest(*handle)))
+		return ret;
+
+	if(sectorSize)
+		*sectorSize = cmdbuf[2];
+
+	if(clusterSize)
+		*clusterSize = cmdbuf[3];
+
+	if(numClusters)
+		*numClusters = cmdbuf[4];
+
+	if(freeClusters)
+		*freeClusters = cmdbuf[5];
+
+	return cmdbuf[1];
+}
+
 /*! Check if SD card is detected
  *
  *  @param[in]  handle   fs:USER handle
@@ -927,6 +1047,49 @@ FSUSER_IsSdmcDetected(Handle *handle,
 
 	if(detected)
 		*detected = cmdbuf[2];
+
+	return cmdbuf[1];
+}
+
+/*! Get curent process mediatype
+ *
+ *  @param[in]  handle   fs:USER handle
+ *  @param[out] mediatype Output curent process mediatype
+ *
+ *  @returns error
+ *
+ *  @internal
+ *
+ *  #### Request
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code [0x08680000]
+ *
+ *  #### Response
+ *
+ *  Index Word | Description
+ *  -----------|-------------------------
+ *  0          | Header code
+ *  1          | Result code
+ */
+Result
+FSUSER_GetMediaType(Handle *handle,
+					u8* mediatype)
+{
+	if(!handle)
+		handle = &fsuHandle;
+
+	u32* cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = 0x08680000;
+
+	Result ret = 0;
+	if((ret = svcSendSyncRequest(*handle)))
+		return ret;
+
+	if(mediatype)
+		*mediatype = cmdbuf[2];
 
 	return cmdbuf[1];
 }

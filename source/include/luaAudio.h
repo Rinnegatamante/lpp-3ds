@@ -31,9 +31,7 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-void My_CSND_playsound(u32 channel, u32 looping, u32 encoding, u32 samplerate, u32 *vaddr0, u32 *vaddr1, u32 totalbytesize, u32 l_vol, u32 r_vol);
-void CSND_SetAdpcmState(u32 channel, int block, int sample, int index);
-void CSND_ChnSetAdpcmReload(u32 channel, bool reload);
+void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data1, u32 size, float vol, float pan);
 
 // Additional encoding
 typedef enum{

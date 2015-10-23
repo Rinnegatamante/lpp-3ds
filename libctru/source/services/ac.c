@@ -8,7 +8,9 @@ static Handle acHandle;
 
 Result acInit()
 {
-	return srvGetServiceHandle(&acHandle, "ac:u");	
+	Result ret = srvGetServiceHandle(&acHandle, "ac:u");
+	if(!ret)return ret;
+	return srvGetServiceHandle(&acHandle, "ac:i");
 }
 
 Result acExit()
@@ -91,7 +93,7 @@ Result ACU_WaitInternetConnection()
 	while(1)
 	{
 		ret = ACU_GetWifiStatus(&servhandle, &outval);
-		if(ret==0 && outval==1)break;
+		if(ret==0 && outval!=0)break;
 	}
 
 	svcCloseHandle(servhandle);

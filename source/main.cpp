@@ -58,13 +58,12 @@ int main(int argc, char **argv)
 	initCfgu();
 	httpcInit();
 	ptmInit();
-	hidInit(NULL);
-	irrstInit(NULL);
+	hidInit();
+	irrstInit();
 	aptOpenSession();
 	Result ret=APT_SetAppCpuTimeLimit(NULL, 30);
 	aptCloseSession();
 	fsInit();
-	hbInit();
 	ftp_state = false;
 	isTopLCDOn = true;
 	isBottomLCDOn = true;
@@ -96,11 +95,11 @@ int main(int argc, char **argv)
 		path[latest_slash-5] = 0;
 		strcpy(start_dir,path);
 		strcpy(cur_dir,path); // Set current dir
-		strcat(path,"/index.lua");
+		strcat(path,"/sun_index.lua");
 	}else{
 		strcpy(start_dir,"/");
 		strcpy(cur_dir,"/"); // Set current dir for GW Mode
-		strcpy(path,"/index.lua");
+		strcpy(path,"/sun_index.lua");
 	}
 	
 	while(aptMainLoop())
@@ -182,7 +181,7 @@ int main(int argc, char **argv)
 		}
 		if (ftp_state) ftp_exit();
 		if (isCSND){
-			CSND_shutdown();
+			csndExit();
 			isCSND = false;
 		}
 		if (restore==2){

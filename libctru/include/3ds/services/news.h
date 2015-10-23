@@ -10,6 +10,7 @@ Result newsExit();
 
 /* NEWSU_AddNotification()
 About: Adds a notification to the home menu Notifications applet.
+
   title	UTF-16 title of the notification.
   titleLength	Number of characters in the title, not including the null-terminator.
   title	UTF-16 message of the notification, or NULL for no message.

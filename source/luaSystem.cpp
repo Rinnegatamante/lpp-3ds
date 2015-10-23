@@ -67,7 +67,7 @@ static int lua_exit(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	if (isCSND) CSND_shutdown();
+	if (isCSND) csndExit();
 	char string[20];
 	strcpy(string,"lpp_exit_0456432");
 	luaL_dostring(L, "collectgarbage()");
@@ -965,22 +965,6 @@ static int lua_listExtdataDir(lua_State *L){
 	return 1;
 }
 
-// AM service extension
-static Handle amHandle = 0;
-
-Result AM_GetTitleProductCode(u8 mediatype, u64 titleid, char* product_code)
-{
-Result ret = 0;
-u32 *cmdbuf = getThreadCommandBuffer();
-cmdbuf[0] = 0x000500C0;
-cmdbuf[1] = mediatype;
-cmdbuf[2] = titleid & 0xffffffff;
-cmdbuf[3] = (titleid >> 32) & 0xffffffff;
-if((ret = svcSendSyncRequest(amHandle))!=0) return ret;
-sprintf(product_code,"%s",(char*)(&cmdbuf[2]));
-return (Result)cmdbuf[1];
-}
-
 static int lua_installCia(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -1031,13 +1015,7 @@ struct TitleId{
 	u16 category;
 	u16 platform;
 };
-/* CIA categories
-0 = Application
-1 = System
-2 = Demo
-3 = Patch
-4 = TWL
-*/
+
 static int lua_listCia(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
@@ -1045,7 +1023,7 @@ static int lua_listCia(lua_State *L){
 	u32 cia_nums;
 	AM_GetTitleCount(mediatype_SDMC, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleList(mediatype_SDMC,cia_nums,TitleIDs);
+	AM_GetTitleIdList(mediatype_SDMC, cia_nums, (u64*)TitleIDs);
 	u32 i = 1;
 	lua_newtable(L);
 	while (i <= cia_nums){
@@ -1083,7 +1061,7 @@ static int lua_listCia(lua_State *L){
 	u32 z = 1;
 	AM_GetTitleCount(mediatype_NAND, &cia_nums);
 	TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleList(mediatype_NAND,cia_nums,TitleIDs);
+	AM_GetTitleIdList(mediatype_NAND,cia_nums,(u64*)TitleIDs);
 	while (z <= cia_nums){
 		lua_pushinteger(L, i);
 		lua_newtable(L);
@@ -1133,7 +1111,7 @@ static int lua_uninstallCia(lua_State *L){
 	u32 cia_nums;
 	AM_GetTitleCount(media, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleList(media,cia_nums,TitleIDs);
+	AM_GetTitleIdList(media,cia_nums,(u64*)TitleIDs);
 	u64 id = TitleIDs[delete_id-1].uniqueid | ((u64)TitleIDs[delete_id-1].category << 32) | ((u64)TitleIDs[delete_id-1].platform << 48);
 	AM_DeleteAppTitle(media, id);
 	AM_DeleteTitle(media, id);

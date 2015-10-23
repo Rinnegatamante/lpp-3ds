@@ -43,7 +43,7 @@ APP_DESCRIPTION	:=	Lua Interpreter for 3DS
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=softfp
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
 
 CFLAGS	:=	-g -O2 -mword-relocations \
 			-fomit-frame-pointer -ffast-math \
@@ -164,7 +164,7 @@ $(OUTPUT).elf	:	$(OFILES)
 %.vsh.o	:	%.vsh
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	#@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin Use this if you have only Python 3.1
+	#@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin Use this if you have only Python 3.x
 	@C:\Python31\Python.exe $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin
 	@bin2s ../$(notdir $<).shbin | $(PREFIX)as -o $@
 	@echo "extern const u8" `(echo $(notdir $<).shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(notdir $<).shbin | tr . _)`.h

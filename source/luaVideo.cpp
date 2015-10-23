@@ -236,9 +236,9 @@ static void streamOGG(void* arg){
 				total = total * 2;
 			}
 			if ((control >= total) && (src->isPlaying)){
-				CSND_setchannel_playbackstate(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				csndExecCmds(0);
 				src->moltiplier = 1;
 				ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
 				if (src->audiobuf2 == NULL){
@@ -284,9 +284,9 @@ static void streamOGG(void* arg){
 					src->tick = (osGetTime()-src->tick);
 				}else{
 					src->tick = osGetTime();
-					CSND_setchannel_playbackstate(src->ch1, 1);
-					if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 1);
-					CSND_sharedmemtype0_cmdupdatestate(0);
+					CSND_SetPlayState(src->ch1, 1);
+					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
+					csndExecCmds(0);
 				}
 			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
@@ -529,9 +529,9 @@ int argc = lua_gettop(L);
 				src->mem_size = src->mem_size / 2;
 			}
 		}
-		if (src->audiotype == 1){
+		if (src->audiotype == 1){			
 			if (src->audiocodec == 0) FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
-			My_CSND_playsound(ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 0xFFFF, 0xFFFF);
+			My_CSND_playsound(ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 1.0, 2.0);
 		}else{
 			if (src->audiocodec == 0){
 				u8* audiobuf = (u8*)linearAlloc(src->mem_size);
@@ -553,12 +553,12 @@ int argc = lua_gettop(L);
 				}
 				linearFree(audiobuf);
 			}
-			My_CSND_playsound(src->ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 0xFFFF, 0);
-			My_CSND_playsound(src->ch2, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 0, 0xFFFF);
+			My_CSND_playsound(src->ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 1.0, 1.0);
+			My_CSND_playsound(src->ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 1.0, -1.0);
 		}
-	CSND_setchannel_playbackstate(ch1, 1);
-	if (src->audiotype == 2) CSND_setchannel_playbackstate(src->ch2, 1);
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	CSND_SetPlayState(ch1, 1);
+	if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
+	csndExecCmds(0);
 	src->tick = osGetTime();
 	src->moltiplier = 1;
 	svcCreateEvent(&updateStream,0);
@@ -636,7 +636,7 @@ int argc = lua_gettop(L);
 		}
 		if (src->audiotype == 1){
 			FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
-			My_CSND_playsound(ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 0xFFFF, 0xFFFF);
+			My_CSND_playsound(ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 1.0, 2.0);
 		}else{
 			u8* audiobuf = (u8*)linearAlloc(src->mem_size);
 			FSFILE_Read(src->sourceFile, &bytesRead, 28, audiobuf, src->mem_size);
@@ -656,12 +656,12 @@ int argc = lua_gettop(L);
 				off=off+(src->bytepersample/2);
 			}
 			linearFree(audiobuf);
-			My_CSND_playsound(src->ch1, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 0xFFFF, 0);
-			My_CSND_playsound(src->ch2, CSND_LOOP_ENABLE, CSND_ENCODING_PCM16, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 0, 0xFFFF);
+			My_CSND_playsound(src->ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 1.0, 1.0);
+			My_CSND_playsound(src->ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 1.0, -1.0);
 		}
-		CSND_setchannel_playbackstate(ch1, 1);
-		if (src->audiotype == 2) CSND_setchannel_playbackstate(src->ch2, 1);
-		CSND_sharedmemtype0_cmdupdatestate(0);
+		CSND_SetPlayState(ch1, 1);
+		if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
+		csndExecCmds(0);
 		src->tick = osGetTime();
 		src->moltiplier = 1;
 	}else src->tick = osGetTime();
@@ -678,9 +678,9 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 			}else{
 				src->isPlaying = false;
 				src->moltiplier = 1;
-				CSND_setchannel_playbackstate(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				csndExecCmds(0);
 			}
 		}else{
 			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
@@ -782,9 +782,9 @@ static int lua_drawJPGV(lua_State *L){
 			}else{
 				src->isPlaying = false;
 				src->moltiplier = 1;
-				CSND_setchannel_playbackstate(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				csndExecCmds(0);
 			}
 		}else{
 			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
@@ -868,9 +868,9 @@ int argc = lua_gettop(L);
 			}else{
 				src->isPlaying = false;
 				src->moltiplier = 1;
-				CSND_setchannel_playbackstate(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_setchannel_playbackstate(src->ch2, 0);
-				CSND_sharedmemtype0_cmdupdatestate(0);
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				csndExecCmds(0);
 			}
 			if (src->audiobuf2 == NULL) FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
 			else{
@@ -1261,11 +1261,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = false;
 	src->currentFrame = 0;
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 0);
+	CSND_SetPlayState(src->ch1, 0);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 0);
+	CSND_SetPlayState(src->ch2, 0);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }
@@ -1280,11 +1280,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = false;
 	src->currentFrame = 0;
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 0);
+	CSND_SetPlayState(src->ch1, 0);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 0);
+	CSND_SetPlayState(src->ch2, 0);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }
@@ -1299,11 +1299,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 0);
+	CSND_SetPlayState(src->ch1, 0);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 0);
+	CSND_SetPlayState(src->ch2, 0);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }
@@ -1318,11 +1318,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = false;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 0);
+	CSND_SetPlayState(src->ch1, 0);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 0);
+	CSND_SetPlayState(src->ch2, 0);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }
@@ -1337,11 +1337,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 1);
+	CSND_SetPlayState(src->ch1, 1);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 1);
+	CSND_SetPlayState(src->ch2, 1);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }
@@ -1356,11 +1356,11 @@ int argc = lua_gettop(L);
 	src->isPlaying = true;
 	src->tick = (osGetTime() - src->tick);
 	if (src->samplerate != 0 && src->audio_size != 0){
-	CSND_setchannel_playbackstate(src->ch1, 1);
+	CSND_SetPlayState(src->ch1, 1);
 	if (src->audiotype == 2){
-	CSND_setchannel_playbackstate(src->ch2, 1);
+	CSND_SetPlayState(src->ch2, 1);
 	}
-	CSND_sharedmemtype0_cmdupdatestate(0);
+	csndExecCmds(0);
 	}
 	return 0;
 }

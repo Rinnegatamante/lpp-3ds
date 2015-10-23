@@ -92,7 +92,7 @@ sdmc_devoptab =
   .deviceData   = NULL,
   .chmod_r      = sdmc_chmod,
   .fchmod_r     = sdmc_fchmod,
-//  .rmdir_r      = sdmc_rmdir,
+  .rmdir_r      = sdmc_rmdir,
 };
 
 /*! SDMC archive handle */

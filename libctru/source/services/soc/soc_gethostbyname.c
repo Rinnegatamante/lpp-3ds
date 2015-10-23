@@ -6,14 +6,14 @@ static struct hostent SOC_hostent;
 static char           *SOC_hostent_results[MAX_HOSTENT_RESULTS+1];
 static char           *SOC_hostent_alias = NULL;
 
-int h_errno = 0;
-
 struct hostent* gethostbyname(const char *name)
 {
-	int ret=0;
+	int ret = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 	u32 saved_threadstorage[2];
 	static u8 outbuf[0x1A88];
+
+	h_errno = 0;
 
 	cmdbuf[0] = 0x000D0082;
 	cmdbuf[1] = strlen(name)+1;
@@ -27,17 +27,25 @@ struct hostent* gethostbyname(const char *name)
 	cmdbuf[0x100>>2] = (sizeof(outbuf) << 14) | 2;
 	cmdbuf[0x104>>2] = (u32)outbuf;
 
-	if(( ret = svcSendSyncRequest(SOCU_handle))!=0)return NULL;
+	ret = svcSendSyncRequest(SOCU_handle);
+	if(ret != 0) {
+		h_errno = NO_RECOVERY;
+		return NULL;
+	}
+
 
 	cmdbuf[0x100>>2] = saved_threadstorage[0];
         cmdbuf[0x104>>2] = saved_threadstorage[1];
 
 	ret = (int)cmdbuf[1];
-	if(ret==0)ret = _net_convert_error(cmdbuf[2]);
-        if(ret<0)SOCU_errno = ret;
-	/* TODO: set h_errno based on SOCU_errno */
+	if(ret == 0)
+		ret = _net_convert_error(cmdbuf[2]);
 
-	if(ret<0)return NULL;
+        if(ret < 0) {
+		/* TODO: set h_errno based on ret */
+		h_errno = HOST_NOT_FOUND;
+		return NULL;
+	}
 
 	u32 num_results, i;
 	memcpy(&num_results, (char*)outbuf+4, sizeof(num_results));
@@ -55,6 +63,8 @@ struct hostent* gethostbyname(const char *name)
 	for(i = 0; i < num_results; ++i)
 		SOC_hostent_results[i] = (char*)outbuf + 0x1908 + i*0x10;
 	SOC_hostent_results[num_results] = NULL;
+
+	SOC_hostent.h_addr = SOC_hostent.h_addr_list[0];
 
 	return &SOC_hostent;
 }

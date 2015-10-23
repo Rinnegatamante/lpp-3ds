@@ -23,7 +23,7 @@ void __attribute__((weak)) __libctru_init(void (*retAddr)(void))
 
 	// Register newlib exit() syscall
 	__syscalls.exit = __ctru_exit;
-    //__syscalls.gettod_r = __libctru_gtod;
+    __syscalls.gettod_r = __libctru_gtod;
 
 	__system_retAddr = __service_ptr ? retAddr : NULL;
 
