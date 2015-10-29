@@ -1203,6 +1203,20 @@ static int lua_appstatus(lua_State *L) {
 	return 1;
 }
 
+static int lua_enablespeedup(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	osSetSpeedupEnable(1);
+	return 0;
+}
+
+static int lua_disablespeedup(lua_State *L) {
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	osSetSpeedupEnable(0);
+	return 0;
+}
+
 static int lua_reboot(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
@@ -1404,6 +1418,8 @@ static const luaL_Reg System_functions[] = {
   {"getUsername",			lua_getUsername},
   {"getBirthday",			lua_getBirth},
   {"addNotification",		lua_addnews},
+  {"enableSpeedup",         lua_enablespeedup},
+  {"disableSpeedup",        lua_disablespeedup},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
