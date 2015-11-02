@@ -47,6 +47,9 @@ int FWRITE = 1;
 int FCREATE = 2;
 int NAND = 0;
 int SDMC = 1;
+int OLD_3DS_CLOCK = 268;
+int NEW_3DS_CLOCK = 804;
+int current_clock = OLD_3DS_CLOCK;
 extern bool isNinjhax2;
 
 FS_archive main_extdata_archive;
@@ -1362,6 +1365,27 @@ static int lua_addnews(lua_State *L){
 	return 0;
 }
 
+static int lua_setcpu(lua_State *L){
+	int argc = lua_gettop(L);
+	if(argc != 1 ) return luaL_error(L, "wrong number of arguments.");	
+	u8 cpu_clock = luaL_checkinteger(L,1);
+	if (cpu_clock >= NEW_3DS_CLOCK){
+		osSetSpeedupEnable(1);
+		current_clock = NEW_3DS_CLOCK;
+	}else {
+		osSetSpeedupEnable(0);
+		current_clock = OLD_3DS_CLOCK;
+	}
+	return 0;
+}
+
+static int lua_getcpu(lua_State *L){
+	int argc = lua_gettop(L);
+	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	lua_pushinteger(L,current_clock);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
   {"exit",					lua_exit},
@@ -1404,6 +1428,8 @@ static const luaL_Reg System_functions[] = {
   {"getUsername",			lua_getUsername},
   {"getBirthday",			lua_getBirth},
   {"addNotification",		lua_addnews},
+  {"setCpuSpeed",           lua_setcpu},
+  {"getCpuSpeed",           lua_getcpu},
 // I/O Module and Dofile Patch
   {"openFile",				lua_openfile},
   {"getFileSize",			lua_getsize},
@@ -1426,4 +1452,6 @@ void luaSystem_init(lua_State *L) {
 	VariableRegister(L,FCREATE);
 	VariableRegister(L,NAND);
 	VariableRegister(L,SDMC);
+	VariableRegister(L,OLD_3DS_CLOCK);
+	VariableRegister(L,NEW_3DS_CLOCK);
 }
