@@ -118,7 +118,7 @@ void streamOGG(void* arg){ //TODO: Solve looping sound issues
 					src->moltiplier = 1;
 					CSND_SetPlayState(src->ch, 0);
 					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-					csndExecCmds(0);
+					CSND_UpdateInfo(0);
 					ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
 					if (src->audiobuf2 == NULL){ //Mono file
 					int i = 0;
@@ -249,7 +249,7 @@ void streamWAV(void* arg){
 					src->moltiplier = 1;
 					CSND_SetPlayState(src->ch, 0);
 					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-					csndExecCmds(0);
+					CSND_UpdateInfo(0);
 				}
 				if (src->audiobuf2 == NULL){
 					FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, src->audiobuf, src->mem_size);
@@ -1020,7 +1020,7 @@ static int lua_playWav(lua_State *L)
 		src->ch = ch;
 		src->tick = osGetTime();
 		CSND_SetPlayState(ch, 1);
-		csndExecCmds(0);
+		CSND_UpdateInfo(0);
 	}else{
 		if (src->mem_size > 0){
 			if (loop == 0) src->streamLoop = false;
@@ -1042,7 +1042,7 @@ static int lua_playWav(lua_State *L)
 		src->tick = osGetTime();
 		CSND_SetPlayState(ch, 1);
 		CSND_SetPlayState(ch2, 1);
-		csndExecCmds(0);
+		CSND_UpdateInfo(0);
 	}
 	if (non_native_encode){
 		src->encoding = tmp_encode;
@@ -1091,7 +1091,7 @@ static int lua_pause(lua_State *L)
 	#endif
 	CSND_SetPlayState(src->ch, 0);
 	if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	src->isPlaying = false;
 	src->tick = (osGetTime()-src->tick);
 	return 0;
@@ -1107,7 +1107,7 @@ static int lua_resume(lua_State *L)
 	#endif
 	CSND_SetPlayState(src->ch, 1);
 	if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	src->isPlaying = true;
 	src->tick = (osGetTime()-src->tick);
 	return 0;

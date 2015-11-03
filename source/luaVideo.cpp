@@ -238,7 +238,7 @@ static void streamOGG(void* arg){
 			if ((control >= total) && (src->isPlaying)){
 				CSND_SetPlayState(src->ch1, 0);
 				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-				csndExecCmds(0);
+				CSND_UpdateInfo(0);
 				src->moltiplier = 1;
 				ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
 				if (src->audiobuf2 == NULL){
@@ -286,7 +286,7 @@ static void streamOGG(void* arg){
 					src->tick = osGetTime();
 					CSND_SetPlayState(src->ch1, 1);
 					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
-					csndExecCmds(0);
+					CSND_UpdateInfo(0);
 				}
 			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
 				if (src->audiobuf2 == NULL){ //Mono file
@@ -558,7 +558,7 @@ int argc = lua_gettop(L);
 		}
 	CSND_SetPlayState(ch1, 1);
 	if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	src->tick = osGetTime();
 	src->moltiplier = 1;
 	svcCreateEvent(&updateStream,0);
@@ -661,7 +661,7 @@ int argc = lua_gettop(L);
 		}
 		CSND_SetPlayState(ch1, 1);
 		if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
-		csndExecCmds(0);
+		CSND_UpdateInfo(0);
 		src->tick = osGetTime();
 		src->moltiplier = 1;
 	}else src->tick = osGetTime();
@@ -680,7 +680,7 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 				src->moltiplier = 1;
 				CSND_SetPlayState(src->ch1, 0);
 				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-				csndExecCmds(0);
+				CSND_UpdateInfo(0);
 			}
 		}else{
 			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
@@ -784,7 +784,7 @@ static int lua_drawJPGV(lua_State *L){
 				src->moltiplier = 1;
 				CSND_SetPlayState(src->ch1, 0);
 				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-				csndExecCmds(0);
+				CSND_UpdateInfo(0);
 			}
 		}else{
 			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
@@ -870,7 +870,7 @@ int argc = lua_gettop(L);
 				src->moltiplier = 1;
 				CSND_SetPlayState(src->ch1, 0);
 				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-				csndExecCmds(0);
+				CSND_UpdateInfo(0);
 			}
 			if (src->audiobuf2 == NULL) FSFILE_Read(src->sourceFile, &bytesRead, 28, src->audiobuf, src->mem_size);
 			else{
@@ -1265,7 +1265,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 0);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1284,7 +1284,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 0);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1303,7 +1303,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 0);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1322,7 +1322,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 0);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1341,7 +1341,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 1);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1360,7 +1360,7 @@ int argc = lua_gettop(L);
 	if (src->audiotype == 2){
 	CSND_SetPlayState(src->ch2, 1);
 	}
-	csndExecCmds(0);
+	CSND_UpdateInfo(0);
 	}
 	return 0;
 }
