@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 	hidInit();
 	irrstInit();
 	aptOpenSession();
-	Result ret=APT_SetAppCpuTimeLimit(NULL, 30);
+	Result ret=APT_SetAppCpuTimeLimit(30);
 	aptCloseSession();
 	fsInit();
 	ftp_state = false;
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 		// Load main script
 		FS_path filePath=FS_makePath(PATH_CHAR, path);
 		FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-		FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 		FSFILE_GetSize(fileHandle, &size);
 		buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
 		FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);

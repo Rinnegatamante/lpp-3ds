@@ -52,7 +52,7 @@ u32 osConvertOldLINEARMemToNew(u32 vaddr) {
 }
 
 //---------------------------------------------------------------------------------
-static datetime_t getSysTime() {
+static datetime_t getSysTime(void) {
 //---------------------------------------------------------------------------------
 	u32 s1, s2 = *__datetime_selector & 1;
 	datetime_t dt;
@@ -100,7 +100,7 @@ int __libctru_gtod(struct _reent *ptr, struct timeval *tp, struct timezone *tz) 
 
 // Returns number of milliseconds since 1st Jan 1900 00:00.
 //---------------------------------------------------------------------------------
-u64 osGetTime() {
+u64 osGetTime(void) {
 //---------------------------------------------------------------------------------
 	datetime_t dt = getSysTime();
 
@@ -110,13 +110,13 @@ u64 osGetTime() {
 }
 
 //---------------------------------------------------------------------------------
-u32 osGetFirmVersion() {
+u32 osGetFirmVersion(void) {
 //---------------------------------------------------------------------------------
 	return (*(u32*)0x1FF80060) & ~0xFF;
 }
 
 //---------------------------------------------------------------------------------
-u32 osGetKernelVersion() {
+u32 osGetKernelVersion(void) {
 //---------------------------------------------------------------------------------
 	return (*(u32*)0x1FF80000) & ~0xFF;
 }

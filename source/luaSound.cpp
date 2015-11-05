@@ -71,6 +71,7 @@ struct wav{
 	u32 loop_index;
 };
 
+extern bool isNinjhax2;
 volatile bool closeStream = false;
 Handle updateStream;
 Handle streamThread;
@@ -631,7 +632,7 @@ static int lua_openwav(lua_State *L)
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
 	u16 audiotype;
@@ -832,7 +833,7 @@ static int lua_openaiff(lua_State *L)
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,bytesRead,jump,chunk=0x00000000;
 	u16 samplerate;
@@ -974,9 +975,18 @@ static int lua_soundinit(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	if (!isCSND){
-		csndInit();
-		isCSND = true;
+	if (isNinjhax2){
+		if (!isCSND){
+			if (ndspInit() == 0){
+				isCSND = true;
+				ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+			}else return luaL_error(L, "cannot initialize Sound module.");
+		}
+	}else{
+		if (!isCSND){
+			csndInit();
+			isCSND = true;
+		}
 	}
 	return 0;
 }
@@ -1014,13 +1024,30 @@ static int lua_playWav(lua_State *L)
 			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
 			My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
 		}else{
-			u32 looping = loop ? SOUND_REPEAT : SOUND_ONE_SHOT;
-			My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 2.0);
+			if (isNinjhax2){
+				ndspSetOutputCount(1);
+				u16 raw_format;
+				if (src->encoding == CSND_ENCODING_ADPCM) raw_format = NDSP_FORMAT_MONO_ADPCM;
+				else raw_format = NDSP_FORMAT_MONO_PCM16;
+				ndspChnReset(ch);
+				ndspChnSetInterp(ch, NDSP_INTERP_NONE);
+				ndspChnSetRate(ch, float(src->samplerate));
+				ndspChnSetFormat(ch, raw_format);
+				ndspChnWaveBufClear(ch);
+				ndspWaveBuf* waveBuf = (ndspWaveBuf*)malloc(sizeof(ndspWaveBuf));
+				createDspBlock(waveBuf, src->bytepersample, src->size, loop, (u32*)src->audiobuf);
+				ndspChnWaveBufAdd(ch, waveBuf);
+			}else{
+				u32 looping = loop ? SOUND_REPEAT : SOUND_ONE_SHOT;
+				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 2.0);
+			}
 		}
 		src->ch = ch;
 		src->tick = osGetTime();
-		CSND_SetPlayState(ch, 1);
-		CSND_UpdateInfo(0);
+		if (!isNinjhax2){
+			CSND_SetPlayState(ch, 1);
+			CSND_UpdateInfo(0);
+		}
 	}else{
 		if (src->mem_size > 0){
 			if (loop == 0) src->streamLoop = false;
@@ -1188,7 +1215,7 @@ static int lua_savemono(lua_State *L)
 	u32 bytesWritten;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file);
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 	u32 four_bytes;
 	u16 two_bytes;
 	FSFILE_Write(fileHandle, &bytesWritten, 0, "RIFF", 4, FS_WRITE_FLUSH);

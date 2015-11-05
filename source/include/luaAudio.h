@@ -32,6 +32,7 @@
 #-----------------------------------------------------------------------------------------------------------------------*/
 
 void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data1, u32 size, float vol, float pan);
+void createDspBlock(ndspWaveBuf* waveBuf, u16 bps, u32 size, bool loop, u32* data);
 
 // Additional encoding
 typedef enum{

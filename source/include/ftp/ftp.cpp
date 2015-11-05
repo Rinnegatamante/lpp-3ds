@@ -35,7 +35,7 @@ void ftp_init()
 	//sprint(shared_ftp,"fsInit %08X", (unsigned int)ret);
 
 	sdmcArchive=(FS_archive){0x00000009, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive(&sdmcArchive);
 	sprint(shared_ftp,"FSUSER_OpenArchive %08X", (unsigned int)ret);
 	
 	ftp_mem = (u32*)memalign(0x1000, 0x100000);

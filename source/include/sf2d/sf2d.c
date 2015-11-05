@@ -87,7 +87,7 @@ int sf2d_init_advanced(int gpucmd_size, int temppool_size)
 	cur_side = GFX_LEFT;
 
 	GPUCMD_Finalize();
-	GPUCMD_FlushAndRun(NULL);
+	GPUCMD_FlushAndRun();
 	gspWaitForP3D();
 
 	sf2d_pool_reset();
@@ -177,23 +177,23 @@ void sf2d_end_frame()
 {
 	GPU_FinishDrawing();
 	GPUCMD_Finalize();
-	GPUCMD_FlushAndRun(NULL);
+	GPUCMD_FlushAndRun();
 	gspWaitForP3D();
 
 	//Copy the GPU rendered FB to the screen FB
 	if (cur_screen == GFX_TOP) {
-		GX_SetDisplayTransfer(NULL, gpu_fb_addr, GX_BUFFER_DIM(240, 400),
+		GX_DisplayTransfer(gpu_fb_addr, GX_BUFFER_DIM(240, 400),
 			(u32 *)gfxGetFramebuffer(GFX_TOP, cur_side, NULL, NULL),
 			GX_BUFFER_DIM(240, 400), 0x1000);
 	} else {
-		GX_SetDisplayTransfer(NULL, gpu_fb_addr, GX_BUFFER_DIM(240, 320),
+		GX_DisplayTransfer(gpu_fb_addr, GX_BUFFER_DIM(240, 320),
 			(u32 *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL),
 			GX_BUFFER_DIM(240, 320), 0x1000);
 	}
 	gspWaitForPPF();
 
 	//Clear the screen
-	GX_SetMemoryFill(NULL, gpu_fb_addr, clear_color, &gpu_fb_addr[0x2EE00],
+	GX_MemoryFill(gpu_fb_addr, clear_color, &gpu_fb_addr[0x2EE00],
 		0x201, gpu_depth_fb_addr, 0x00000000, &gpu_depth_fb_addr[0x2EE00], 0x201);
 	gspWaitForPSC0();
 }
@@ -298,6 +298,6 @@ static void reset_gpu_apt_resume()
 	}
 
 	GPUCMD_Finalize();
-	GPUCMD_FlushAndRun(NULL);
+	GPUCMD_FlushAndRun();
 	gspWaitForP3D();
 }

@@ -87,7 +87,7 @@ static int lua_dofile (lua_State *L) {
   unsigned char *buffer;
   FS_path filePath=FS_makePath(PATH_CHAR, fname);
   FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-  FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+  FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
   FSFILE_GetSize(fileHandle, &size);
   buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
   FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
@@ -128,14 +128,14 @@ static int lua_openfile(lua_State *L)
 		}
 		u32 main_extdata_archive_lowpathdata[3] = {mtype, archive_id, 0};
 		FS_archive main_extdata_archive = (FS_archive){atype, (FS_path){PATH_BINARY, 0xC, (u8*)main_extdata_archive_lowpathdata}};
-		Result ret = FSUSER_OpenArchive(NULL, &main_extdata_archive);
+		Result ret = FSUSER_OpenArchive( &main_extdata_archive);
 		if(ret!=0) return luaL_error(L, "cannot access extdata archive");
 		switch(type){
 			case 0:
-				ret = FSUSER_OpenFile(NULL, &fileHandle, main_extdata_archive, FS_makePath(PATH_CHAR, file_tbo), FS_OPEN_READ, 0);
+				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, FS_makePath(PATH_CHAR, file_tbo), FS_OPEN_READ, 0);
 				break;
 			case 1:
-				ret = FSUSER_OpenFile(NULL, &fileHandle, main_extdata_archive, FS_makePath(PATH_CHAR, file_tbo), FS_OPEN_WRITE, 0);
+				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, FS_makePath(PATH_CHAR, file_tbo), FS_OPEN_WRITE, 0);
 				break;
 		}
 	}else{
@@ -143,13 +143,13 @@ static int lua_openfile(lua_State *L)
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
 		switch(type){
 			case 0:
-				ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+				ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 				break;
 			case 1:
-				ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+				ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 				break;
 			case 2:
-				ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+				ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 				break;
 		}
 		//if(ret) return luaL_error(L, "error opening file");
@@ -166,7 +166,7 @@ static int lua_checkexist(lua_State *L)
 	Handle fileHandle;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	if (!ret) FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	lua_pushboolean(L,!ret);
@@ -204,7 +204,7 @@ static int lua_screenshot(lua_State *L)
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	if (compression == 0){ //BMP Format
 		FS_path filePath=FS_makePath(PATH_CHAR, screenpath);
-		Result ret=FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 		//if(ret) return luaL_error(L, "error opening file");
 		u32 bytesWritten;
 		u8* tempbuf = (u8*)malloc(0x36+576000);
@@ -321,7 +321,7 @@ static int lua_closefile(lua_State *L)
 	Handle fileHandle = luaL_checkinteger(L, 1);
 	Result ret=FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
-	if (argc == 2) FSUSER_CloseArchive(NULL, &main_extdata_archive);
+	if (argc == 2) FSUSER_CloseArchive( &main_extdata_archive);
 	//if(ret) return luaL_error(L, "error closing file");
 	return 0;
 }
@@ -442,11 +442,11 @@ static int lua_rendir(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	const char *path2 = luaL_checkstring(L, 2);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
-	FSUSER_RenameDirectory(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_RenameDirectory(sdmcArchive,filePath,sdmcArchive,filePath2);
+	FSUSER_CloseArchive( &sdmcArchive);
     return 0;
 }
 
@@ -455,10 +455,10 @@ static int lua_createdir(lua_State *L) {
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_CreateDirectory(NULL,sdmcArchive,filePath);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_CreateDirectory(sdmcArchive,filePath);
+	FSUSER_CloseArchive( &sdmcArchive);
     return 0;
 }
 
@@ -467,10 +467,10 @@ static int lua_deldir(lua_State *L) {
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_DeleteDirectory(NULL,sdmcArchive,filePath);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_DeleteDirectory(sdmcArchive,filePath);
+	FSUSER_CloseArchive( &sdmcArchive);
     return 0;
 }
 
@@ -479,10 +479,10 @@ static int lua_delfile(lua_State *L) {
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	const char *path = luaL_checkstring(L, 1);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_DeleteFile(NULL,sdmcArchive,filePath);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_DeleteFile(sdmcArchive,filePath);
+	FSUSER_CloseArchive( &sdmcArchive);
     return 0;
 }
 
@@ -492,11 +492,11 @@ static int lua_renfile(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	const char *path2 = luaL_checkstring(L, 2);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
 	FS_path filePath2=FS_makePath(PATH_CHAR, path2);
-	FSUSER_RenameFile(NULL,sdmcArchive,filePath,sdmcArchive,filePath2);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_RenameFile(sdmcArchive,filePath,sdmcArchive,filePath2);
+	FSUSER_CloseArchive( &sdmcArchive);
     return 0;
 }
 
@@ -508,8 +508,8 @@ static int lua_listdir(lua_State *L){
 	FS_dirent entry;
 	FS_path dirPath=FS_makePath(PATH_CHAR, path);
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
-	FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, dirPath);
+	FSUSER_OpenArchive( &sdmcArchive);
+	FSUSER_OpenDirectory(&dirHandle, sdmcArchive, dirPath);
 	u32 entriesRead;
 	lua_newtable(L);
 	int i = 1;
@@ -534,7 +534,7 @@ static int lua_listdir(lua_State *L){
 		}else break;
 	}
 	FSDIR_Close(dirHandle);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_CloseArchive( &sdmcArchive);
 	return 1;
 }
 
@@ -692,7 +692,7 @@ static int lua_readsmdh(lua_State *L){
 	u32 bytesRead;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file);
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	u32 magic;
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic != 0x48444D53) return luaL_error(L, "error opening SMDH file");
@@ -795,8 +795,8 @@ static int lua_launch(lua_State *L){
 	fsExit();
 	fsInit();
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
-	FSUSER_OpenFileDirectly(NULL, &hbHandle, sdmcArchive, FS_makePath(PATH_CHAR, file), FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenArchive( &sdmcArchive);
+	FSUSER_OpenFileDirectly( &hbHandle, sdmcArchive, FS_makePath(PATH_CHAR, file), FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	static u32 argbuffer[0x200];
 	argbuffer[0]=1;
 	snprintf((char*)&argbuffer[1], 0x200*4, "sdmc:%s", file);
@@ -819,9 +819,9 @@ static int lua_listExtdata(lua_State *L){
 	for (i=0; i<0x2000; ++i) {
 		u32 extdata_archive_lowpathdata[3] = {mediatype_SDMC, i, 0};
 		FS_archive extdata_archive = (FS_archive){ARCH_EXTDATA, (FS_path){PATH_BINARY, 0xC, (u8*)extdata_archive_lowpathdata}};
-		Result ret = FSUSER_OpenArchive(NULL, &extdata_archive);
+		Result ret = FSUSER_OpenArchive( &extdata_archive);
 		if(ret!=0) continue;
-		FSUSER_OpenDirectory(NULL, &extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
+		FSUSER_OpenDirectory(&extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
 		FS_dirent entry;
 		for (;;){
 			u32 entriesRead=0;
@@ -846,14 +846,14 @@ static int lua_listExtdata(lua_State *L){
 			}else break;
 		}
 		FSDIR_Close(extdata_dir);
-		FSUSER_CloseArchive(NULL, &extdata_archive);
+		FSUSER_CloseArchive( &extdata_archive);
 	}
 	for (i=0xE0000000; i<0xE0000100; ++i) {
 		u32 extdata_archive_lowpathdata[3] = {mediatype_NAND, i, 0};
 		FS_archive extdata_archive = (FS_archive){ARCH_SHARED_EXTDATA, (FS_path){PATH_BINARY, 0xC, (u8*)extdata_archive_lowpathdata}};
-		Result ret = FSUSER_OpenArchive(NULL, &extdata_archive);
+		Result ret = FSUSER_OpenArchive( &extdata_archive);
 		if(ret!=0) continue;
-		FSUSER_OpenDirectory(NULL, &extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
+		FSUSER_OpenDirectory(&extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
 		FS_dirent entry;
 		for (;;){
 			u32 entriesRead=0;
@@ -878,14 +878,14 @@ static int lua_listExtdata(lua_State *L){
 			}else break;
 		}
 		FSDIR_Close(extdata_dir);
-		FSUSER_CloseArchive(NULL, &extdata_archive);
+		FSUSER_CloseArchive( &extdata_archive);
 	}
 	for (i=0xF0000000; i<0xF0000100; ++i) {
 		u32 extdata_archive_lowpathdata[3] = {mediatype_NAND, i, 0};
 		FS_archive extdata_archive = (FS_archive){ARCH_SHARED_EXTDATA, (FS_path){PATH_BINARY, 0xC, (u8*)extdata_archive_lowpathdata}};
-		Result ret = FSUSER_OpenArchive(NULL, &extdata_archive);
+		Result ret = FSUSER_OpenArchive( &extdata_archive);
 		if(ret!=0) continue;
-		FSUSER_OpenDirectory(NULL, &extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
+		FSUSER_OpenDirectory(&extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, "/"));
 		FS_dirent entry;
 		for (;;){
 			u32 entriesRead=0;
@@ -910,7 +910,7 @@ static int lua_listExtdata(lua_State *L){
 			}else break;
 		}
 		FSDIR_Close(extdata_dir);
-		FSUSER_CloseArchive(NULL, &extdata_archive);
+		FSUSER_CloseArchive( &extdata_archive);
 	}
 	svcCloseHandle(extdata_dir);
 	return 1;
@@ -935,10 +935,10 @@ static int lua_listExtdataDir(lua_State *L){
 	}
 	u32 extdata_archive_lowpathdata[3] = {mtype, archive_id, 0};
 	FS_archive extdata_archive = (FS_archive){atype, (FS_path){PATH_BINARY, 0xC, (u8*)extdata_archive_lowpathdata}};
-	Result ret = FSUSER_OpenArchive(NULL, &extdata_archive);
+	Result ret = FSUSER_OpenArchive( &extdata_archive);
 	if(ret!=0) return luaL_error(L, "cannot access extdata archive");
 	Handle extdata_dir;
-	FSUSER_OpenDirectory(NULL, &extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, path));
+	FSUSER_OpenDirectory(&extdata_dir, extdata_archive, FS_makePath(PATH_CHAR, path));
 	FS_dirent entry;
 	for (;;){
 		u32 entriesRead=0;
@@ -963,7 +963,7 @@ static int lua_listExtdataDir(lua_State *L){
 		}else break;
 	}
 	FSDIR_Close(extdata_dir);
-	FSUSER_CloseArchive(NULL, &extdata_archive);
+	FSUSER_CloseArchive( &extdata_archive);
 	svcCloseHandle(extdata_dir);	
 	return 1;
 }
@@ -979,7 +979,7 @@ static int lua_installCia(lua_State *L){
 	u32 bytes;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, path);
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	amInit();
 	AM_StartCiaInstall(mediatype_SDMC, &ciaHandle);
 	FSFILE_GetSize(fileHandle, &size);
@@ -1136,7 +1136,7 @@ static int lua_ciainfo(lua_State *L){
 	u32 bytesRead;
 	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 	FS_path filePath=FS_makePath(PATH_CHAR, file);
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	u32 unique_id;
 	FSFILE_Read(fileHandle, &bytesRead, 0x3A50, title, 16);
 	FSFILE_Read(fileHandle, &bytesRead, 0x2C20, &unique_id, 4);
@@ -1161,10 +1161,10 @@ static int lua_ZipExtract(lua_State *L) {
 	const char *DirTe = luaL_checkstring(L, 2);
 	const char *Password = (argc == 3) ? luaL_checkstring(L, 3) : NULL;
 	FS_archive sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
+	FSUSER_OpenArchive( &sdmcArchive);
 	FS_path TEMP_PATH=FS_makePath(PATH_CHAR, DirTe);
-	FSUSER_CreateDirectory(NULL,sdmcArchive,TEMP_PATH);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
+	FSUSER_CreateDirectory(sdmcArchive,TEMP_PATH);
+	FSUSER_CloseArchive( &sdmcArchive);
 	char tmpFile2[1024];
 	char tmpPath2[1024];
 	sdmcInit();
@@ -1210,7 +1210,7 @@ static int lua_reboot(lua_State *L) {
 	int argc = lua_gettop(L);
 	if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
 	aptOpenSession();
-	APT_HardwareResetAsync(NULL);
+	APT_HardwareResetAsync();
 	aptCloseSession();
 	for(;;){}
 	return 0;
@@ -1230,8 +1230,8 @@ static int lua_startcard(lua_State *L) {
 		memset(buf0, 0, 0x300);
 		memset(buf1, 0, 0x20);
 		aptOpenSession();
-		APT_PrepareToDoAppJump(NULL, 0, 0, mediatype_GAMECARD);
-		APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
+		APT_PrepareToDoAppJump(0, 0, mediatype_GAMECARD);
+		APT_DoAppJump(0x300, 0x20, buf0, buf1);
 		aptCloseSession();
 	}else{
 		nsInit();
@@ -1259,7 +1259,7 @@ static int lua_freespace(lua_State *L) {
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u32 freeBlocks;
 	u32 blockSize;
-	FSUSER_GetSdmcArchiveResource(NULL, NULL, &blockSize, NULL, &freeBlocks);
+	FSUSER_GetSdmcArchiveResource(NULL, &blockSize, NULL, &freeBlocks);
 	lua_pushnumber(L,(u64)((u64)freeBlocks*(u64)blockSize));
 	return 1;
 }
@@ -1276,8 +1276,8 @@ static int lua_launchCia(lua_State *L){
 	memset(buf1, 0, 0x20);
 	luaL_dostring(L, "collectgarbage()");
 	aptOpenSession();
-	APT_PrepareToDoAppJump(NULL, 0, id, mediatype);
-	APT_DoAppJump(NULL, 0x300, 0x20, buf0, buf1);
+	APT_PrepareToDoAppJump(0, id, mediatype);
+	APT_DoAppJump(0x300, 0x20, buf0, buf1);
 	aptCloseSession();
 	for (;;){}
 	return 0;

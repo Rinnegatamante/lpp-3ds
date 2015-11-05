@@ -56,7 +56,7 @@ Bitmap* LoadBitmap(char* fname){
 	u32 bytesRead;
 	FS_path filePath=FS_makePath(PATH_CHAR, fname);
 	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	FSFILE_GetSize(fileHandle, &size);
 	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
 	
@@ -1215,7 +1215,7 @@ Bitmap* loadPng(const char* filename)
 	
 	FS_path filePath = FS_makePath(PATH_CHAR, filename);
 	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	
 	FSFILE_GetSize(fileHandle, &size);
 	
@@ -1275,7 +1275,7 @@ Bitmap* decodePNGfile(const char* filename)
 	
 	FS_path filePath = FS_makePath(PATH_CHAR, filename);
 	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	
 	FSFILE_GetSize(fileHandle, &size);
 	
@@ -1357,7 +1357,7 @@ Bitmap* OpenJPG(const char* filename)
     jpeg_create_decompress(&cinfo);
 	FS_path filePath = FS_makePath(PATH_CHAR, filename);
 	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
+	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
 	FSFILE_GetSize(fileHandle, &size);
 	unsigned char* in = (unsigned char*)malloc(size);
 	if(!in) {
@@ -1408,7 +1408,7 @@ Bitmap* decodeJPGfile(const char* filename)
     jpeg_create_decompress(&cinfo);
 	FS_path filePath = FS_makePath(PATH_CHAR, filename);
 	FS_archive archive = (FS_archive) { ARCH_SDMC, (FS_path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
+	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);	
 	FSFILE_GetSize(fileHandle, &size);
 	unsigned char* in = (unsigned char*)malloc(size);
 	if(!in) {
@@ -1454,7 +1454,7 @@ Bitmap* decodeBMPfile(const char* fname){
 	u32 bytesRead;
 	FS_path filePath=FS_makePath(PATH_CHAR, fname);
 	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	FSFILE_GetSize(fileHandle, &size);
 	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
 	

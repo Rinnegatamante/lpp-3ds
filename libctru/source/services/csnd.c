@@ -6,6 +6,7 @@
 #include <3ds/mappable.h>
 #include <3ds/os.h>
 #include <3ds/services/csnd.h>
+#include <3ds/ipc.h>
 
 // See here regarding CSND shared-mem commands, etc: http://3dbrew.org/wiki/CSND_Shared_Memory
 
@@ -27,7 +28,7 @@ static Result CSND_Initialize(void)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00010140;
+	cmdbuf[0] = IPC_MakeHeader(0x1,5,0); // 0x10140
 	cmdbuf[1] = csndSharedMemSize;
 	memcpy(&cmdbuf[2], &csndOffsets[0], 4*sizeof(u32));
 
@@ -44,7 +45,7 @@ static Result CSND_Shutdown()
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00020000;
+	cmdbuf[0] = IPC_MakeHeader(0x2,0,0); // 0x20000
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
 
@@ -56,7 +57,7 @@ static Result CSND_AcquireSoundChannels(u32* channelMask)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00050000;
+	cmdbuf[0] = IPC_MakeHeader(0x5,0,0); // 0x50000
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
 
@@ -70,7 +71,7 @@ static Result CSND_ReleaseSoundChannels(void)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00060000;
+	cmdbuf[0] = IPC_MakeHeader(0x6,0,0); // 0x60000
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
 
@@ -82,7 +83,7 @@ Result CSND_AcquireCapUnit(u32* capUnit)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00070000;
+	cmdbuf[0] = IPC_MakeHeader(0x7,0,0); // 0x70000
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
 
@@ -96,7 +97,7 @@ Result CSND_ReleaseCapUnit(u32 capUnit)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00080040;
+	cmdbuf[0] = IPC_MakeHeader(0x8,1,0); // 0x80040
 	cmdbuf[1] = capUnit;
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
@@ -109,7 +110,7 @@ Result CSND_Reset(void)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x000C0000;
+	cmdbuf[0] = IPC_MakeHeader(0xC,0,0); // 0xC0000
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;
 
@@ -177,7 +178,7 @@ Result csndExit(void)
 
 	ret = CSND_Shutdown();
 	svcCloseHandle(csndHandle);
-	
+
 	if(csndSharedMem != NULL)
 	{
 		mappableFree((void*) csndSharedMem);
@@ -192,7 +193,7 @@ static Result CSND_ExecuteCommands(u32 offset)
 	Result ret=0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x00030040;
+	cmdbuf[0] = IPC_MakeHeader(0x3,1,0); // 0x30040
 	cmdbuf[1] = offset;
 
 	if((ret = svcSendSyncRequest(csndHandle))!=0)return ret;

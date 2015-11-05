@@ -10,6 +10,7 @@
 #include <3ds/os.h>
 #include <3ds/linear.h>
 #include <3ds/services/mvd.h>
+#include <3ds/ipc.h>
 
 Handle mvdstdHandle;
 static u32 mvdstdInitialized = 0;
@@ -22,10 +23,10 @@ static size_t mvdstd_workbufsize = 0;
 static Result mvdstdipc_Initialize(u32 *buf, u32 bufsize, Handle kprocess)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x00010082; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x1,2,2); // 0x10082
 	cmdbuf[1] = (u32)buf;
 	cmdbuf[2] = bufsize;
-	cmdbuf[3] = 0;
+	cmdbuf[3] = IPC_Desc_SharedHandles(1);
 	cmdbuf[4] = kprocess;
 
 	Result ret=0;
@@ -34,10 +35,10 @@ static Result mvdstdipc_Initialize(u32 *buf, u32 bufsize, Handle kprocess)
 	return cmdbuf[1];
 }
 
-static Result mvdstdipc_Shutdown()
+static Result mvdstdipc_Shutdown(void)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x00020000; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x2,0,0); // 0x20000
 
 	Result ret=0;
 	if((ret = svcSendSyncRequest(mvdstdHandle)))return ret;
@@ -45,10 +46,10 @@ static Result mvdstdipc_Shutdown()
 	return cmdbuf[1];
 }
 
-static Result mvdstdipc_cmd18()
+static Result mvdstdipc_cmd18(void)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x00180000; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x18,0,0); // 0x180000
 
 	Result ret=0;
 	if((ret=svcSendSyncRequest(mvdstdHandle)))return ret;
@@ -56,10 +57,10 @@ static Result mvdstdipc_cmd18()
 	return cmdbuf[1];
 }
 
-static Result mvdstdipc_cmd19()
+static Result mvdstdipc_cmd19(void)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x00190000; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x19,0,0); // 0x190000
 
 	Result ret=0;
 	if((ret=svcSendSyncRequest(mvdstdHandle)))return ret;
@@ -67,10 +68,10 @@ static Result mvdstdipc_cmd19()
 	return cmdbuf[1];
 }
 
-static Result mvdstdipc_cmd1a()
+static Result mvdstdipc_cmd1a(void)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x001A0000; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x1A,0,0); // 0x1A0000
 
 	Result ret=0;
 	if((ret=svcSendSyncRequest(mvdstdHandle)))return ret;
@@ -81,11 +82,11 @@ static Result mvdstdipc_cmd1a()
 Result mvdstdSetConfig(mvdstdConfig *config)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x001E0044; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x1E,1,4); // 0x1E0044
 	cmdbuf[1] = sizeof(mvdstdConfig);
-	cmdbuf[2] = 0;
-	cmdbuf[3] = 0xffff8001;
-	cmdbuf[4] = (sizeof(mvdstdConfig)<<4) | 10;
+	cmdbuf[2] = IPC_Desc_SharedHandles(1);
+	cmdbuf[3] = CUR_PROCESS_HANDLE;
+	cmdbuf[4] = IPC_Desc_Buffer(sizeof(mvdstdConfig),IPC_BUFFER_R);
 	cmdbuf[5] = (u32)config;
 
 	Result ret=0;
@@ -151,7 +152,7 @@ Result mvdstdInit(mvdstdMode mode, mvdstdTypeInput input_type, mvdstdTypeOutput 
 	mvdstd_workbuf = linearAlloc(mvdstd_workbufsize);
 	if(mvdstd_workbuf==NULL)return -1;
 
-	ret = mvdstdipc_Initialize((u32*)osConvertOldLINEARMemToNew((u32)mvdstd_workbuf), mvdstd_workbufsize, 0xffff8001);
+	ret = mvdstdipc_Initialize((u32*)osConvertOldLINEARMemToNew((u32)mvdstd_workbuf), mvdstd_workbufsize, CUR_PROCESS_HANDLE);
 	if(ret<0)
 	{
 		svcCloseHandle(mvdstdHandle);
@@ -173,7 +174,7 @@ Result mvdstdInit(mvdstdMode mode, mvdstdTypeInput input_type, mvdstdTypeOutput 
 	return 0;
 }
 
-Result mvdstdShutdown()
+Result mvdstdShutdown(void)
 {
 	if(!mvdstdInitialized)return 0;
 

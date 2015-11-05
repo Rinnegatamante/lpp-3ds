@@ -3,6 +3,7 @@
 #include <3ds/svc.h>
 #include <3ds/srv.h>
 #include <3ds/services/fs.h>
+#include <3ds/ipc.h>
 
 /*! @internal
  *
@@ -48,7 +49,7 @@ fsInit(void)
 	if (fsInitialised) return ret;
 
 	if((ret=srvGetServiceHandle(&fsuHandle, "fs:USER"))!=0)return ret;
-	if(__get_handle_from_list("fs:USER")==0)ret=FSUSER_Initialize(NULL);
+	if(__get_handle_from_list("fs:USER")==0)ret=FSUSER_Initialize(fsuHandle);
 
 	fsInitialised = true;
 
@@ -73,18 +74,16 @@ fsExit(void)
 *
 *  @returns Handle
 */
-Handle *fsGetSessionHandle()
+Handle *fsGetSessionHandle(void)
 {
 	return &fsuHandle;
 }
 
 /*! Initialize FS service handle
  *
- *  If @a handle is NULL, this initializes @ref fsuHandle.
- *
- *  @param[in] handle fs:USER service handle
- *
  *  @returns error
+ *
+ *  @param[in]  handle     fs:USER service handle
  *
  *  @internal
  *
@@ -103,23 +102,15 @@ Handle *fsGetSessionHandle()
  *  1          | Result code
  */
 Result
-FSUSER_Initialize(Handle* handle)
+FSUSER_Initialize(Handle handle)
 {
-	if(!handle)
-	{
-		// don't run command if we got handle from the list
-		handle = &fsuHandle;
-		if(fsuHandle != 0 && __get_handle_from_list("fs:USER")!=0)
-			return 0;
-	}
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08010002;
-	cmdbuf[1] = 0x20;
+	cmdbuf[0] = IPC_MakeHeader(0x801,0,2); // 0x8010002
+	cmdbuf[1] = IPC_Desc_CurProcessHandle();
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(handle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -127,7 +118,6 @@ FSUSER_Initialize(Handle* handle)
 
 /*! Open a file
  *
- *  @param[in]  handle      fs:USER handle
  *  @param[out] out         Output handle
  *  @param[in]  archive     Open archive
  *  @param[in]  fileLowPath File path
@@ -168,19 +158,15 @@ FSUSER_Initialize(Handle* handle)
  *  3          | File handle
  */
 Result
-FSUSER_OpenFile(Handle     *handle,
-                Handle     *out,
+FSUSER_OpenFile(Handle     *out,
                 FS_archive archive,
                 FS_path    fileLowPath,
                 u32        openFlags,
                 u32        attributes)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080201C2;
+	cmdbuf[0] = IPC_MakeHeader(0x802,7,2); // 0x80201C2
 	cmdbuf[1] = 0;
 	cmdbuf[2] = archive.handleLow;
 	cmdbuf[3] = archive.handleHigh;
@@ -188,11 +174,11 @@ FSUSER_OpenFile(Handle     *handle,
 	cmdbuf[5] = fileLowPath.size;
 	cmdbuf[6] = openFlags;
 	cmdbuf[7] = attributes;
-	cmdbuf[8] = (fileLowPath.size << 14) | 0x2;
+	cmdbuf[8] = IPC_Desc_StaticBuffer(fileLowPath.size,0);
 	cmdbuf[9] = (u32)fileLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(out)
@@ -203,7 +189,6 @@ FSUSER_OpenFile(Handle     *handle,
 
 /*! Open a file
  *
- *  @param[in]  handle      fs:USER handle
  *  @param[out] out         Output handle
  *  @param[in]  archive     Open archive
  *  @param[in]  fileLowPath File path
@@ -247,19 +232,15 @@ FSUSER_OpenFile(Handle     *handle,
  *  3          | File handle
  */
 Result
-FSUSER_OpenFileDirectly(Handle     *handle,
-                        Handle     *out,
+FSUSER_OpenFileDirectly(Handle     *out,
                         FS_archive archive,
                         FS_path    fileLowPath,
                         u32        openFlags,
                         u32        attributes)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[ 0] = 0x08030204;
+	cmdbuf[ 0] = IPC_MakeHeader(0x803,8,4); // 0x8030204
 	cmdbuf[ 1] = 0;
 	cmdbuf[ 2] = archive.id;
 	cmdbuf[ 3] = archive.lowPath.type;
@@ -268,13 +249,13 @@ FSUSER_OpenFileDirectly(Handle     *handle,
 	cmdbuf[ 6] = fileLowPath.size;
 	cmdbuf[ 7] = openFlags;
 	cmdbuf[ 8] = attributes;
-	cmdbuf[ 9] = (archive.lowPath.size << 14) | 0x802;
+	cmdbuf[ 9] = IPC_Desc_StaticBuffer(archive.lowPath.size,2);
 	cmdbuf[10] = (u32)archive.lowPath.data;
-	cmdbuf[11] = (fileLowPath.size << 14) | 0x2;
+	cmdbuf[11] = IPC_Desc_StaticBuffer(fileLowPath.size,0);
 	cmdbuf[12] = (u32)fileLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(out)
@@ -285,7 +266,6 @@ FSUSER_OpenFileDirectly(Handle     *handle,
 
 /*! Delete a file
  *
- *  @param[in] handle      fs:USER handle
  *  @param[in] archive     Open archive
  *  @param[in] fileLowPath File path
  *
@@ -314,26 +294,22 @@ FSUSER_OpenFileDirectly(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_DeleteFile(Handle     *handle,
-                  FS_archive archive,
+FSUSER_DeleteFile(FS_archive archive,
                   FS_path    fileLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08040142;
+	cmdbuf[0] = IPC_MakeHeader(0x804,5,2); // 0x8040142
 	cmdbuf[1] = 0;
 	cmdbuf[2] = archive.handleLow;
 	cmdbuf[3] = archive.handleHigh;
 	cmdbuf[4] = fileLowPath.type;
 	cmdbuf[5] = fileLowPath.size;
-	cmdbuf[6] = (fileLowPath.size << 14) | 0x2;
+	cmdbuf[6] = IPC_Desc_StaticBuffer(fileLowPath.size ,0);
 	cmdbuf[7] = (u32)fileLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -341,7 +317,6 @@ FSUSER_DeleteFile(Handle     *handle,
 
 /*! Renames or moves a file.
  *
- *  @param[in] handle          fs:USER handle
  *  @param[in] srcArchive      Open archive of source
  *  @param[in] srcFileLowPath  File path to source
  *  @param[in] destArchive     Open archive of destination
@@ -378,18 +353,14 @@ FSUSER_DeleteFile(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_RenameFile(Handle     *handle,
-                  FS_archive srcArchive,
+FSUSER_RenameFile(FS_archive srcArchive,
                   FS_path    srcFileLowPath,
                   FS_archive destArchive,
                   FS_path    destFileLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08050244;
+	cmdbuf[0] = IPC_MakeHeader(0x805,9,4); // 0x8050244
 	cmdbuf[1] = 0;
 	cmdbuf[2] = srcArchive.handleLow;
 	cmdbuf[3] = srcArchive.handleHigh;
@@ -399,13 +370,13 @@ FSUSER_RenameFile(Handle     *handle,
 	cmdbuf[7] = destArchive.handleHigh;
 	cmdbuf[8] = destFileLowPath.type;
 	cmdbuf[9] = destFileLowPath.size;
-	cmdbuf[10] = (srcFileLowPath.size << 14) | 0x402;
+	cmdbuf[10] = IPC_Desc_StaticBuffer(srcFileLowPath.size,1);
 	cmdbuf[11] = (u32)srcFileLowPath.data;
-	cmdbuf[12] = (destFileLowPath.size << 14) | 0x802;
+	cmdbuf[12] = IPC_Desc_StaticBuffer(destFileLowPath.size,2);
 	cmdbuf[13] = (u32)destFileLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -413,7 +384,6 @@ FSUSER_RenameFile(Handle     *handle,
 
 /*! Delete a directory
  *
- *  @param[in] handle     fs:USER handle
  *  @param[in] archive    Open archive
  *  @param[in] dirLowPath Directory path
  *
@@ -442,26 +412,22 @@ FSUSER_RenameFile(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_DeleteDirectory(Handle     *handle,
-                       FS_archive archive,
+FSUSER_DeleteDirectory(FS_archive archive,
                        FS_path    dirLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08060142;
+	cmdbuf[0] = IPC_MakeHeader(0x806,5,2); // 0x8060142
 	cmdbuf[1] = 0;
 	cmdbuf[2] = archive.handleLow;
 	cmdbuf[3] = archive.handleHigh;
 	cmdbuf[4] = dirLowPath.type;
 	cmdbuf[5] = dirLowPath.size;
-	cmdbuf[6] = (dirLowPath.size << 14) | 0x2;
+	cmdbuf[6] = IPC_Desc_StaticBuffer(dirLowPath.size,0);
 	cmdbuf[7] = (u32)dirLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -469,7 +435,6 @@ FSUSER_DeleteDirectory(Handle     *handle,
 
 /*! Delete a directory and all sub directories/files recursively
  *
- *  @param[in] handle     fs:USER handle
  *  @param[in] archive    Open archive
  *  @param[in] dirLowPath Directory path
  *
@@ -498,26 +463,22 @@ FSUSER_DeleteDirectory(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_DeleteDirectoryRecursively(Handle     *handle,
-                                  FS_archive archive,
+FSUSER_DeleteDirectoryRecursively(FS_archive archive,
                                   FS_path    dirLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08070142;
+	cmdbuf[0] = IPC_MakeHeader(0x807,5,2); // 0x8070142
 	cmdbuf[1] = 0;
 	cmdbuf[2] = archive.handleLow;
 	cmdbuf[3] = archive.handleHigh;
 	cmdbuf[4] = dirLowPath.type;
 	cmdbuf[5] = dirLowPath.size;
-	cmdbuf[6] = (dirLowPath.size << 14) | 0x2;
+	cmdbuf[6] = IPC_Desc_StaticBuffer(dirLowPath.size,0);
 	cmdbuf[7] = (u32)dirLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -525,7 +486,6 @@ FSUSER_DeleteDirectoryRecursively(Handle     *handle,
 
 /*! Create a File
  *
- *  @param[in] handle      fs:USER handle
  *  @param[in] archive     Open archive
  *  @param[in] fileLowPath File path
  *  @param[in] fileSize    Size of new file in bytes
@@ -558,17 +518,13 @@ FSUSER_DeleteDirectoryRecursively(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_CreateFile(Handle*    handle, 
-                  FS_archive archive, 
-                  FS_path    fileLowPath, 
+FSUSER_CreateFile(FS_archive archive,
+                  FS_path    fileLowPath,
                   u32        fileSize)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0]  = 0x08080202;
+	cmdbuf[0]  = IPC_MakeHeader(0x808,8,2); // 0x8080202
 	cmdbuf[1]  = 0;
 	cmdbuf[2]  = archive.handleLow;
 	cmdbuf[3]  = archive.handleHigh;
@@ -577,11 +533,11 @@ FSUSER_CreateFile(Handle*    handle,
 	cmdbuf[6]  = 0;
 	cmdbuf[7]  = fileSize;
 	cmdbuf[8]  = 0;
-	cmdbuf[9]  = (fileLowPath.size << 14) | 0x2;
+	cmdbuf[9]  = IPC_Desc_StaticBuffer(fileLowPath.size,0);
 	cmdbuf[10] = (u32)fileLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -589,7 +545,6 @@ FSUSER_CreateFile(Handle*    handle,
 
 /*! Create a directory
  *
- *  @param[in] handle     fs:USER handle
  *  @param[in] archive    Open archive
  *  @param[in] dirLowPath Directory path to create
  *
@@ -619,27 +574,23 @@ FSUSER_CreateFile(Handle*    handle,
  *  1          | Result code
  */
 Result
-FSUSER_CreateDirectory(Handle     *handle,
-                       FS_archive archive,
+FSUSER_CreateDirectory(FS_archive archive,
                        FS_path    dirLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08090182;
+	cmdbuf[0] = IPC_MakeHeader(0x809,6,2); // 0x8090182
 	cmdbuf[1] = 0;
 	cmdbuf[2] = archive.handleLow;
 	cmdbuf[3] = archive.handleHigh;
 	cmdbuf[4] = dirLowPath.type;
 	cmdbuf[5] = dirLowPath.size;
 	cmdbuf[6] = 0;
-	cmdbuf[7] = (dirLowPath.size << 14) | 0x2;
+	cmdbuf[7] = IPC_Desc_StaticBuffer(dirLowPath.size,0);
 	cmdbuf[8] = (u32)dirLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -647,7 +598,6 @@ FSUSER_CreateDirectory(Handle     *handle,
 
 /*! Renames or moves a directory.
  *
- *  @param[in] handle         fs:USER handle
  *  @param[in] srcArchive     Open archive of source
  *  @param[in] srcDirLowPath  Dir path to source
  *  @param[in] destArchive    Open archive of destination
@@ -684,18 +634,14 @@ FSUSER_CreateDirectory(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_RenameDirectory(Handle     *handle,
-                       FS_archive srcArchive,
+FSUSER_RenameDirectory(FS_archive srcArchive,
                        FS_path    srcDirLowPath,
                        FS_archive destArchive,
                        FS_path    destDirLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080A0244;
+	cmdbuf[0] = IPC_MakeHeader(0x80A,9,4); // 0x80A0244
 	cmdbuf[1] = 0;
 	cmdbuf[2] = srcArchive.handleLow;
 	cmdbuf[3] = srcArchive.handleHigh;
@@ -705,13 +651,13 @@ FSUSER_RenameDirectory(Handle     *handle,
 	cmdbuf[7] = destArchive.handleHigh;
 	cmdbuf[8] = destDirLowPath.type;
 	cmdbuf[9] = destDirLowPath.size;
-	cmdbuf[10] = (srcDirLowPath.size << 14) | 0x402;
+	cmdbuf[10] = IPC_Desc_StaticBuffer(srcDirLowPath.size,1);
 	cmdbuf[11] = (u32)srcDirLowPath.data;
-	cmdbuf[12] = (destDirLowPath.size << 14) | 0x802;
+	cmdbuf[12] = IPC_Desc_StaticBuffer(destDirLowPath.size,2);
 	cmdbuf[13] = (u32)destDirLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -719,7 +665,6 @@ FSUSER_RenameDirectory(Handle     *handle,
 
 /*! Open a directory
  *
- *  @param[in]  handle     fs:USER handle
  *  @param[out] out        Output handle
  *  @param[in]  archive    Open archive
  *  @param[in]  dirLowPath Directory path
@@ -749,26 +694,22 @@ FSUSER_RenameDirectory(Handle     *handle,
  *  2          | Directory handle
  */
 Result
-FSUSER_OpenDirectory(Handle     *handle,
-                     Handle     *out,
+FSUSER_OpenDirectory(Handle     *out,
                      FS_archive archive,
                      FS_path    dirLowPath)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080B0102;
+	cmdbuf[0] = IPC_MakeHeader(0x80B,4,2); // 0x80B0102
 	cmdbuf[1] = archive.handleLow;
 	cmdbuf[2] = archive.handleHigh;
 	cmdbuf[3] = dirLowPath.type;
 	cmdbuf[4] = dirLowPath.size;
-	cmdbuf[5] = (dirLowPath.size << 14) | 0x2;
+	cmdbuf[5] = IPC_Desc_StaticBuffer(dirLowPath.size,0);
 	cmdbuf[6] = (u32)dirLowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(out)
@@ -779,7 +720,6 @@ FSUSER_OpenDirectory(Handle     *handle,
 
 /*! Open an archive
  *
- *  @param[in]     handle  fs:USER handle
  *  @param[in,out] archive Archive to open
  *
  *  @returns error
@@ -807,26 +747,22 @@ FSUSER_OpenDirectory(Handle     *handle,
  *  3          | archive->handleHigh
  */
 Result
-FSUSER_OpenArchive(Handle     *handle,
-                   FS_archive *archive)
+FSUSER_OpenArchive(FS_archive *archive)
 {
 	if(!archive)
 		return -2;
 
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080C00C2;
+	cmdbuf[0] = IPC_MakeHeader(0x80C,3,2); // 0x80C00C2
 	cmdbuf[1] = archive->id;
 	cmdbuf[2] = archive->lowPath.type;
 	cmdbuf[3] = archive->lowPath.size;
-	cmdbuf[4] = (archive->lowPath.size << 14) | 0x2;
+	cmdbuf[4] = IPC_Desc_StaticBuffer(archive->lowPath.size,0);
 	cmdbuf[5] = (u32)archive->lowPath.data;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	archive->handleLow  = cmdbuf[2];
@@ -838,7 +774,6 @@ FSUSER_OpenArchive(Handle     *handle,
 
 /*! Close an open archive
  *
- *  @param[in]     handle  fs:USER handle
  *  @param[in,out] archive Archive to close
  *
  *  @returns error
@@ -861,23 +796,19 @@ FSUSER_OpenArchive(Handle     *handle,
  *  1          | Result code
  */
 Result
-FSUSER_CloseArchive(Handle     *handle,
-                    FS_archive *archive)
+FSUSER_CloseArchive(FS_archive *archive)
 {
 	if(!archive)
 		return -2;
 
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080E0080;
+	cmdbuf[0] = IPC_MakeHeader(0x80E,2,0); // 0x80E0080
 	cmdbuf[1] = archive->handleLow;
 	cmdbuf[2] = archive->handleHigh;
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	return cmdbuf[1];
@@ -885,7 +816,6 @@ FSUSER_CloseArchive(Handle     *handle,
 
 /*! Get SD FAT information
  *
- *  @param[in]  handle       fs:USER handle
  *  @param[out] sectorSize   Sector size (bytes)
  *  @param[out] clusterSize  Cluster size (bytes)
  *  @param[out] numClusters  Total number of clusters
@@ -913,21 +843,17 @@ FSUSER_CloseArchive(Handle     *handle,
  *  5          | Free space (clusters)
  */
 Result
-FSUSER_GetSdmcArchiveResource(Handle *handle,
-                              u32    *sectorSize,
+FSUSER_GetSdmcArchiveResource(u32    *sectorSize,
                               u32    *clusterSize,
                               u32    *numClusters,
                               u32    *freeClusters)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08140000;
+	cmdbuf[0] = IPC_MakeHeader(0x814,0,0); // 0x8140000
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(sectorSize)
@@ -947,7 +873,6 @@ FSUSER_GetSdmcArchiveResource(Handle *handle,
 
 /*! Get NAND information
  *
- *  @param[in]  handle       fs:USER handle
  *  @param[out] sectorSize   Sector size (bytes)
  *  @param[out] clusterSize  Cluster size (bytes)
  *  @param[out] numClusters  Total number of clusters
@@ -975,21 +900,17 @@ FSUSER_GetSdmcArchiveResource(Handle *handle,
  *  5          | Free space (clusters)
  */
 Result
-FSUSER_GetNandArchiveResource(Handle *handle,
-                              u32    *sectorSize,
+FSUSER_GetNandArchiveResource(u32    *sectorSize,
                               u32    *clusterSize,
                               u32    *numClusters,
                               u32    *freeClusters)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08150000;
+	cmdbuf[0] = IPC_MakeHeader(0x815,0,0); // 0x8150000
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(sectorSize)
@@ -1009,7 +930,6 @@ FSUSER_GetNandArchiveResource(Handle *handle,
 
 /*! Check if SD card is detected
  *
- *  @param[in]  handle   fs:USER handle
  *  @param[out] detected Output detected state
  *
  *  @returns error
@@ -1031,18 +951,14 @@ FSUSER_GetNandArchiveResource(Handle *handle,
  *  2          | Whether SD is detected
  */
 Result
-FSUSER_IsSdmcDetected(Handle *handle,
-                      u8    *detected)
+FSUSER_IsSdmcDetected(u8    *detected)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08170000;
+	cmdbuf[0] = IPC_MakeHeader(0x817,0,0); // 0x8170000
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(detected)
@@ -1053,7 +969,6 @@ FSUSER_IsSdmcDetected(Handle *handle,
 
 /*! Get curent process mediatype
  *
- *  @param[in]  handle   fs:USER handle
  *  @param[out] mediatype Output curent process mediatype
  *
  *  @returns error
@@ -1074,18 +989,14 @@ FSUSER_IsSdmcDetected(Handle *handle,
  *  1          | Result code
  */
 Result
-FSUSER_GetMediaType(Handle *handle,
-					u8* mediatype)
+FSUSER_GetMediaType(u8* mediatype)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32* cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08680000;
+	cmdbuf[0] = IPC_MakeHeader(0x868,0,0); // 0x8680000
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(mediatype)
@@ -1096,7 +1007,6 @@ FSUSER_GetMediaType(Handle *handle,
 
 /*! Check if SD card is writable
  *
- *  @param[in]  handle   fs:USER handle
  *  @param[out] writable Output writable state
  *
  *  @returns error
@@ -1118,18 +1028,14 @@ FSUSER_GetMediaType(Handle *handle,
  *  2          | Whether SD is writable
  */
 Result
-FSUSER_IsSdmcWritable(Handle *handle,
-                      u8    *writable)
+FSUSER_IsSdmcWritable(u8 *writable)
 {
-	if(!handle)
-		handle = &fsuHandle;
-
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08180000;
+	cmdbuf[0] = IPC_MakeHeader(0x818,0,0); // 0x8180000
 
 	Result ret = 0;
-	if((ret = svcSendSyncRequest(*handle)))
+	if((ret = svcSendSyncRequest(fsuHandle)))
 		return ret;
 
 	if(writable)
@@ -1164,7 +1070,7 @@ FSFILE_Close(Handle handle)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08080000;
+	cmdbuf[0] = IPC_MakeHeader(0x808,0,0); // 0x8080000
 
 	Result ret = 0;
 	if((ret = svcSendSyncRequest(handle)))
@@ -1216,11 +1122,11 @@ FSFILE_Read(Handle handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x080200C2;
+	cmdbuf[0] = IPC_MakeHeader(0x802,3,2); // 0x80200C2
 	cmdbuf[1] = (u32)offset;
 	cmdbuf[2] = (u32)(offset >> 32);
 	cmdbuf[3] = size;
-	cmdbuf[4] = (size << 4) | 0xC;
+	cmdbuf[4] = IPC_Desc_Buffer(size,IPC_BUFFER_W);
 	cmdbuf[5] = (u32)buffer;
 
 	Result ret = 0;
@@ -1284,12 +1190,12 @@ FSFILE_Write(Handle     handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08030102;
+	cmdbuf[0] = IPC_MakeHeader(0x803,4,2); // 0x8030102
 	cmdbuf[1] = (u32)offset;
 	cmdbuf[2] = (u32)(offset >> 32);
 	cmdbuf[3] = size;
 	cmdbuf[4] = flushFlags;
-	cmdbuf[5] = (size << 4) | 0xA;
+	cmdbuf[5] = IPC_Desc_Buffer(size,IPC_BUFFER_R);
 	cmdbuf[6] = (u32)buffer;
 
 	Result ret = 0;
@@ -1332,7 +1238,7 @@ FSFILE_GetSize(Handle handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08040000;
+	cmdbuf[0] = IPC_MakeHeader(0x804,0,0); // 0x8040000
 
 	Result ret = 0;
 	if((ret = svcSendSyncRequest(handle)))
@@ -1374,7 +1280,7 @@ FSFILE_SetSize(Handle handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08050080;
+	cmdbuf[0] = IPC_MakeHeader(0x805,2,0); // 0x8050080
 	cmdbuf[1] = (u32)size;
 	cmdbuf[2] = (u32)(size >> 32);
 
@@ -1415,7 +1321,7 @@ FSFILE_GetAttributes(Handle handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08060000;
+	cmdbuf[0] = IPC_MakeHeader(0x806,0,0); // 0x8060000
 
 	Result ret = 0;
 	if((ret = svcSendSyncRequest(handle)))
@@ -1456,7 +1362,7 @@ FSFILE_SetAttributes(Handle handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08070040;
+	cmdbuf[0] = IPC_MakeHeader(0x807,1,0); // 0x8070040
 	cmdbuf[1] = attributes;
 
 	Result ret = 0;
@@ -1492,7 +1398,7 @@ FSFILE_Flush(Handle handle)
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08090000;
+	cmdbuf[0] = IPC_MakeHeader(0x809,0,0); // 0x8090000
 
 	Result ret = 0;
 	if((ret = svcSendSyncRequest(handle)))
@@ -1537,9 +1443,9 @@ FSDIR_Read(Handle    handle,
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08010042;
+	cmdbuf[0] = IPC_MakeHeader(0x801,1,2); // 0x8010042
 	cmdbuf[1] = entryCount;
-	cmdbuf[2] = ((entryCount*0x228) << 4) | 0xC;
+	cmdbuf[2] = IPC_Desc_Buffer(entryCount*0x228,IPC_BUFFER_W);
 	cmdbuf[3] = (u32)buffer;
 
 	Result ret = 0;
@@ -1578,7 +1484,7 @@ FSDIR_Close(Handle handle)
 {
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x08020000;
+	cmdbuf[0] = IPC_MakeHeader(0x802,0,0); // 0x8020000
 
 	Result ret = 0;
 	if((ret = svcSendSyncRequest(handle)))

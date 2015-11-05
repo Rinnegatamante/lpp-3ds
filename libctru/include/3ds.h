@@ -1,3 +1,7 @@
+/**
+ * @file 3ds.h
+ * @brief Central 3DS header. Includes all others.
+ */
 #pragma once
 
 #ifdef __cplusplus
@@ -6,11 +10,13 @@ extern "C" {
 
 //might be missing some
 #include <3ds/types.h>
+#include <3ds/ipc.h>
 #include <3ds/svc.h>
 #include <3ds/srv.h>
 #include <3ds/linear.h>
 #include <3ds/vram.h>
 #include <3ds/os.h>
+#include <3ds/synchronization.h>
 #include <3ds/gfx.h>
 #include <3ds/console.h>
 #include <3ds/util/utf.h>
@@ -22,6 +28,7 @@ extern "C" {
 #include <3ds/services/cfgnor.h>
 #include <3ds/services/cfgu.h>
 #include <3ds/services/csnd.h>
+#include <3ds/services/dsp.h>
 #include <3ds/services/fs.h>
 #include <3ds/services/gsp.h>
 #include <3ds/services/hid.h>
@@ -42,8 +49,12 @@ extern "C" {
 
 #include <3ds/gpu/gx.h>
 #include <3ds/gpu/gpu.h>
+#include <3ds/gpu/gpu-old.h>
 #include <3ds/gpu/shbin.h>
 #include <3ds/gpu/shaderProgram.h>
+
+#include <3ds/ndsp/ndsp.h>
+#include <3ds/ndsp/channel.h>
 
 #include <3ds/sdmc.h>
 #include <3ds/romfs.h>

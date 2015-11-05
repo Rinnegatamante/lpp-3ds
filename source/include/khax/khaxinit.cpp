@@ -980,7 +980,7 @@ Result KHAX::IsNew3DS(bool *answer, u32 kernelVersionAlreadyKnown)
 		// Check whether the system is a New 3DS.  If this fails, abort, because being wrong would
 		// crash the system.
 		u8 isNew3DS = 0;
-		if (Result error = APT_CheckNew3DS(nullptr, &isNew3DS))
+		if (Result error = APT_CheckNew3DS(&isNew3DS))
 		{
 			*answer = false;
 			return error;
@@ -1002,14 +1002,14 @@ Result KHAX::GSPwn(void *dest, const void *src, std::size_t size, bool wait)
 {
 	// Attempt a flush of the source, but ignore the result, since we may have just been asked to
 	// read unmapped memory or something similar.
-	GSPGPU_FlushDataCache(nullptr, static_cast<u8 *>(const_cast<void *>(src)), size);
+	GSPGPU_FlushDataCache(static_cast<u8 *>(const_cast<void *>(src)), size);
 
 	// Invalidate the destination's cache, since we're about to overwrite it.  Likewise, ignore
 	// errors, since it may be the destination that is an unmapped address.
-	GSPGPU_InvalidateDataCache(nullptr, static_cast<u8 *>(dest), size);
+	GSPGPU_InvalidateDataCache(static_cast<u8 *>(dest), size);
 
 	// Copy that floppy.
-	if (Result result = GX_SetTextureCopy(nullptr, static_cast<u32 *>(const_cast<void *>(src)), 0,
+	if (Result result = GX_TextureCopy(static_cast<u32 *>(const_cast<void *>(src)), 0,
 		static_cast<u32 *>(dest), 0, size, 8))
 	{
 		KHAX_printf("gspwn:copy fail:%08lx\n", result);

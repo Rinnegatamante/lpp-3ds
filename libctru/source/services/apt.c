@@ -9,6 +9,7 @@
 #include <3ds/srv.h>
 #include <3ds/services/apt.h>
 #include <3ds/services/gsp.h>
+#include <3ds/ipc.h>
 
 
 #define APT_HANDLER_STACKSIZE (0x1000)
@@ -76,7 +77,7 @@ static bool aptIsCrippled(void)
 	return (__system_runflags & RUNFLAG_APTWORKAROUND) != 0 && !aptIsReinit();
 }
 
-static Result __apt_initservicehandle()
+static Result __apt_initservicehandle(void)
 {
 	Result ret=0;
 	u32 i;
@@ -108,7 +109,7 @@ void aptInitCaptureInfo(u32 *ns_capinfo)
 	memset(&gspcapinfo, 0, sizeof(GSP_CaptureInfo));
 
 	// Get display-capture info from GSP.
-	GSPGPU_ImportDisplayCaptureInfo(NULL, &gspcapinfo);
+	GSPGPU_ImportDisplayCaptureInfo(&gspcapinfo);
 
 	// Fill in display-capture info for NS.
 	if(gspcapinfo.screencapture[0].framebuf0_vaddr != gspcapinfo.screencapture[0].framebuf1_vaddr)ns_capinfo[1] = 1;
@@ -128,7 +129,7 @@ void aptInitCaptureInfo(u32 *ns_capinfo)
 	ns_capinfo[0] = main_pixsz * 0x7000 + tmp;
 }
 
-void aptWaitStatusEvent()
+void aptWaitStatusEvent(void)
 {
 	svcWaitSynchronization(aptStatusEvent, U64_MAX);
 	svcClearEvent(aptStatusEvent);
@@ -142,48 +143,48 @@ void aptAppletUtility_Exit_RetToApp(u32 type)
 	
 	buf1[0]=0x10;
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x7, 0x4, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x7, 0x4, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	buf1[0]=0x00;
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	buf1[0]=0x01;
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x7, 0x4, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x7, 0x4, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	buf1[0]=0x00;
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	if(type)
 	{
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+		APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 		aptCloseSession();
 	}
 }
 
-NS_APPID aptGetMenuAppID()
+NS_APPID aptGetMenuAppID(void)
 {
-	NS_APPID menu_appid;
+	NS_APPID menu_appid = 0;
 
 	aptOpenSession();
-	APT_GetAppletManInfo(NULL, 0xff, NULL, NULL, &menu_appid, NULL);
+	APT_GetAppletManInfo(0xff, NULL, NULL, &menu_appid, NULL);
 	aptCloseSession();
 
 	return menu_appid;
 }
 
-void aptReturnToMenu()
+void aptReturnToMenu(void)
 {
 	NS_APPID menu_appid;
 	u32 tmp0 = 1, tmp1 = 0;
@@ -199,7 +200,7 @@ void aptReturnToMenu()
 	if(aptGetStatusPower() == 0)
 	{
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x6, 0x4, (u8*)&tmp0, 0x1, (u8*)&tmp1);
+		APT_AppletUtility(NULL, 0x6, 0x4, (u8*)&tmp0, 0x1, (u8*)&tmp1);
 		aptCloseSession();
 	}
 
@@ -210,11 +211,11 @@ void aptReturnToMenu()
 
 	// Prepare for return to menu
 	aptOpenSession();
-	APT_PrepareToJumpToHomeMenu(NULL);
+	APT_PrepareToJumpToHomeMenu();
 	aptCloseSession();
 
 	// Save Vram
-	GSPGPU_SaveVramSysArea(NULL);
+	GSPGPU_SaveVramSysArea();
 
 	// Capture screen.
 	memset(__ns_capinfo, 0, 0x20);
@@ -225,24 +226,24 @@ void aptReturnToMenu()
 
 	// Send capture-screen info to menu.
 	aptOpenSession();
-	APT_SendParameter(NULL, currentAppId, menu_appid, 0x20, __ns_capinfo, 0x0, 0x10);
+	APT_SendParameter(currentAppId, menu_appid, 0x20, __ns_capinfo, 0x0, 0x10);
 	aptCloseSession();
 
 	aptOpenSession();
-	APT_SendCaptureBufferInfo(NULL, 0x20, __ns_capinfo);
+	APT_SendCaptureBufferInfo(0x20, __ns_capinfo);
 	aptCloseSession();
 
 	// Release GSP module.
-	GSPGPU_ReleaseRight(NULL);
+	GSPGPU_ReleaseRight();
 
 	// Jump to menu!
 	aptOpenSession();
-	APT_JumpToHomeMenu(NULL, 0x0, 0x0, 0x0);
+	APT_JumpToHomeMenu(0x0, 0x0, 0x0);
 	aptCloseSession();
 
 	// Wait for return to application.
 	aptOpenSession();
-	APT_NotifyToWait(NULL, currentAppId);
+	APT_NotifyToWait(currentAppId);
 	aptCloseSession();
 
 	// This is only executed when ret-to-menu was triggered via the home-button, not the power-button.
@@ -250,14 +251,14 @@ void aptReturnToMenu()
 	{
 		tmp0 = 0;
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x4, 0x1, (u8*)&tmp0, 0x1, (u8*)&tmp1);
+		APT_AppletUtility(NULL, 0x4, 0x1, (u8*)&tmp0, 0x1, (u8*)&tmp1);
 		aptCloseSession();
 	}
 
 	aptWaitStatusEvent();
 }
 
-void aptAppletStarted()
+void aptAppletStarted(void)
 {
 	u8 buf1[4], buf2[4];
 
@@ -268,51 +269,51 @@ void aptAppletStarted()
 	aptSetStatus(APP_SUSPENDED);
 
 	aptOpenSession();
-	APT_SendCaptureBufferInfo(NULL, 0x20, __ns_capinfo);
+	APT_SendCaptureBufferInfo(0x20, __ns_capinfo);
 	aptCloseSession();
 
 	aptOpenSession();
-	APT_ReplySleepQuery(NULL, currentAppId, 0x0);
+	APT_ReplySleepQuery(currentAppId, 0x0);
 	aptCloseSession();
 
 	aptOpenSession();
-	APT_StartLibraryApplet(NULL, __apt_launchapplet_appID, __apt_launchapplet_inhandle, __apt_launchapplet_parambuf, __apt_launchapplet_parambufsize);
-	aptCloseSession();
-
-	buf1[0]=0x00;
-	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
-	aptCloseSession();
-
-	aptOpenSession();
-	APT_NotifyToWait(NULL, currentAppId);
+	APT_StartLibraryApplet(__apt_launchapplet_appID, __apt_launchapplet_inhandle, __apt_launchapplet_parambuf, __apt_launchapplet_parambufsize);
 	aptCloseSession();
 
 	buf1[0]=0x00;
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	aptCloseSession();
+
+	aptOpenSession();
+	APT_NotifyToWait(currentAppId);
+	aptCloseSession();
+
+	buf1[0]=0x00;
+	aptOpenSession();
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 	aptCloseSession();
 }
 
-void aptAppletClosed()
+void aptAppletClosed(void)
 {
 	aptAppletUtility_Exit_RetToApp(1);
 
-	GSPGPU_AcquireRight(NULL, 0x0);
-	GSPGPU_RestoreVramSysArea(NULL);
+	GSPGPU_AcquireRight(0x0);
+	GSPGPU_RestoreVramSysArea();
 
 	svcClearEvent(aptStatusEvent);
 	aptSetStatus(APP_RUNNING);
 	svcClearEvent(aptStatusEvent);
 }
 
-static void __handle_notification() {
+static void __handle_notification(void) {
 	u8 type;
 	Result ret=0;
 
 	// Get notification type.
 	aptOpenSession();
-	ret = APT_InquireNotification(NULL, currentAppId, &type);
+	ret = APT_InquireNotification(currentAppId, &type);
 	aptCloseSession();
 	if(ret!=0) return;
 
@@ -326,7 +327,7 @@ static void __handle_notification() {
 		if(aptGetStatus() == APP_RUNNING)
 		{
 			aptOpenSession();
-			APT_ReplySleepQuery(NULL, currentAppId, 0x0);
+			APT_ReplySleepQuery(currentAppId, 0x0);
 			aptCloseSession();
 		
 			if(type == APTSIGNAL_HOMEBUTTON)  aptSetStatusPower(0);
@@ -343,7 +344,7 @@ static void __handle_notification() {
 		svcClearEvent(aptSleepSync);
 		
 		aptOpenSession();
-		APT_ReplySleepQuery(NULL, currentAppId, 0x1);
+		APT_ReplySleepQuery(currentAppId, 0x1);
 		aptCloseSession();
 		break;
 
@@ -354,7 +355,7 @@ static void __handle_notification() {
 			aptSetStatus(APP_SLEEPMODE);
 			
 			aptOpenSession();
-			APT_ReplySleepNotificationComplete(NULL, currentAppId);
+			APT_ReplySleepNotificationComplete(currentAppId);
 			aptCloseSession();
 		}
 		break;
@@ -363,7 +364,7 @@ static void __handle_notification() {
 	case APTSIGNAL_WAKEUP:
 		if(aptGetStatus() == APP_SLEEPMODE)
 		{
-			if(aptStatusBeforeSleep == APP_RUNNING)GSPGPU_SetLcdForceBlack(NULL, 0);
+			if(aptStatusBeforeSleep == APP_RUNNING)GSPGPU_SetLcdForceBlack(0);
 
 			// Restore old aptStatus.
 			aptSetStatus(aptStatusBeforeSleep);
@@ -372,11 +373,11 @@ static void __handle_notification() {
 	}
 }
 
-static bool __handle_incoming_parameter() {
+static bool __handle_incoming_parameter(void) {
 	u8 type;
 
 	aptOpenSession();
-	APT_ReceiveParameter(NULL, currentAppId, 0x1000, aptParameters, NULL, &type);
+	APT_ReceiveParameter(currentAppId, 0x1000, aptParameters, NULL, &type);
 	aptCloseSession();
 
 	_aptDebug(2, type);
@@ -399,8 +400,8 @@ static bool __handle_incoming_parameter() {
 	case 0xB: // Just returned from menu.
 		if (aptGetStatus() != APP_NOTINITIALIZED)
 		{
-			GSPGPU_AcquireRight(NULL, 0x0);
-			GSPGPU_RestoreVramSysArea(NULL);
+			GSPGPU_AcquireRight(0x0);
+			GSPGPU_RestoreVramSysArea();
 			aptAppletUtility_Exit_RetToApp(0);
 			aptSetStatus(APP_RUNNING);
 		} else
@@ -457,7 +458,7 @@ Result aptInit(void)
 	// Initialize APT stuff, escape load screen.
 	ret = __apt_initservicehandle();
 	if(ret!=0)return ret;
-	if((ret=APT_GetLockHandle(&aptuHandle, 0x0, &aptLockHandle)))return ret;
+	if((ret=APT_GetLockHandle(0x0, &aptLockHandle)))return ret;
 	svcCloseHandle(aptuHandle);
 
 	currentAppId = __apt_appid;
@@ -470,11 +471,11 @@ Result aptInit(void)
 	if(!aptIsCrippled())
 	{
 		aptOpenSession();
-		if((ret=APT_Initialize(NULL, currentAppId, &aptEvents[0], &aptEvents[1])))return ret;
+		if((ret=APT_Initialize(currentAppId, &aptEvents[0], &aptEvents[1])))return ret;
 		aptCloseSession();
 		
 		aptOpenSession();
-		if((ret=APT_Enable(NULL, 0x0)))return ret;
+		if((ret=APT_Enable(0x0)))return ret;
 		aptCloseSession();
 		
 		// create APT close event
@@ -485,21 +486,24 @@ Result aptInit(void)
 		if (aptIsReinit())
 		{
 			aptOpenSession();
-			APT_PrepareToJumpToApplication(NULL, 0x0);
+			APT_PrepareToJumpToApplication(0x0);
 			aptCloseSession();
 
 			aptOpenSession();
-			APT_JumpToApplication(NULL, 0x0, 0x0, 0x0);
+			APT_JumpToApplication(0x0, 0x0, 0x0);
 			aptCloseSession();
 		}
 		
 		aptOpenSession();
-		if((ret=APT_NotifyToWait(NULL, currentAppId)))return ret;
+		if((ret=APT_NotifyToWait(currentAppId)))return ret;
 		aptCloseSession();
 
 		// create APT event handler thread
 		svcCreateThread(&aptEventHandlerThread, aptEventHandler, 0x0,
 			(u32*)(&aptEventHandlerStack[APT_HANDLER_STACKSIZE/8]), 0x31, 0xfffffffe);
+
+		// Wait for the state to become APT_RUNNING
+		aptWaitStatusEvent();
 	} else
 		aptAppStarted();
 
@@ -508,7 +512,7 @@ Result aptInit(void)
 	return 0;
 }
 
-void aptExit()
+void aptExit(void)
 {
 	if (!aptInitialised) return;
 
@@ -518,7 +522,7 @@ void aptExit()
 	if(aptGetStatusPower() == 1)
 	{
 		aptOpenSession();
-		APT_ReplySleepQuery(NULL, currentAppId, 0x0);
+		APT_ReplySleepQuery(currentAppId, 0x0);
 		aptCloseSession();
 	}
 
@@ -528,11 +532,11 @@ void aptExit()
 		if (aptGetStatus() == APP_EXITING || !isReinit)
 		{
 			aptOpenSession();
-			APT_PrepareToCloseApplication(NULL, 0x1);
+			APT_PrepareToCloseApplication(0x1);
 			aptCloseSession();
 		
 			aptOpenSession();
-			APT_CloseApplication(NULL, 0x0, 0x0, 0x0);
+			APT_CloseApplication(0x0, 0x0, 0x0);
 			aptCloseSession();
 
 			if (isReinit)
@@ -543,7 +547,7 @@ void aptExit()
 		} else if (isReinit)
 		{
 			aptOpenSession();
-			APT_Finalize(NULL, currentAppId);
+			APT_Finalize(currentAppId);
 			aptCloseSession();
 		}
 	}
@@ -562,7 +566,7 @@ void aptExit()
 	aptInitialised = false;
 }
 
-bool aptMainLoop()
+bool aptMainLoop(void)
 {
 	while(1)
 	{
@@ -626,11 +630,12 @@ void aptUnhook(aptHookCookie* cookie)
 	}
 }
 
-void aptAppStarted()
+void aptAppStarted(void)
 {
 	u8 buf1[4], buf2[4];
 
 	aptSetStatus(APP_RUNNING);
+	svcClearEvent(aptStatusEvent);
 
 	if(!aptIsCrippled())
 	{
@@ -638,21 +643,21 @@ void aptAppStarted()
 
 		buf1[0] = 0x10;
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x7, 0x4, buf1, 0x1, buf2);
+		APT_AppletUtility(NULL, 0x7, 0x4, buf1, 0x1, buf2);
 		aptCloseSession();
 
 		buf1[0] = 0x00;
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+		APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 		aptCloseSession();
 
 		aptOpenSession();
-		APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+		APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 		aptCloseSession();
 	}
 }
 
-APP_STATUS aptGetStatus()
+APP_STATUS aptGetStatus(void)
 {
 	APP_STATUS ret;
 	svcWaitSynchronization(aptStatusMutex, U64_MAX);
@@ -678,7 +683,7 @@ void aptSetStatus(APP_STATUS status)
 	svcReleaseMutex(aptStatusMutex);
 }
 
-u32 aptGetStatusPower()
+u32 aptGetStatusPower(void)
 {
 	u32 ret;
 	svcWaitSynchronization(aptStatusMutex, U64_MAX);
@@ -694,7 +699,7 @@ void aptSetStatusPower(u32 status)
 	svcReleaseMutex(aptStatusMutex);
 }
 
-void aptOpenSession()
+void aptOpenSession(void)
 {
 	//Result ret;
 
@@ -702,42 +707,40 @@ void aptOpenSession()
 	__apt_initservicehandle();
 }
 
-void aptCloseSession()
+void aptCloseSession(void)
 {
 	svcCloseHandle(aptuHandle);
 	svcReleaseMutex(aptLockHandle);
 }
 
-void aptSignalReadyForSleep()
+void aptSignalReadyForSleep(void)
 {
 	svcSignalEvent(aptSleepSync);
 }
 
-Result APT_GetLockHandle(Handle* handle, u16 flags, Handle* lockHandle)
+Result APT_GetLockHandle(u16 flags, Handle* lockHandle)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x10040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x1,1,0); // 0x10040
 	cmdbuf[1]=flags;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	if(lockHandle)*lockHandle=cmdbuf[5];
 	
 	return cmdbuf[1];
 }
 
-Result APT_Initialize(Handle* handle, NS_APPID appId, Handle* eventHandle1, Handle* eventHandle2)
+Result APT_Initialize(NS_APPID appId, Handle* eventHandle1, Handle* eventHandle2)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x20080; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x2,2,0); // 0x20080
 	cmdbuf[1]=appId;
 	cmdbuf[2]=0x0;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	if(eventHandle1)*eventHandle1=cmdbuf[3]; //return to menu event ?
 	if(eventHandle2)*eventHandle2=cmdbuf[4];
@@ -745,52 +748,48 @@ Result APT_Initialize(Handle* handle, NS_APPID appId, Handle* eventHandle1, Hand
 	return cmdbuf[1];
 }
 
-Result APT_Finalize(Handle* handle, NS_APPID appId)
+Result APT_Finalize(NS_APPID appId)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x40040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x4,1,0); // 0x40040
 	cmdbuf[1]=appId;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	return cmdbuf[1];
 }
 
-Result APT_HardwareResetAsync(Handle* handle)
+Result APT_HardwareResetAsync()
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x4E0000; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x4E,0,0); // 0x4E0000
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	return cmdbuf[1];
 }
 
-Result APT_Enable(Handle* handle, u32 a)
+Result APT_Enable(u32 a)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x30040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x3,1,0); // 0x30040
 	cmdbuf[1]=a;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	return cmdbuf[1];
 }
 
-Result APT_GetAppletManInfo(Handle* handle, u8 inval, u8 *outval8, u32 *outval32, NS_APPID *menu_appid, NS_APPID *active_appid)
+Result APT_GetAppletManInfo(u8 inval, u8 *outval8, u32 *outval32, NS_APPID *menu_appid, NS_APPID *active_appid)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x00050040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x5,1,0); // 0x50040
 	cmdbuf[1]=inval;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(outval8)*outval8=cmdbuf[2];
 	if(outval32)*outval32=cmdbuf[3];
@@ -800,15 +799,14 @@ Result APT_GetAppletManInfo(Handle* handle, u8 inval, u8 *outval8, u32 *outval32
 	return cmdbuf[1];
 }
 
-Result APT_GetAppletInfo(Handle* handle, NS_APPID appID, u64* pProgramID, u8* pMediaType, u8* pRegistered, u8* pLoadState, u32* pAttributes)
+Result APT_GetAppletInfo(NS_APPID appID, u64* pProgramID, u8* pMediaType, u8* pRegistered, u8* pLoadState, u32* pAttributes)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x00060040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x6,1,0); // 0x60040
 	cmdbuf[1]=appID;
 
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(pProgramID)*pProgramID=(u64)cmdbuf[2]|((u64)cmdbuf[3]<<32);
 	if(pMediaType)*pMediaType=cmdbuf[4];
@@ -819,32 +817,29 @@ Result APT_GetAppletInfo(Handle* handle, NS_APPID appID, u64* pProgramID, u8* pM
 	return cmdbuf[1];
 }
 
-Result APT_GetAppletProgramInfo(Handle* handle, u32 id, u32 flags, u16 *titleversion)
+Result APT_GetAppletProgramInfo(u32 id, u32 flags, u16 *titleversion)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x004D0080; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x4D,2,0); // 0x4D0080
 	cmdbuf[1]=id;
 	cmdbuf[2]=flags;
 
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(titleversion)*titleversion=cmdbuf[2];
 
 	return cmdbuf[1];
 }
 
-Result APT_GetProgramID(Handle* handle, u64* pProgramID)
+Result APT_GetProgramID(u64* pProgramID)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0] = 0x00580002; //request header code
-	cmdbuf[1] = 0x20;
+	cmdbuf[0] = IPC_MakeHeader(0x58,0,2); // 0x580002
+	cmdbuf[1] = IPC_Desc_CurProcessHandle();
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(ret==0)ret = cmdbuf[1];
 
@@ -856,141 +851,136 @@ Result APT_GetProgramID(Handle* handle, u64* pProgramID)
 	return ret;
 }
 
-Result APT_IsRegistered(Handle* handle, NS_APPID appID, u8* out)
+Result APT_IsRegistered(NS_APPID appID, u8* out)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x90040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x9,1,0); // 0x90040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(out)*out=cmdbuf[2];
 	
 	return cmdbuf[1];
 }
 
-Result APT_InquireNotification(Handle* handle, u32 appID, u8* signalType)
+Result APT_InquireNotification(u32 appID, u8* signalType)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0xB0040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0xB,1,0); // 0xB0040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(signalType)*signalType=cmdbuf[2];
 	
 	return cmdbuf[1];
 }
 
-Result APT_PrepareToJumpToHomeMenu(Handle* handle)
+Result APT_PrepareToJumpToHomeMenu(void)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x2b0000; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x2B,0,0); // 0x2B0000
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	return cmdbuf[1];
 }
 
-Result APT_JumpToHomeMenu(Handle* handle, u32 a, u32 b, u32 c)
+Result APT_JumpToHomeMenu(const u8 *param, size_t paramSize, Handle handle)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x2C0044; //request header code
-	cmdbuf[1]=a;
-	cmdbuf[2]=b;
-	cmdbuf[3]=c;
-	cmdbuf[4]=(b<<14)|2;
-	
+	cmdbuf[0]=IPC_MakeHeader(0x2C,1,4); // 0x2C0044
+	cmdbuf[1]=paramSize;
+	cmdbuf[2]=IPC_Desc_SharedHandles(1);
+	cmdbuf[3]=handle;
+	cmdbuf[4]=IPC_Desc_StaticBuffer(paramSize,0);
+	cmdbuf[5]= (u32) param;
+
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
-	
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
+
 	return cmdbuf[1];
 }
 
-Result APT_PrepareToJumpToApplication(Handle* handle, u32 a)
+Result APT_PrepareToJumpToApplication(u32 a)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x230040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x23,1,0); // 0x230040
 	cmdbuf[1]=a;
 
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	return cmdbuf[1];
 }
 
-Result APT_JumpToApplication(Handle* handle, u32 a, u32 b, u32 c)
+Result APT_JumpToApplication(const u8 *param, size_t paramSize, Handle handle)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x240044; //request header code
-	cmdbuf[1]=a;
-	cmdbuf[2]=b;
-	cmdbuf[3]=c;
-	cmdbuf[4]=(b<<14)|2;
+	cmdbuf[0]=IPC_MakeHeader(0x24,1,4); // 0x240044
+	cmdbuf[1]=paramSize;
+	cmdbuf[2]=IPC_Desc_SharedHandles(1);
+	cmdbuf[3]=handle;
+	cmdbuf[4]=IPC_Desc_StaticBuffer(paramSize,0);
+	cmdbuf[5]= (u32) param;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 	
 	return cmdbuf[1];
 }
 
-Result APT_NotifyToWait(Handle* handle, NS_APPID appID)
+Result APT_NotifyToWait(NS_APPID appID)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x430040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x43,1,0); // 0x430040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_AppletUtility(Handle* handle, u32* out, u32 a, u32 size1, u8* buf1, u32 size2, u8* buf2)
+Result APT_AppletUtility(u32* out, u32 a, u32 size1, u8* buf1, u32 size2, u8* buf2)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x4B00C2; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x4B,3,2); // 0x4B00C2
 	cmdbuf[1]=a;
 	cmdbuf[2]=size1;
 	cmdbuf[3]=size2;
-	cmdbuf[4]=(size1<<14)|0x402;
+	cmdbuf[4]=IPC_Desc_StaticBuffer(size1,1);
 	cmdbuf[5]=(u32)buf1;
-	
-	cmdbuf[0+0x100/4]=(size2<<14)|2;
-	cmdbuf[1+0x100/4]=(u32)buf2;
+
+	u32 *staticbufs = getThreadStaticBuffers();
+	staticbufs[0]=IPC_Desc_StaticBuffer(size2,0);
+	staticbufs[1]=(u32)buf2;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(out)*out=cmdbuf[2];
 
 	return cmdbuf[1];
 }
 
-Result APT_GlanceParameter(Handle* handle, NS_APPID appID, u32 bufferSize, u32* buffer, u32* actualSize, u8* signalType)
+Result APT_GlanceParameter(NS_APPID appID, u32 bufferSize, u32* buffer, u32* actualSize, u8* signalType)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0xE0080; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0xE,2,0); // 0xE0080
 	cmdbuf[1]=appID;
 	cmdbuf[2]=bufferSize;
-	
-	cmdbuf[0+0x100/4]=(bufferSize<<14)|2;
-	cmdbuf[1+0x100/4]=(u32)buffer;
+
+	u32 *staticbufs = getThreadStaticBuffers();
+	staticbufs[0]=IPC_Desc_StaticBuffer(bufferSize,0);
+	staticbufs[1]=(u32)buffer;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(signalType)*signalType=cmdbuf[3];
 	if(actualSize)*actualSize=cmdbuf[4];
@@ -998,19 +988,19 @@ Result APT_GlanceParameter(Handle* handle, NS_APPID appID, u32 bufferSize, u32* 
 	return cmdbuf[1];
 }
 
-Result APT_ReceiveParameter(Handle* handle, NS_APPID appID, u32 bufferSize, u32* buffer, u32* actualSize, u8* signalType)
+Result APT_ReceiveParameter(NS_APPID appID, u32 bufferSize, u32* buffer, u32* actualSize, u8* signalType)
 {
-	if(!handle)handle=&aptuHandle;
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0xD0080; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0xD,2,0); // 0xD0080
 	cmdbuf[1]=appID;
 	cmdbuf[2]=bufferSize;
-	
-	cmdbuf[0+0x100/4]=(bufferSize<<14)|2;
-	cmdbuf[1+0x100/4]=(u32)buffer;
+
+	u32 *staticbufs = getThreadStaticBuffers();
+	staticbufs[0]=IPC_Desc_StaticBuffer(bufferSize,0);
+	staticbufs[1]=(u32)buffer;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(signalType)*signalType=cmdbuf[3];
 	if(actualSize)*actualSize=cmdbuf[4];
@@ -1018,134 +1008,118 @@ Result APT_ReceiveParameter(Handle* handle, NS_APPID appID, u32 bufferSize, u32*
 	return cmdbuf[1];
 }
 
-Result APT_SendParameter(Handle* handle, NS_APPID src_appID, NS_APPID dst_appID, u32 bufferSize, u32* buffer, Handle paramhandle, u8 signalType)
+Result APT_SendParameter(NS_APPID src_appID, NS_APPID dst_appID, u32 bufferSize, u32* buffer, Handle paramhandle, u8 signalType)
 {
 	u32* cmdbuf=getThreadCommandBuffer();
 
-	if(!handle)handle=&aptuHandle;
-
-	cmdbuf[0] = 0x000C0104; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0xC,4,4); // 0xC0104
 	cmdbuf[1] = src_appID;
 	cmdbuf[2] = dst_appID;
 	cmdbuf[3] = signalType;
 	cmdbuf[4] = bufferSize;
 
-	cmdbuf[5]=0x0;
+	cmdbuf[5] = IPC_Desc_SharedHandles(1);
 	cmdbuf[6] = paramhandle;
 	
-	cmdbuf[7] = (bufferSize<<14) | 2;
+	cmdbuf[7] = IPC_Desc_StaticBuffer(bufferSize,0);
 	cmdbuf[8] = (u32)buffer;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_SendCaptureBufferInfo(Handle* handle, u32 bufferSize, u32* buffer)
+Result APT_SendCaptureBufferInfo(u32 bufferSize, u32* buffer)
 {
 	u32* cmdbuf=getThreadCommandBuffer();
 
-	if(!handle)handle=&aptuHandle;
-
-	cmdbuf[0] = 0x00400042; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x40,1,2); // 0x400042
 	cmdbuf[1] = bufferSize;
-	cmdbuf[2] = (bufferSize<<14) | 2;
+	cmdbuf[2] = IPC_Desc_StaticBuffer(bufferSize,0);
 	cmdbuf[3] = (u32)buffer;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_ReplySleepQuery(Handle* handle, NS_APPID appID, u32 a)
+Result APT_ReplySleepQuery(NS_APPID appID, u32 a)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x3E0080; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x3E,2,0); // 0x3E0080
 	cmdbuf[1]=appID;
 	cmdbuf[2]=a;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_ReplySleepNotificationComplete(Handle* handle, NS_APPID appID)
+Result APT_ReplySleepNotificationComplete(NS_APPID appID)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x3F0040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x3F,1,0); // 0x3F0040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_PrepareToCloseApplication(Handle* handle, u8 a)
+Result APT_PrepareToCloseApplication(u8 a)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x220040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x22,1,0); // 0x220040
 	cmdbuf[1]=a;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_CloseApplication(Handle* handle, u32 a, u32 b, u32 c)
+Result APT_CloseApplication(const u8 *param, size_t paramSize, Handle handle)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x270044; //request header code
-	cmdbuf[1]=a;
-	cmdbuf[2]=0x0;
-	cmdbuf[3]=b;
-	cmdbuf[4]=(a<<14)|2;
-	cmdbuf[5]=c;
+	cmdbuf[0]=IPC_MakeHeader(0x27,1,4); // 0x270044
+	cmdbuf[1]=paramSize;
+	cmdbuf[2]=IPC_Desc_SharedHandles(1);
+	cmdbuf[3]=handle;
+	cmdbuf[4]=IPC_Desc_StaticBuffer(paramSize,0);
+	cmdbuf[5]= (u32) param;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
 //See http://3dbrew.org/APT:SetApplicationCpuTimeLimit
-Result APT_SetAppCpuTimeLimit(Handle* handle, u32 percent)
+Result APT_SetAppCpuTimeLimit(u32 percent)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x4F0080;
+	cmdbuf[0]=IPC_MakeHeader(0x4F,2,0); // 0x4F0080
 	cmdbuf[1]=1;
 	cmdbuf[2]=percent;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_GetAppCpuTimeLimit(Handle* handle, u32 *percent)
+Result APT_GetAppCpuTimeLimit(u32 *percent)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x500040;
+	cmdbuf[0]=IPC_MakeHeader(0x50,1,0); // 0x500040
 	cmdbuf[1]=1;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(percent)*percent=cmdbuf[2];
 
@@ -1153,15 +1127,13 @@ Result APT_GetAppCpuTimeLimit(Handle* handle, u32 *percent)
 }
 
 // Note: this function is unreliable, see: http://3dbrew.org/wiki/APT:PrepareToStartApplication
-Result APT_CheckNew3DS_Application(Handle* handle, u8 *out)
+Result APT_CheckNew3DS_Application(u8 *out)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x01010000;
+	cmdbuf[0]=IPC_MakeHeader(0x101,0,0); // 0x1010000
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(ret==0)ret = cmdbuf[1];
 
@@ -1174,15 +1146,13 @@ Result APT_CheckNew3DS_Application(Handle* handle, u8 *out)
 	return ret;
 }
 
-Result APT_CheckNew3DS_System(Handle* handle, u8 *out)
+Result APT_CheckNew3DS_System(u8 *out)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x01020000;
+	cmdbuf[0]=IPC_MakeHeader(0x102,0,0); // 0x1020000
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	if(ret==0)ret = cmdbuf[1];
 
@@ -1195,7 +1165,7 @@ Result APT_CheckNew3DS_System(Handle* handle, u8 *out)
 	return ret;
 }
 
-Result APT_CheckNew3DS(Handle* handle, u8 *out)
+Result APT_CheckNew3DS(u8 *out)
 {
 	Result ret=0;
 
@@ -1210,7 +1180,7 @@ Result APT_CheckNew3DS(Handle* handle, u8 *out)
 	}
 
 	aptOpenSession();
-	ret = APT_CheckNew3DS_System(NULL, out);
+	ret = APT_CheckNew3DS_System(out);
 	aptCloseSession();
 
 	__apt_new3dsflag_initialized = 1;
@@ -1219,71 +1189,63 @@ Result APT_CheckNew3DS(Handle* handle, u8 *out)
 	return ret;
 }
 
-Result APT_PrepareToDoAppJump(Handle* handle, u8 flags, u64 programID, u8 mediatype)
+Result APT_PrepareToDoAppJump(u8 flags, u64 programID, u8 mediatype)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x310100; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x31,4,0); // 0x310100
 	cmdbuf[1]=flags;
 	cmdbuf[2]=(u32)programID;
 	cmdbuf[3]=(u32)(programID>>32);
 	cmdbuf[4]=mediatype;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_DoAppJump(Handle* handle, u32 NSbuf0Size, u32 NSbuf1Size, u8 *NSbuf0Ptr, u8 *NSbuf1Ptr)
+Result APT_DoAppJump(u32 NSbuf0Size, u32 NSbuf1Size, u8 *NSbuf0Ptr, u8 *NSbuf1Ptr)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x320084; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x32,2,4); // 0x320084
 	cmdbuf[1]=NSbuf0Size;
 	cmdbuf[2]=NSbuf1Size;
-	cmdbuf[3]=(NSbuf0Size<<14)|2;
+	cmdbuf[3]=IPC_Desc_StaticBuffer(NSbuf0Size,0);
 	cmdbuf[4]=(u32)NSbuf0Ptr;
-	cmdbuf[5]=(NSbuf1Size<<14)|0x802;
+	cmdbuf[5]=IPC_Desc_StaticBuffer(NSbuf1Size,2);
 	cmdbuf[6]=(u32)NSbuf1Ptr;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_PrepareToStartLibraryApplet(Handle* handle, NS_APPID appID)
+Result APT_PrepareToStartLibraryApplet(NS_APPID appID)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x180040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x18,1,0); // 0x180040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_StartLibraryApplet(Handle* handle, NS_APPID appID, Handle inhandle, u32 *parambuf, u32 parambufsize)
+Result APT_StartLibraryApplet(NS_APPID appID, Handle inhandle, u32 *parambuf, u32 parambufsize)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x1E0084; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x1E,2,4); // 0x1E0084
 	cmdbuf[1]=appID;
 	cmdbuf[2]=parambufsize;
-	cmdbuf[3]=0;
+	cmdbuf[3]=IPC_Desc_SharedHandles(1);
 	cmdbuf[4]=inhandle;
-	cmdbuf[5]=(parambufsize<<14)|2;
+	cmdbuf[5]=IPC_Desc_StaticBuffer(parambufsize,0);
 	cmdbuf[6]=(u32)parambuf;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
@@ -1297,23 +1259,23 @@ Result APT_LaunchLibraryApplet(NS_APPID appID, Handle inhandle, u32 *parambuf, u
 	u8 buf2[4];
 
 	aptOpenSession();
-	APT_ReplySleepQuery(NULL, currentAppId, 0);
+	APT_ReplySleepQuery(currentAppId, 0);
 	aptCloseSession();
 
 	aptOpenSession();
-	ret=APT_PrepareToStartLibraryApplet(NULL, appID);
+	ret=APT_PrepareToStartLibraryApplet(appID);
 	aptCloseSession();
 	if(ret!=0)return ret;
 
 	memset(buf1, 0, 4);
 	aptOpenSession();
-	APT_AppletUtility(NULL, NULL, 0x4, 0x1, buf1, 0x1, buf2);
+	APT_AppletUtility(NULL, 0x4, 0x1, buf1, 0x1, buf2);
 	aptCloseSession();
 
 	while(1)
 	{
 		aptOpenSession();
-		ret=APT_IsRegistered(NULL, appID, &tmp);
+		ret=APT_IsRegistered(appID, &tmp);
 		aptCloseSession();
 		if(ret!=0)return ret;
 
@@ -1332,7 +1294,7 @@ Result APT_LaunchLibraryApplet(NS_APPID appID, Handle inhandle, u32 *parambuf, u
 	aptSetStatus(APP_SUSPENDED);
 
 	// Save Vram
-	GSPGPU_SaveVramSysArea(NULL);
+	GSPGPU_SaveVramSysArea();
 
 	// Capture screen.
 	memset(__ns_capinfo, 0, 0x20);
@@ -1341,44 +1303,40 @@ Result APT_LaunchLibraryApplet(NS_APPID appID, Handle inhandle, u32 *parambuf, u
 
 	// Send capture-screen info to the library applet.
 	aptOpenSession();
-	APT_SendParameter(NULL, currentAppId, appID, 0x20, __ns_capinfo, 0x0, 0x2);
+	APT_SendParameter(currentAppId, appID, 0x20, __ns_capinfo, 0x0, 0x2);
 	aptCloseSession();
 
 	// Release GSP module.
-	GSPGPU_ReleaseRight(NULL);
+	GSPGPU_ReleaseRight();
 
 	return 0;
 }
 
-Result APT_PrepareToStartSystemApplet(Handle* handle, NS_APPID appID)
+Result APT_PrepareToStartSystemApplet(NS_APPID appID)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0]=0x00190040; //request header code
+	cmdbuf[0]=IPC_MakeHeader(0x19,1,0); // 0x190040
 	cmdbuf[1]=appID;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }
 
-Result APT_StartSystemApplet(Handle* handle, NS_APPID appID, u32 bufSize, Handle applHandle, u8 *buf)
+Result APT_StartSystemApplet(NS_APPID appID, u32 bufSize, Handle applHandle, u8 *buf)
 {
-	if(!handle)handle=&aptuHandle;
-
 	u32* cmdbuf=getThreadCommandBuffer();
-	cmdbuf[0] = 0x001F0084; //request header code
+	cmdbuf[0] = IPC_MakeHeader(0x1F,2,4); // 0x001F0084
 	cmdbuf[1] = appID;
 	cmdbuf[2] = bufSize;
-	cmdbuf[3] = 0;
+	cmdbuf[3] = IPC_Desc_SharedHandles(1);
 	cmdbuf[4] = applHandle;
-	cmdbuf[5] = (bufSize<<14) | 2;
+	cmdbuf[5] = IPC_Desc_StaticBuffer(bufSize,0);
 	cmdbuf[6] = (u32)buf;
 	
 	Result ret=0;
-	if((ret=svcSendSyncRequest(*handle)))return ret;
+	if((ret=svcSendSyncRequest(aptuHandle)))return ret;
 
 	return cmdbuf[1];
 }

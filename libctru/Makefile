@@ -27,6 +27,7 @@ BUILD		:=	build
 SOURCES		:=	source \
 			source/allocator \
 			source/gpu \
+			source/ndsp \
 			source/services \
 			source/services/soc \
 			source/util/rbtree \
@@ -41,8 +42,8 @@ INCLUDES	:=	include
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
 
-CFLAGS	:=	-g -Wall -O2 -mword-relocations \
-			-fno-strict-aliasing \
+CFLAGS	:=	-g -Wall -Werror -O2 -mword-relocations \
+			-ffunction-sections -fno-strict-aliasing \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 

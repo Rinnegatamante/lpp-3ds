@@ -126,7 +126,7 @@ static int lua_download(lua_State *L){
 		u32 bytesWritten;
 		FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
 		FS_path filePath=FS_makePath(PATH_CHAR, file);
-		FSUSER_OpenFileDirectly(NULL, &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
 		FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
 		FSFILE_Close(fileHandle);
 		svcCloseHandle(fileHandle);

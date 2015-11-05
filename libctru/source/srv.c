@@ -6,6 +6,7 @@
 #include <3ds/types.h>
 #include <3ds/srv.h>
 #include <3ds/svc.h>
+#include <3ds/ipc.h>
 
 
 /*
@@ -73,7 +74,7 @@ void __destroy_handle_list(void) {
 }
 
 
-Result srvInit()
+Result srvInit(void)
 {
 	Result rc = 0;
 
@@ -89,7 +90,7 @@ Result srvInit()
 	return rc;
 }
 
-Result srvExit()
+Result srvExit(void)
 {
 	if(g_srv_handle != 0)svcCloseHandle(g_srv_handle);
 
@@ -97,41 +98,32 @@ Result srvExit()
 	return 0;
 }
 
-Handle *srvGetSessionHandle()
+Handle *srvGetSessionHandle(void)
 {
 	return &g_srv_handle;
 }
 
-Result srvRegisterClient()
+Result srvRegisterClient(void)
 {
 	Result rc = 0;
 	
 	u32* cmdbuf = getThreadCommandBuffer();
 	
-	cmdbuf[0] = 0x10002;
-	cmdbuf[1] = 0x20;
+	cmdbuf[0] = IPC_MakeHeader(0x1,0,2); // 0x10002
+	cmdbuf[1] = IPC_Desc_CurProcessHandle();
 
 	if((rc = svcSendSyncRequest(g_srv_handle)))return rc;
 
 	return cmdbuf[1];
 }
 
-Result srvGetServiceHandle(Handle* out, const char* name)
+Result srvGetServiceHandleDirect(Handle* out, const char* name)
 {
 	Result rc = 0;
 
-	/* Look in service-list given to us by loader. If we find find a match,
-	   we return it. */
-	Handle h = __get_handle_from_list(name);
-
-	if(h != 0) {
-		return svcDuplicateHandle(out, h);
-	}
-
-	/* Normal request to service manager. */
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x50100;
-	strcpy((char*) &cmdbuf[1], name);
+	cmdbuf[0] = IPC_MakeHeader(0x5,4,0); // 0x50100
+	strncpy((char*) &cmdbuf[1], name,8);
 	cmdbuf[3] = strlen(name);
 	cmdbuf[4] = 0x0;
 	
@@ -141,11 +133,25 @@ Result srvGetServiceHandle(Handle* out, const char* name)
 	return cmdbuf[1];
 }
 
+Result srvGetServiceHandle(Handle* out, const char* name)
+{
+	/* Look in service-list given to us by loader. If we find find a match,
+	   we return it. */
+	Handle h = __get_handle_from_list(name);
+
+	if(h != 0) {
+		return svcDuplicateHandle(out, h);
+	}
+
+	/* Normal request to service manager. */
+	return srvGetServiceHandleDirect(out, name);
+}
+
 Result srvRegisterService(Handle* out, const char* name, int maxSessions)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x30100;
-	strcpy((char*) &cmdbuf[1], name);
+	cmdbuf[0] = IPC_MakeHeader(0x3,4,0); // 0x30100
+	strncpy((char*) &cmdbuf[1], name,8);
 	cmdbuf[3] = strlen(name);
 	cmdbuf[4] = maxSessions;
 	
@@ -159,8 +165,8 @@ Result srvRegisterService(Handle* out, const char* name, int maxSessions)
 Result srvUnregisterService(const char* name)
 {
 	u32* cmdbuf = getThreadCommandBuffer();
-	cmdbuf[0] = 0x400C0;
-	strcpy((char*) &cmdbuf[1], name);
+	cmdbuf[0] = IPC_MakeHeader(0x4,3,0); // 0x400C0
+	strncpy((char*) &cmdbuf[1], name,8);
 	cmdbuf[3] = strlen(name);
 	
 	Result rc;
@@ -170,7 +176,7 @@ Result srvUnregisterService(const char* name)
 }
 
 // Old srv:pm interface, will only work on systems where srv:pm was a port (<7.X)
-Result srvPmInit()
+Result srvPmInit(void)
 {	
 	Result rc = 0;
 	
@@ -190,10 +196,10 @@ Result srvRegisterProcess(u32 procid, u32 count, void *serviceaccesscontrol)
 	
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x04030082; // <7.x
+	cmdbuf[0] = IPC_MakeHeader(0x403,2,2); // 0x4030082 // <7.x
 	cmdbuf[1] = procid;
 	cmdbuf[2] = count;
-	cmdbuf[3] = (count << 16) | 2;
+	cmdbuf[3] = IPC_Desc_StaticBuffer(count*4,0);
 	cmdbuf[4] = (u32)serviceaccesscontrol;
 	
 	if((rc = svcSendSyncRequest(g_srv_handle))) return rc;
@@ -207,7 +213,7 @@ Result srvUnregisterProcess(u32 procid)
 	
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = 0x04040040; // <7.x
+	cmdbuf[0] = IPC_MakeHeader(0x404,1,0); // 0x4040040 // <7.x
 	cmdbuf[1] = procid;
 	
 	if((rc = svcSendSyncRequest(g_srv_handle))) return rc;

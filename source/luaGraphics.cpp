@@ -172,7 +172,7 @@ static int lua_loadimg(lua_State *L)
 	u64 long_magic;
 	FS_path filePath=FS_makePath(PATH_CHAR, text);
 	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly(NULL, &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
 	Bitmap* bitmap;
 	if (magic == 0x5089){
