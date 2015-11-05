@@ -1368,7 +1368,7 @@ static int lua_addnews(lua_State *L){
 static int lua_setcpu(lua_State *L){
 	int argc = lua_gettop(L);
 	if(argc != 1 ) return luaL_error(L, "wrong number of arguments.");	
-	u8 cpu_clock = luaL_checkinteger(L,1);
+	u16 cpu_clock = luaL_checkinteger(L,1);
 	if (cpu_clock >= NEW_3DS_CLOCK){
 		osSetSpeedupEnable(1);
 		current_clock = NEW_3DS_CLOCK;
