@@ -37,6 +37,8 @@
 #include <3ds.h>
 #include "include/luaAudio.h"
 
+bool audioChannels[24];
+
 /* Custom CSND_playsound: 
  - Prevent audio desynchronization for Video module
  - Enable stereo sounds
@@ -79,8 +81,7 @@ void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data
 }
 
 void createDspBlock(ndspWaveBuf* waveBuf, u16 bps, u32 size, bool loop, u32* data){
-	if (bps == 1) waveBuf->data_pcm8 = (s8*)data;
-	else waveBuf->data_pcm16 = (s16*)data;
+	waveBuf->data_pcm16 = (s16*)data;
 	waveBuf->nsamples = size / bps;
 	waveBuf->looping = loop;
 	waveBuf->offset = 0;	

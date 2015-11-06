@@ -38,6 +38,7 @@
 #include "include/Graphics/Graphics.h"
 #include "include/ftp/ftp.h"
 #include "include/khax/khax.h"
+#include "include/luaAudio.h"
 
 const char *errMsg;
 unsigned char *buffer;
@@ -48,6 +49,7 @@ bool ftp_state;
 bool isTopLCDOn;
 bool isBottomLCDOn;
 bool isNinjhax2;
+extern bool audioChannels[24];
 
 int main(int argc, char **argv)
 {
@@ -73,14 +75,20 @@ int main(int argc, char **argv)
 	int restore;
 	
 	// Check user build and enables kernel access
-		if (nsInit()==0){
-			CIA_MODE = true;
-			nsExit();
-		}else CIA_MODE = false;
-		isNinjhax2 = false;
-		if (!hbInit()) khaxInit();
-		else isNinjhax2 = true;
+	if (nsInit()==0){
+		CIA_MODE = true;
+		nsExit();
+	}else CIA_MODE = false;
+	isNinjhax2 = false;
+	if (!hbInit()) khaxInit();
+	else isNinjhax2 = true;
 	
+	// Init Audio-Device
+	int i = 0;
+	for (i=0;i < 32; i++){
+		if ((!isNinjhax2) && (i < 0x08)) audioChannels[i] = true;
+		else audioChannels[i] = false;
+	}
 	
 	// Set main script
 	char path[256];
@@ -181,7 +189,7 @@ int main(int argc, char **argv)
 		}
 		if (ftp_state) ftp_exit();
 		if (isCSND){
-			csndExit();
+			ndspExit();
 			isCSND = false;
 		}
 		if (restore==2){
