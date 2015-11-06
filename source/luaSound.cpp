@@ -694,11 +694,11 @@ static int lua_openwav(lua_State *L)
 		if (raw_enc == 0x01) wav_file->encoding = CSND_ENCODING_PCM16;
 		else if (raw_enc == 0x11) wav_file->encoding = CSND_ENCODING_ADPCM;
 		wav_file->samplerate = samplerate;
+		wav_file->isPlaying = false;
 		wav_file->sourceFile = fileHandle;
 		if (audiotype == 1){
 			if (mem_size){
 				wav_file->moltiplier = 1;
-				wav_file->isPlaying = false;
 				wav_file->mem_size = (size-(pos+4));
 				while (wav_file->mem_size > STREAM_MAX_ALLOC){
 					wav_file->mem_size = wav_file->mem_size / 2;
@@ -746,13 +746,13 @@ static int lua_openwav(lua_State *L)
 				wav_file->audiobuf2 = NULL;
 				wav_file->size = size;
 				wav_file->startRead = 0;
+				wav_file->mem_size = 0;
 			}
 		}else{
 			// I must reordinate my buffer in order to play stereo sound (Thanks CSND/FS libraries .-.)
 			u32 size_tbp;
 			if (mem_size){
 				wav_file->moltiplier = 1;
-				wav_file->isPlaying = false;
 				wav_file->startRead = (pos+4);
 				wav_file->size = size;
 				wav_file->mem_size = (size-(pos+4));
@@ -766,6 +766,7 @@ static int lua_openwav(lua_State *L)
 				size_tbp = wav_file->mem_size;
 			}else{
 				tmp_buf = (u8*)linearAlloc((size-(pos+4)));
+				wav_file->mem_size = 0;
 				size_tbp = size-(pos+4);
 				wav_file->startRead = 0;
 				wav_file->size = (size_tbp)/2;
@@ -1030,11 +1031,11 @@ static int lua_playWav(lua_State *L)
 				if (src->encoding == CSND_ENCODING_ADPCM) raw_format = NDSP_FORMAT_MONO_ADPCM;
 				else raw_format = NDSP_FORMAT_MONO_PCM16;
 				ndspChnReset(ch);
+				ndspChnWaveBufClear(ch);
 				ndspChnSetInterp(ch, NDSP_INTERP_NONE);
 				ndspChnSetRate(ch, float(src->samplerate));
 				ndspChnSetFormat(ch, raw_format);
-				ndspChnWaveBufClear(ch);
-				ndspWaveBuf* waveBuf = (ndspWaveBuf*)malloc(sizeof(ndspWaveBuf));
+				ndspWaveBuf* waveBuf = (ndspWaveBuf*)calloc(1, sizeof(ndspWaveBuf));
 				createDspBlock(waveBuf, src->bytepersample, src->size, loop, (u32*)src->audiobuf);
 				ndspChnWaveBufAdd(ch, waveBuf);
 			}else{
