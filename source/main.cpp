@@ -118,15 +118,17 @@ int main(int argc, char **argv)
 		// Load main script
 		FS_path filePath=FS_makePath(PATH_CHAR, path);
 		FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-		FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-		FSFILE_GetSize(fileHandle, &size);
-		buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
-		FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
-		buffer[size]=0;
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		errMsg = runScript((const char*)buffer, true);
-		free(buffer);
+		Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		if (!ret){
+			FSFILE_GetSize(fileHandle, &size);
+			buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
+			FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
+			buffer[size]=0;
+			FSFILE_Close(fileHandle);
+			svcCloseHandle(fileHandle);
+			errMsg = runScript((const char*)buffer, true);
+			free(buffer);
+		}else errMsg = "index.lua file not found.";
 		
 		// Force LCDs power on
 		if ((!isTopLCDOn) || (!isBottomLCDOn)){
