@@ -1025,7 +1025,7 @@ static int lua_regsound(lua_State *L)
 	return 1;
 }
 
-static int lua_savemono(lua_State *L)
+static int lua_save(lua_State *L)
 {
     int argc = lua_gettop(L);
     if (argc != 2) return luaL_error(L, "wrong number of arguments");
@@ -1048,16 +1048,19 @@ static int lua_savemono(lua_State *L)
 	FSFILE_Write(fileHandle, &bytesWritten, 8, "WAVEfmt ", 8, FS_WRITE_FLUSH);
 	four_bytes = 16;
 	FSFILE_Write(fileHandle, &bytesWritten, 16, &four_bytes, 4, FS_WRITE_FLUSH);
-	FSFILE_Write(fileHandle, &bytesWritten, 20, &(src->encoding), 2, FS_WRITE_FLUSH);
+	two_bytes = 0x01;
+	if (src->encoding == CSND_ENCODING_ADPCM) two_bytes = 0x11;
+	FSFILE_Write(fileHandle, &bytesWritten, 20, &two_bytes, 2, FS_WRITE_FLUSH);
+	two_bytes = src->audiotype;
 	FSFILE_Write(fileHandle, &bytesWritten, 22, &two_bytes, 2, FS_WRITE_FLUSH);
-	FSFILE_Write(fileHandle, &bytesWritten, 24, &(src->samplerate), 4, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 24, &src->samplerate, 4, FS_WRITE_FLUSH);
 	four_bytes = src->samplerate * src->bytepersample;
 	FSFILE_Write(fileHandle, &bytesWritten, 28, &four_bytes, 4, FS_WRITE_FLUSH);
 	two_bytes = src->bytepersample*8;
-	FSFILE_Write(fileHandle, &bytesWritten, 32, &(src->bytepersample), 2, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 32, &src->bytepersample, 2, FS_WRITE_FLUSH);
 	FSFILE_Write(fileHandle, &bytesWritten, 34, &two_bytes, 2, FS_WRITE_FLUSH);
 	FSFILE_Write(fileHandle, &bytesWritten, 36, "data", 4, FS_WRITE_FLUSH);
-	FSFILE_Write(fileHandle, &bytesWritten, 40, &(src->size), 4, FS_WRITE_FLUSH);
+	FSFILE_Write(fileHandle, &bytesWritten, 40, &src->size, 4, FS_WRITE_FLUSH);
 	FSFILE_Write(fileHandle, &bytesWritten, 44, src->audiobuf, src->size, FS_WRITE_FLUSH);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
@@ -1165,7 +1168,7 @@ static const luaL_Reg Sound_functions[] = {
   {"isPlaying",				lua_wisPlaying},
   {"register",				lua_regsound},
   {"updateStream",			lua_updatestream},
-  {"saveWav",				lua_savemono},
+  {"saveWav",				lua_save},
   {0, 0}
 };
 
