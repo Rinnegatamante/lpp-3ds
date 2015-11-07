@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	aptInit();
 	gfxInitDefault();
 	acInit();
-	initCfgu();
+	cfguInit();
 	httpcInit();
 	ptmInit();
 	hidInit();
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 			}else if(hidKeysDown() & KEY_Y){
 				if (!ftp_state){
 					u32 wifiStatus;
-					if ((u32)ACU_GetWifiStatus(NULL, &wifiStatus) !=  0xE0A09D2E){
+					if ((u32)ACU_GetWifiStatus(&wifiStatus) !=  0xE0A09D2E){
 						if (wifiStatus != 0){
 							ftp_init();
 							connfd = -1;
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 	hbExit();
 	acExit();
 	httpcExit();
-	exitCfgu();
+	cfguExit();
 	gfxExit();
 	aptExit();
 	srvExit();

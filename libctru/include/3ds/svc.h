@@ -251,7 +251,7 @@ static inline void* getThreadLocalStorage(void)
 	__asm__ ("mrc p15, 0, %[data], c13, c0, 3" : [data] "=r" (ret));
 	return ret;
 }
-Handle __get_handle_from_list(const char* name);
+
 /**
  * @brief Gets the thread command buffer.
  * @return The thread command bufger.

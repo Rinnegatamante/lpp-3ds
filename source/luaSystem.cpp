@@ -542,7 +542,7 @@ static int lua_batterylv(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u8 batteryLevel;
-	PTMU_GetBatteryLevel(NULL, &batteryLevel);
+	PTMU_GetBatteryLevel(&batteryLevel);
 	lua_pushinteger(L,batteryLevel);
 	return 1;
 }
@@ -551,7 +551,7 @@ static int lua_batterycharge(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	u8 batteryLevel;
-	PTMU_GetBatteryChargeState(NULL, &batteryLevel);
+	PTMU_GetBatteryChargeState(&batteryLevel);
 	lua_pushboolean(L,batteryLevel);
 	return 1;
 }

@@ -203,7 +203,7 @@ static int lua_shell(lua_State *L)
 {
         if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
 		u8 shell;
-		PTMU_GetShellState(NULL, &shell);
+		PTMU_GetShellState(&shell);
 		lua_pushboolean(L, shell);
 		return 1;
 }

@@ -1,6 +1,6 @@
 /**
  * @file csnd.h
- * @brief CSND service.
+ * @brief CSND service. Usage of this service is deprecated in favor of NDSP.
  */
 #pragma once
 
@@ -152,7 +152,7 @@ Result CSND_Reset(void);
 Result csndInit(void);
 
 /// Exits CSND.
-Result csndExit(void);
+void csndExit(void);
 
 /**
  * @brief Adds a command to the list, returning a buffer to write arguments to.
