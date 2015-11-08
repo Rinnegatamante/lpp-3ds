@@ -56,156 +56,97 @@ Handle streamThread;
 char pcmout[2048];
 extern u8* tmp_buf;
 
-void streamOGG(void* arg){ //TODO: Solve looping sound issues
+void streamOGG(void* arg){
+	
+	// Fetching Music struct from main thread
 	Music* src = (Music*)arg;
-	while(1) {
+	while(1) {	
+		
+		// Waiting for updateStream event
 		svcWaitSynchronization(updateStream, U64_MAX);
 		svcClearEvent(updateStream);
-		u32 bytesRead;
 		
-			if(closeStream){
-				closeStream = false;
-				svcExitThread();
-			}
+		// Close the thread if closeStream event received
+		if(closeStream){
+			closeStream = false;
+			svcExitThread();
+		}
+		
+		// Check if the current stream is paused or not
+		if (src->isPlaying){
+		
+			// Check if a free buffer is available
+			if (src->wavebuf2 == NULL){
 			
-			// Initializing libogg and vorbisfile
-			int eof=0;
-			static int current_section;
-	
-			u32 control;
-			u32 total = src->size;
-			u32 block_size;
-			u32 package_max_size;
-			if (src->package_size == 0){
-				block_size = src->mem_size / 8;
-				package_max_size = block_size;
-			}else{
-				block_size = src->total_packages_size / (src->moltiplier - 1);
-				package_max_size = src->mem_size / 8;
-			}
-			if (src->audiobuf2 == NULL) control = src->samplerate * 2 * ((osGetTime() - src->tick) / 1000);
-			else{
-				control = src->samplerate * 4 * ((osGetTime() - src->tick) / 1000);
-				total = total * 2;
-			}
-			if ((src->streamLoop) && (control >= total * src->loop_index)) src->loop_index = src->loop_index + 1;
-			if ((control >= total) && (src->isPlaying) && (!src->streamLoop)){
-					src->isPlaying = false;
-					src->tick = (osGetTime()-src->tick);
-					src->moltiplier = 1;
-					CSND_SetPlayState(src->ch, 0);
-					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-					CSND_UpdateInfo(0);
-					ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-					if (src->audiobuf2 == NULL){ //Mono file
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-		
-							// EOF
-							eof=1;
+				// Check if file reached EOF
+				if (src->audio_pointer >= src->size){
 				
-						} else {
+					// Check if playback ended
+					if (!ndspChnIsPlaying(src->ch)){
+						src->isPlaying = false;
+						src->tick = (osGetTime()-src->tick);
+					}
 					
-							// Copying decoded block to PCM16 audiobuffer
-							memcpy(&src->audiobuf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;
-						}
-					}
-				}else{ //Stereo file
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) eof=1;
-						else {
-		
-							// Copying decoded block to PCM16 audiobuffer
-							memcpy(&tmp_buf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;	
-						}
-					}
+					continue;
+				}
 				
-						// Separating left and right channels
-					int z;
-					int j = 0;
-					for (z=0; z < src->mem_size; z=z+4){
-						src->audiobuf[j] = tmp_buf[z];
-						src->audiobuf[j+1] = tmp_buf[z+1];
-						src->audiobuf2[j] = tmp_buf[z+2];
-						src->audiobuf2[j+1] = tmp_buf[z+3];
-						j=j+2;
-						if (j >= src->mem_size / 2) j = 0;
+				// Initializing libogg and vorbisfile
+				int eof=0;
+				static int current_section;
+				OggVorbis_File* vf = (OggVorbis_File*)src->sourceFile;
+				
+				// Swap audiobuffers
+				u8* tmp = src->audiobuf;
+				src->audiobuf = src->audiobuf2;
+				src->audiobuf2 = tmp;
+				
+				// Create a new block for DSP service
+				u32 bytesRead;
+				src->wavebuf2 = (ndspWaveBuf*)calloc(1,sizeof(ndspWaveBuf));
+				createDspBlock(src->wavebuf2, src->bytepersample, src->mem_size, 0, (u32*)src->audiobuf);
+				populatePurgeTable(src, src->wavebuf2);
+				ndspChnWaveBufAdd(src->ch, src->wavebuf2);
+				FSFILE_Read(src->sourceFile, &bytesRead, src->audio_pointer, src->audiobuf, src->mem_size);
+				src->audio_pointer = src->audio_pointer + src->mem_size;
+				
+				// Decoding Vorbis audiobuffer
+				int i = 0;
+				while(!eof){
+					long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) eof=1;
+					else{
+						
+						// Copying decoded block to PCM16 audiobuffer
+						memcpy(&src->audiobuf[i],pcmout,ret);
+						i = i + ret;
+						if ((i >= src->mem_size)) break;
+			
 					}
 				}
-				src->moltiplier = 1;
+			
 			}
-			if ((control >= (block_size * src->moltiplier)) && (src->isPlaying)){
-				if (src->audiobuf2 == NULL){ //Mono file
-						int i = 0;
-						int j = src->audio_pointer;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								if (!src->streamLoop) eof=1;
-								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-								src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
-						}
-						if (j + src->package_size >= src->mem_size){
-							u32 frag_size = src->mem_size - j;
-							u32 frag2_size = src->package_size-frag_size;
-							memcpy(&src->audiobuf[j],tmp_buf,frag_size);
-							memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
-							src->audio_pointer = frag2_size;
-						}else{
-							memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
-							src->audio_pointer = j + src->package_size;
-						}
-						src->total_packages_size = src->total_packages_size + src->package_size;
-					}else{ //Stereo file
-						int i = 0;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								if (!src->streamLoop) eof=1;
-								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-							    src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
-						}
-				
-						// Separating left and right channels
-						int z;
-						int j = src->audio_pointer;
-						for (z=0; z < src->package_size; z=z+4){
-							src->audiobuf[j] = tmp_buf[z];
-							src->audiobuf[j+1] = tmp_buf[z+1];
-							src->audiobuf2[j] = tmp_buf[z+2];
-							src->audiobuf2[j+1] = tmp_buf[z+3];
-							j=j+2;
-							if (j >= src->mem_size / 2) j = 0;
-						}
-						src->audio_pointer = j;
-						src->total_packages_size = src->total_packages_size + src->package_size;
-					}
-					src->moltiplier = src->moltiplier + 1;
+			
+			// Check if a block playback is finished
+			u32 curSample = ndspChnGetSamplePos(src->ch);
+			if (src->lastCheck > curSample){
+			
+				// Prepare next block
+				src->wavebuf = src->wavebuf2;
+				src->wavebuf2 = NULL;
+			
 			}
+			
+			// Update sample position tick
+			src->lastCheck = curSample;
+		
+		}
+			
 	}
 }
 
 void streamWAV(void* arg){
 
-	// Fetching wav struct from main thread
+	// Fetching Music struct from main thread
 	Music* src = (Music*)arg;
 	while(1) {
 	
@@ -226,7 +167,16 @@ void streamWAV(void* arg){
 			if (src->wavebuf2 == NULL){
 			
 				// Check if file reached EOF
-				if (src->audio_pointer >= src->size) continue;
+				if (src->audio_pointer >= src->size){
+				
+					// Check if playback ended
+					if (!ndspChnIsPlaying(src->ch)){
+						src->isPlaying = false;
+						src->tick = (osGetTime()-src->tick);
+					}
+					
+					continue;
+				}
 				
 				// Swap audiobuffers
 				u8* tmp = src->audiobuf;
@@ -312,10 +262,6 @@ static int lua_openogg(lua_State *L)
 	songFile->encoding = CSND_ENCODING_VORBIS;
 	songFile->size = ov_time_total(vf,-1) * 2 * my_info->rate;
 	songFile->startRead = 0;
-	songFile->total_packages_size = 0;
-	songFile->loop_index = 1;
-	songFile->package_size = 0;
-	songFile->audio_pointer = 0;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->wavebuf = NULL;
@@ -364,19 +310,20 @@ static int lua_openogg(lua_State *L)
 	// Decoding OGG buffer
 	i = 0;
 	if (mem_size){
-		songFile->moltiplier = 1;
-		songFile->mem_size = songFile->size / 2;
+		songFile->mem_size = songFile->size;
 		while (songFile->mem_size > STREAM_MAX_ALLOC){
+			if ((songFile->mem_size % 2) == 1) songFile->mem_size++;
 			songFile->mem_size = songFile->mem_size / 2;
 		}
+		if ((songFile->mem_size % 2) == 1) songFile->mem_size++;
 		songFile->audiobuf = (u8*)linearAlloc(songFile->mem_size);
 		songFile->audiobuf2 = (u8*)linearAlloc(songFile->mem_size);
+		songFile->audio_pointer = songFile->mem_size;
 	}else{
 		songFile->audiobuf = (u8*)linearAlloc(songFile->size);
 		songFile->mem_size = 0;
-	}
-		
-	songFile->audiobuf2 = NULL;
+		songFile->audiobuf2 = NULL;
+	}		
 	while(!eof){
 		long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
 		if (ret == 0) eof=1;
@@ -717,6 +664,7 @@ static int lua_play(lua_State *L)
 	ndspWaveBuf* waveBuf = (ndspWaveBuf*)calloc(1, sizeof(ndspWaveBuf));
 	if (src->mem_size > 0) createDspBlock(waveBuf, src->bytepersample, src->mem_size, 0, (u32*)src->audiobuf);
 	else createDspBlock(waveBuf, src->bytepersample, src->size, loop, (u32*)src->audiobuf);
+	src->blocks = NULL;
 	populatePurgeTable(src, waveBuf);
 	ndspChnWaveBufAdd(ch, waveBuf);
 	src->tick = osGetTime();
@@ -934,13 +882,8 @@ int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (src->isPlaying){
-		if (src->streamLoop && src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L, ((osGetTime() - src->tick) / 1000) / src->loop_index);
-		else lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
-	}else{
-		if (src->streamLoop && src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L, (src->tick / 1000) / src->loop_index);
-		else lua_pushinteger(L, src->tick / 1000);
-	}
+	if (src->isPlaying) lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
+	else lua_pushinteger(L, src->tick / 1000);
 	return 1;
 }
 
