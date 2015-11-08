@@ -48,38 +48,6 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define STREAM_MAX_ALLOC 524288
 
-struct Music{
-	u32 magic;
-	u32 samplerate;
-	u16 bytepersample;
-	u8* audiobuf;
-	u8* audiobuf2;
-	ndspWaveBuf* wavebuf;
-	ndspWaveBuf* wavebuf2;
-	u16 lastCheck;
-	u32 size;
-	u32 mem_size;
-	Handle sourceFile;
-	u32 startRead;
-	char author[256];
-	char title[256];
-	u32 moltiplier; // To remove
-	u32 resumeSample;
-	u64 tick;
-	bool isPlaying;
-	u32 ch;
-	u32 ch2; // To remove
-	u8 audiotype;
-	bool streamLoop;
-	bool big_endian;
-	u8 encoding;
-	u32* thread;
-	u32 audio_pointer;
-	u32 package_size;
-	u32 total_packages_size;
-	u32 loop_index;
-};
-
 extern bool audioChannels[24];
 extern bool isNinjhax2;
 volatile bool closeStream = false;
@@ -268,10 +236,22 @@ void streamWAV(void* arg){
 				// Create a new block for DSP service
 				u32 bytesRead;
 				src->wavebuf2 = (ndspWaveBuf*)calloc(1,sizeof(ndspWaveBuf));
-				FSFILE_Read(src->sourceFile, &bytesRead, src->audio_pointer, src->audiobuf, src->mem_size);
 				createDspBlock(src->wavebuf2, src->bytepersample, src->mem_size, 0, (u32*)src->audiobuf);
-				src->audio_pointer = src->audio_pointer + src->mem_size;
+				populatePurgeTable(src, src->wavebuf2);
 				ndspChnWaveBufAdd(src->ch, src->wavebuf2);
+				FSFILE_Read(src->sourceFile, &bytesRead, src->audio_pointer, src->audiobuf, src->mem_size);
+				src->audio_pointer = src->audio_pointer + src->mem_size;
+
+				// Changing endianess if Big Endian
+				if (src->big_endian){
+					u64 i = 0;
+					while (i < src->mem_size){
+						u8 tmp = src->audiobuf[i];
+						src->audiobuf[i] = src->audiobuf[i+1];
+						src->audiobuf[i+1] = tmp;
+						i=i+2;	
+					}
+				}
 			
 			}
 			
@@ -637,27 +617,29 @@ static int lua_openaiff(lua_State *L)
 	songFile->wavebuf = NULL;
 	songFile->wavebuf2 = NULL;
 	songFile->isPlaying = false;
+	songFile->size = size-(pos+4);
+	songFile->startRead = 0;
 	
 	// Extracting audiobuffer
 	int stbp = 0;
 	if (mem_size){
-		songFile->moltiplier = 1;
-		
 		songFile->mem_size = (size-(pos+4));
-		while (songFile->mem_size > STREAM_MAX_ALLOC * 2){
+		while (songFile->mem_size > STREAM_MAX_ALLOC){
+			if ((songFile->mem_size % 2) == 1) songFile->mem_size++;
 			songFile->mem_size = songFile->mem_size / 2;
 		}
+		if ((songFile->mem_size % 2) == 1) songFile->mem_size++;
 		songFile->sourceFile = fileHandle;
 		songFile->audiobuf = (u8*)linearAlloc(songFile->mem_size);
 		songFile->audiobuf2 = (u8*)linearAlloc(songFile->mem_size);
 		songFile->startRead = (pos+4);
 		FSFILE_Read(fileHandle, &bytesRead, songFile->startRead, songFile->audiobuf, songFile->mem_size);	
-		songFile->size = size;
+		songFile->audio_pointer = songFile->startRead + songFile->mem_size;
 		stbp = songFile->mem_size;
 	}else{
-		songFile->audiobuf = (u8*)linearAlloc(size-(pos+4));
-		FSFILE_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, size-(pos+4));	
-		stbp = size-(pos+4);
+		songFile->audiobuf = (u8*)linearAlloc(songFile->size);
+		FSFILE_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, songFile->size);	
+		stbp = songFile->size;
 	}
 	
 	// Changing endianess
@@ -666,9 +648,7 @@ static int lua_openaiff(lua_State *L)
 		u8 tmp = songFile->audiobuf[i];
 		songFile->audiobuf[i] = songFile->audiobuf[i+1];
 		songFile->audiobuf[i+1] = tmp;
-		i=i+2;
-		songFile->size = size-(pos+4);
-		songFile->startRead = 0;		
+		i=i+2;	
 	}
 	
 	// Pushing memory block to LUA stack
@@ -697,7 +677,7 @@ static int lua_soundinit(lua_State *L)
 	return 0;
 }
 
-static int lua_playWav(lua_State *L)
+static int lua_play(lua_State *L)
 {
 	
 	// Init Function
@@ -737,6 +717,7 @@ static int lua_playWav(lua_State *L)
 	ndspWaveBuf* waveBuf = (ndspWaveBuf*)calloc(1, sizeof(ndspWaveBuf));
 	if (src->mem_size > 0) createDspBlock(waveBuf, src->bytepersample, src->mem_size, 0, (u32*)src->audiobuf);
 	else createDspBlock(waveBuf, src->bytepersample, src->size, loop, (u32*)src->audiobuf);
+	populatePurgeTable(src, waveBuf);
 	ndspChnWaveBufAdd(ch, waveBuf);
 	src->tick = osGetTime();
 	src->wavebuf = waveBuf;
@@ -758,7 +739,7 @@ static int lua_playWav(lua_State *L)
 	return 0;
 }
 
-static int lua_closeWav(lua_State *L)
+static int lua_closesong(lua_State *L)
 {
 	
 	// Init function
@@ -784,14 +765,18 @@ static int lua_closeWav(lua_State *L)
 			FSFILE_Close(src->sourceFile);
 			svcCloseHandle(src->sourceFile);
 		}
+		purgeTable(src->blocks);
 	}
 	
 	// Purging everything
+	ndspChnReset(src->ch);
 	ndspChnWaveBufClear(src->ch);
 	audioChannels[src->ch] = false;
 	linearFree(src->audiobuf);
-	free(src->wavebuf);
-	if (src->wavebuf2 != NULL) free(src->wavebuf2);
+	if (src->mem_size == 0){
+		free(src->wavebuf);
+		if (src->wavebuf2 != NULL) free(src->wavebuf2);
+	}
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (tmp_buf != NULL) linearFree(tmp_buf);
 	free(src);
@@ -1017,8 +1002,8 @@ static const luaL_Reg Sound_functions[] = {
   {"openOgg",				lua_openogg},
   {"openWav",				lua_openwav},
   {"openAiff",				lua_openaiff},
-  {"close",					lua_closeWav},
-  {"play",					lua_playWav},
+  {"close",					lua_closesong},
+  {"play",					lua_play},
   {"init",					lua_soundinit},
   {"term",					lua_soundend},
   {"pause",					lua_pause},
@@ -1030,7 +1015,7 @@ static const luaL_Reg Sound_functions[] = {
   {"getTotalTime",			lua_getTotalTime},
   {"resume",				lua_resume},
   {"isPlaying",				lua_wisPlaying},
-  {"register",				lua_regsound},
+  {"record",				lua_regsound},
   {"updateStream",			lua_updatestream},
   {"saveWav",				lua_save},
   {0, 0}

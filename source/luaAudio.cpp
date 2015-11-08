@@ -39,11 +39,7 @@
 
 bool audioChannels[24];
 
-/* Custom CSND_playsound: 
- - Prevent audio desynchronization for Video module
- - Enable stereo sounds
- - Add ADPCM codec support
-*/
+// To remove
 void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data1, u32 size, float vol, float pan){
 	u32 paddr0 = 0, paddr1 = 0;
 
@@ -80,10 +76,36 @@ void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data
 	
 }
 
+// createDspBlock: Create a new block for DSP service
 void createDspBlock(ndspWaveBuf* waveBuf, u16 bps, u32 size, bool loop, u32* data){
-	waveBuf->data_pcm16 = (s16*)data;
+	waveBuf->data_vaddr = (u32)data;
 	waveBuf->nsamples = size / bps;
 	waveBuf->looping = loop;
 	waveBuf->offset = 0;	
 	DSP_FlushDataCache(data, size);
+}
+
+// populatePurgeTable: Create a new block for DSP service
+void populatePurgeTable(Music* songFile, ndspWaveBuf* waveBuf){
+	PurgeTable* tmp = songFile->blocks;
+	if (tmp == NULL){
+		tmp = (PurgeTable*)(malloc(sizeof(PurgeTable)));
+		tmp->pointer = waveBuf;
+		tmp->next == NULL;
+	}else{
+		while (tmp->next != NULL) tmp = tmp->next;
+		tmp->next = (PurgeTable*)(malloc(sizeof(PurgeTable)));
+		tmp->next->pointer = waveBuf;
+		tmp->next->next == NULL;
+	}
+}
+
+// purgeTable: Free any entry in PurgeTable struct
+void purgeTable(PurgeTable* tbl){
+	while (tbl != NULL){
+		PurgeTable* tmp = tbl;
+		tbl = tbl->next;
+		free(tmp->pointer);
+		free(tmp);
+	}
 }
