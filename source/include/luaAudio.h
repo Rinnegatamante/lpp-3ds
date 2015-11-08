@@ -57,12 +57,10 @@ struct Music{
 	u32 startRead;
 	char author[256];
 	char title[256];
-	u32 moltiplier; // To remove
 	u32 resumeSample;
 	u64 tick;
 	bool isPlaying;
 	u32 ch;
-	u32 ch2; // To remove
 	u8 audiotype;
 	bool streamLoop;
 	bool big_endian;
@@ -70,9 +68,6 @@ struct Music{
 	PurgeTable* blocks;
 	u32* thread;
 	u32 audio_pointer;
-	u32 package_size;
-	u32 total_packages_size;
-	u32 loop_index;
 };
 
 // Ausiliar audio functions prototypes
