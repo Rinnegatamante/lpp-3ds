@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 	
 	// Init Audio-Device
 	int i = 0;
-	for (i=0;i < 32; i++){
+	for (i=0;i < 24; i++){
 		if (csndAccess || ((!isNinjhax2) && (i < 0x08))) audioChannels[i] = true;
 		else audioChannels[i] = false;
 	}

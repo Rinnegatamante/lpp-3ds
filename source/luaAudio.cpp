@@ -39,7 +39,7 @@
 
 bool audioChannels[24];
 
-// To remove
+// Custom playsound function: Prevent desynchronization (luaVideo) and allows stereo sounds max volume setting
 void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data1, u32 size, float vol, float pan){
 	u32 paddr0 = 0, paddr1 = 0;
 
@@ -65,7 +65,8 @@ void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data
 	flags &= ~0xFFFF001F;
 	flags |= SOUND_ENABLE | SOUND_CHANNEL(chn) | (timer << 16);
 
-	CSND_SetChnRegs(flags, paddr0, paddr1, size, CSND_VOL(vol, pan), 0);
+	if (pan == 2.0) CSND_SetChnRegs(flags, paddr0, paddr1, size, 0xFFFFFFFF, 0);
+	else CSND_SetChnRegs(flags, paddr0, paddr1, size, CSND_VOL(vol, pan), 0);
 
 	if (loopMode == CSND_LOOPMODE_NORMAL && paddr1 > paddr0)
 	{

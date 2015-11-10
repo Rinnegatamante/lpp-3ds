@@ -651,6 +651,7 @@ static int lua_openwav_old(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x46464952){
 		wav *wav_file = (wav*)malloc(sizeof(wav));
+		wav_file->ch = 0xDEADBEEF;
 		strcpy(wav_file->author,"");
 		strcpy(wav_file->title,"");
 		u64 size;
@@ -934,6 +935,7 @@ static int lua_openaiff_old(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 8, &magic, 4);
 	if (magic == 0x46464941){
 	wav *wav_file = (wav*)malloc(sizeof(wav));
+	wav_file->ch = 0xDEADBEEF;
 	strcpy(wav_file->author,"");
 	strcpy(wav_file->title,"");
 	wav_file->encoding = CSND_ENCODING_PCM16;
@@ -1175,6 +1177,7 @@ static int lua_openogg(lua_State *L)
 	
 	// Allocating music info
 	Music* songFile = (Music*)malloc(sizeof(Music));
+	songFile->ch = 0xDEADBEEF;
 	songFile->magic = 0x4C534E44;
 	vorbis_info* my_info = ov_info(vf,-1);
 	songFile->samplerate = my_info->rate;
@@ -1302,6 +1305,7 @@ static int lua_openwav(lua_State *L)
 	
 		// Init wav struct
 		Music* songFile = (Music*)malloc(sizeof(Music));
+		songFile->ch = 0xDEADBEEF;
 		strcpy(songFile->author,"");
 		strcpy(songFile->title,"");
 		u64 size;
@@ -1431,6 +1435,7 @@ static int lua_openaiff(lua_State *L)
 	FSFILE_Read(fileHandle, &bytesRead, 8, &magic, 4);
 	if (magic != 0x46464941) return luaL_error(L, "corrupt AIFF file");
 	Music* songFile = (Music*)malloc(sizeof(Music));
+	songFile->ch = 0xDEADBEEF;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->encoding = CSND_ENCODING_PCM16;
@@ -1556,12 +1561,15 @@ static int lua_play(lua_State *L)
 	if (argc == 3) interp = luaL_checkinteger(L, 3);
 	
 	// Selecting a free channel
-	int ch = 0x00;
-	while (audioChannels[ch]){
-		ch++;
-		if (ch > 24) return luaL_error(L, "audio device is busy");
+	int ch = src->ch;
+	if (ch == 0xDEADBEEF){
+		ch = 0;
+		while (audioChannels[ch]){
+			ch++;
+			if (ch > 24) return luaL_error(L, "audio device is busy");
+		}
+		audioChannels[ch] = true;
 	}
-	audioChannels[ch] = true;
 	
 	// Non native Audiocodecs support
 	ThreadFunc streamFunction = streamWAV_DSP;
@@ -1621,19 +1629,23 @@ static int lua_play_old(lua_State *L)
 	else interp = SOUND_LINEAR_INTERP;
 	
 	// Selecting free channels
-	int ch = 0x08;
-	while (audioChannels[ch]){
-		ch++;
-		if (ch > 24) return luaL_error(L, "audio device is busy");
-	}
-	audioChannels[ch] = true;
-	int ch2 = ch + 1;
-	if (src->audiobuf2 != NULL){
-		while (audioChannels[ch2]){
-			ch2++;
-			if (ch2 > 24) return luaL_error(L, "audio device is busy");
+	int ch = src->ch;
+	int ch2 = src->ch2;
+	if (src->ch == 0xDEADBEEF){
+		ch = 0x08;
+		while (audioChannels[ch]){
+			ch++;
+			if (ch > 24) return luaL_error(L, "audio device is busy");
 		}
-		audioChannels[ch2] = true;
+		audioChannels[ch] = true;
+		ch2 = ch + 1;
+		if (src->audiobuf2 != NULL){
+			while (audioChannels[ch2]){
+				ch2++;
+				if (ch2 > 24) return luaL_error(L, "audio device is busy");
+			}
+			audioChannels[ch2] = true;
+		}
 	}
 	
 	bool non_native_encode = false;
@@ -1676,20 +1688,20 @@ static int lua_play_old(lua_State *L)
 			svcSignalEvent(updateStream);
 			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
 			if (interp != 0xDEADBEEF){
-				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 1.0, 1.0);
-				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 1.0, -1.0);
+				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 1.0, -1.0);
+				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 1.0, 1.0);
 			}else{
-				My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 1.0, 1.0);
-				My_CSND_playsound(ch2, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 1.0, -1.0);
+				My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 1.0, -1.0);
+				My_CSND_playsound(ch2, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 1.0, 1.0);
 			}
 		}else{
 			u32 looping = loop ? SOUND_REPEAT : SOUND_ONE_SHOT;
 			if (interp != 0xDEADBEEF){
-				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 1.0);
-				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 1.0, -1.0);
+				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, -1.0);
+				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 1.0, 1.0);
 			}else{
-				My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 1.0);
-				My_CSND_playsound(ch2, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 1.0, -1.0);
+				My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, -1.0);
+				My_CSND_playsound(ch2, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 1.0, 1.0);
 			}
 		}
 		src->ch = ch;
@@ -1733,18 +1745,14 @@ static int lua_closesong(lua_State *L)
 			FSFILE_Close(src->sourceFile);
 			svcCloseHandle(src->sourceFile);
 		}
-		purgeTable(src->blocks);
 	}
 	
 	// Purging everything
+	purgeTable(src->blocks);
 	ndspChnReset(src->ch);
 	ndspChnWaveBufClear(src->ch);
 	audioChannels[src->ch] = false;
 	linearFree(src->audiobuf);
-	if (src->mem_size == 0){
-		free(src->wavebuf);
-		if (src->wavebuf2 != NULL) free(src->wavebuf2);
-	}
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (tmp_buf != NULL) linearFree(tmp_buf);
 	free(src);
@@ -1933,6 +1941,7 @@ static int lua_regsound_old(lua_State *L)
 	linearFree(audiobuf);
 	
 	wav* songFile = (wav*)malloc(sizeof(wav));
+	songFile->ch = 0xDEADBEEF;
 	songFile->audiobuf = nomute_audiobuf;
 	songFile->audiobuf2 = NULL;
 	songFile->big_endian = false;
@@ -2155,6 +2164,16 @@ static int lua_updatestream(lua_State *L){
 	return 0;
 }
 
+static int lua_service(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	char srv[9];
+	if (csndAccess) sprintf(srv,"csnd:SND");
+	else sprintf(srv,"dsp::DSP");
+	lua_pushstring(L, srv);
+	return 0;
+}
+
 //Register our Sound Functions
 static const luaL_Reg Sound_DSP_functions[] = {
 	{"openOgg",					lua_openogg},
@@ -2176,6 +2195,7 @@ static const luaL_Reg Sound_DSP_functions[] = {
 	{"record",					lua_regsound},
 	{"updateStream",			lua_updatestream},
 	{"saveWav",					lua_save},
+	{"getService",				lua_service},
 	{0, 0}
 };
 
@@ -2199,6 +2219,7 @@ static const luaL_Reg Sound_CSND_functions[] = {
 	{"record",					lua_regsound_old},
 	{"updateStream",			lua_updatestream},
 	{"saveWav",					lua_save_old},
+	{"getService",				lua_service},
 	{0, 0}
 };
 
