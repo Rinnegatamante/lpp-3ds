@@ -49,6 +49,7 @@ bool ftp_state;
 bool isTopLCDOn;
 bool isBottomLCDOn;
 bool isNinjhax2;
+bool csndAccess;
 extern bool audioChannels[24];
 
 int main(int argc, char **argv)
@@ -83,10 +84,16 @@ int main(int argc, char **argv)
 	if (!hbInit()) khaxInit();
 	else isNinjhax2 = true;
 	
+	// Select Audio System (csnd:SND preferred)
+	if (csndInit() == 0){
+		csndAccess = true;
+		csndExit();
+	}else csndAccess = false;
+	
 	// Init Audio-Device
 	int i = 0;
 	for (i=0;i < 32; i++){
-		if ((!isNinjhax2) && (i < 0x08)) audioChannels[i] = true;
+		if (csndAccess || ((!isNinjhax2) && (i < 0x08))) audioChannels[i] = true;
 		else audioChannels[i] = false;
 	}
 	
@@ -191,7 +198,8 @@ int main(int argc, char **argv)
 		}
 		if (ftp_state) ftp_exit();
 		if (isCSND){
-			ndspExit();
+			if (csndAccess) csndExit();
+			else ndspExit();
 			isCSND = false;
 		}
 		if (restore==2){
