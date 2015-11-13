@@ -36,7 +36,7 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/Graphics/Graphics.h"
+#include "include/graphics/Graphics.h"
 #include "include/Archives.h"
 
 #define stringify(str) #str

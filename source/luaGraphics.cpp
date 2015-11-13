@@ -33,7 +33,7 @@
 #-----------------------------------------------------------------------------------------------------------------------*/
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/Graphics/Graphics.h"
+#include "include/graphics/Graphics.h"
 
 int cur_screen;
 
