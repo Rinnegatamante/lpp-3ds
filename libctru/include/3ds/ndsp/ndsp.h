@@ -7,27 +7,27 @@
 ///@name Data types
 ///@{
 /// Sound output modes.
-enum
+typedef enum
 {
 	NDSP_OUTPUT_MONO     = 0, ///< Mono sound
 	NDSP_OUTPUT_STEREO   = 1, ///< Stereo sound
 	NDSP_OUTPUT_SURROUND = 2, ///< 3D Surround sound
-};
+} ndspOutputMode;
 
 // Clipping modes.
-enum
+typedef enum
 {
 	NDSP_CLIP_NORMAL = 0, ///< "Normal" clipping mode (?)
 	NDSP_CLIP_SOFT   = 1, ///< "Soft" clipping mode (?)
-};
+} ndspClippingMode;
 
 // Surround speaker positions.
-enum
+typedef enum
 {
 	NDSP_SPKPOS_SQUARE = 0, ///<?
 	NDSP_SPKPOS_WIDE   = 1, ///<?
 	NDSP_SPKPOS_NUM    = 2, ///<?
-};
+} ndspSpeakerPos;
 
 /// ADPCM data.
 typedef struct
@@ -54,10 +54,10 @@ struct tag_ndspWaveBuf
 {
 	union
 	{
-		s8*  data_pcm8;  ///< Pointer to PCM8 sample data.
-		s16* data_pcm16; ///< Pointer to PCM16 sample data.
-		u8*  data_adpcm; ///< Pointer to DSPADPCM sample data.
-		u32  data_vaddr; ///< Data virtual address.
+		s8*   data_pcm8;  ///< Pointer to PCM8 sample data.
+		s16*  data_pcm16; ///< Pointer to PCM16 sample data.
+		u8*   data_adpcm; ///< Pointer to DSPADPCM sample data.
+		void* data_vaddr; ///< Data virtual address.
 	};
 	u32 nsamples;              ///< Total number of samples (PCM8=bytes, PCM16=halfwords, DSPADPCM=nibbles without frame headers)
 	ndspAdpcmData* adpcm_data; ///< ADPCM data.
@@ -118,13 +118,13 @@ void ndspSetMasterVol(float volume);
  * @brief Sets the output mode.
  * @param mode Output mode to set. Defaults to NDSP_OUTPUT_STEREO.
  */
-void ndspSetOutputMode(int mode);
+void ndspSetOutputMode(ndspOutputMode mode);
 
 /**
  * @brief Sets the clipping mode.
  * @param mode Clipping mode to set. Defaults to NDSP_CLIP_SOFT.
  */
-void ndspSetClippingMode(int mode);
+void ndspSetClippingMode(ndspClippingMode mode);
 
 /**
  * @brief Sets the output count.
@@ -158,7 +158,7 @@ void ndspSurroundSetDepth(u16 depth);
  * @brief Sets the surround sound position.
  * @param pos Position to set. Defaults to NDSP_SPKPOS_SQUARE.
  */
-void ndspSurroundSetPos(u16 pos);
+void ndspSurroundSetPos(ndspSpeakerPos pos);
 
 /**
  * @brief Sets the surround sound rear ratio.

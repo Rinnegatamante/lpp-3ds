@@ -115,9 +115,9 @@ static int lua_loadimg(lua_State *L)
 	u32 bytesRead;
 	u16 magic;
 	u64 long_magic;
-	FS_path filePath=FS_makePath(PATH_CHAR, text);
-	FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FS_Path filePath=fsMakePath(PATH_ASCII, text);
+	FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
 	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
 	Bitmap *bitmap;
 	if (magic == 0x5089){
@@ -254,9 +254,9 @@ static int lua_saveimg(lua_State *L)
 	int compression = lua_toboolean(L, 3);
 	if (compression == 0){ //BMP Format
 		Handle fileHandle;
-		FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-		FS_path filePath=FS_makePath(PATH_CHAR, text);
-		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, text);
+		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 		if(ret) return luaL_error(L, "error opening file");
 		u32 bytesWritten;
 		u8 moltiplier = src->bitperpixel / 8;

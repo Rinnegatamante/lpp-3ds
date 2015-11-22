@@ -124,9 +124,9 @@ static int lua_download(lua_State *L){
 		httpcDownloadData(&context, buf, contentsize, NULL);
 		Handle fileHandle;
 		u32 bytesWritten;
-		FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-		FS_path filePath=FS_makePath(PATH_CHAR, file);
-		FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file);
+		FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 		FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
 		FSFILE_Close(fileHandle);
 		svcCloseHandle(fileHandle);
@@ -221,9 +221,9 @@ static int lua_sendmail(lua_State *L){ //BETA func
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	if(ret==0){
 		httpcBeginRequest(&context);
-		httpcReqStatus loading;
+		HTTPC_RequestStatus loading;
 		httpcGetRequestState(&context, &loading);
-		while (loading == 0x5){
+		while (loading == HTTPC_STATUS_REQUEST_IN_PROGRESS){
 			httpcGetRequestState(&context, &loading);
 		}
 		u32 statuscode=0;

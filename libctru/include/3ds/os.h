@@ -17,20 +17,31 @@
 /// Retrieves the revision version from a packed system version.
 #define GET_VERSION_REVISION(version) (((version)>> 8)&0xFF)
 
+/*! OS_VersionBin. Format of the system version: "<major>.<minor>.<build>-<nupver><region>" */
+typedef struct
+{
+	u8 build;
+	u8 minor;
+	u8 mainver;//"major" in CVER, NUP version in NVer.
+	u8 reserved_x3;
+	char region;//"ASCII character for the system version region"
+	u8 reserved_x5[0x3];
+} OS_VersionBin;
+
 /**
  * @brief Converts an address from virtual (process) memory to physical memory.
  * @param vaddr Input virtual address.
  * @return The corresponding physical address.
  * It is sometimes required by services or when using the GPU command buffer.
  */
-u32 osConvertVirtToPhys(u32 vaddr);
+u32 osConvertVirtToPhys(const void* vaddr);
 
 /**
  * @brief Converts 0x14* vmem to 0x30*.
- * @param addr Input address.
+ * @param vaddr Input virtual address.
  * @return The corresponding address in the 0x30* range, the input address if it's already within the new vmem, or 0 if it's outside of both ranges.
  */
-u32 osConvertOldLINEARMemToNew(u32 addr);
+void* osConvertOldLINEARMemToNew(const void* vaddr);
 
 /**
  * @brief Retrieves basic information about a service error.
@@ -107,3 +118,22 @@ static inline float osGet3DSliderState(void)
  * @param enable Specifies whether to enable or disable the speedup.
  */
 void osSetSpeedupEnable(bool enable);
+
+/**
+ * @brief Gets the NAND system-version stored in NVer/CVer.
+ * The romfs device must not be already initialized(via romfsInit*()) at the time this function is called, since this code uses the romfs device.
+ * @param nver_versionbin Output OS_VersionBin structure for the data read from NVer.
+ * @param cver_versionbin Output OS_VersionBin structure for the data read from CVer.
+ * @return The result-code. This value can be positive if opening "romfs:/version.bin" fails with stdio, since errno would be returned in that case. In some cases the error can be special negative values as well.
+ */
+Result osGetSystemVersionData(OS_VersionBin *nver_versionbin, OS_VersionBin *cver_versionbin);
+
+/**
+ * @brief This is a wrapper for osGetSystemVersionData.
+ * @param nver_versionbin Optional output OS_VersionBin structure for the data read from NVer, can be NULL.
+ * @param cver_versionbin Optional output OS_VersionBin structure for the data read from CVer, can be NULL.
+ * @param sysverstr Output string where the printed system-version will be written, in the same format displayed by the System Settings title.
+ * @param sysverstr_maxsize Max size of the above string buffer, *including* NULL-terminator.
+ * @return See osGetSystemVersionData.
+ */
+Result osGetSystemVersionDataString(OS_VersionBin *nver_versionbin, OS_VersionBin *cver_versionbin, char *sysverstr, u32 sysverstr_maxsize);

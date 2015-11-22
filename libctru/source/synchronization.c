@@ -32,11 +32,43 @@ _begin:
 		val = __ldrex(lock);
 		if (val < 0)
 		{
-			__clrex();
-			svcArbitrateAddress(arbiter, (u32)lock, ARBITRATION_DECREMENT_AND_WAIT_IF_LESS_THAN, 0, 0);
-			goto _begin; // Try locking again
+			// Add ourselves to the list of threads blocked on this lock
+			if (__strex(lock, val-1))
+				goto _begin; // strex failed, try to lock again
+
+		_wait:
+			// Wait for a thread to wake us up
+			svcArbitrateAddress(arbiter, (u32)lock, ARBITRATION_WAIT_IF_LESS_THAN, 0, 0);
+
+			// Try to lock again
+			do
+			{
+				val = __ldrex(lock);
+				if (val < 0)
+				{
+					// Lock is still locked - keep waiting
+					__clrex();
+					goto _wait;
+				}
+			} while (__strex(lock, -(val-1)));
+			return;
 		}
 	} while (__strex(lock, -val));
+}
+
+int LightLock_TryLock(LightLock* lock)
+{
+	s32 val;
+	do
+	{
+		val = __ldrex(lock);
+		if (val < 0)
+		{
+			__clrex();
+			return 1; // Failure
+		}
+	} while (__strex(lock, -val));
+	return 0; // Success
 }
 
 void LightLock_Unlock(LightLock* lock)
@@ -45,14 +77,10 @@ void LightLock_Unlock(LightLock* lock)
 	do
 		val = -__ldrex(lock);
 	while (__strex(lock, val));
+
 	if (val > 1)
-	{
 		// Wake up exactly one thread
-		do
-			val = __ldrex(lock);
-		while (__strex(lock, val >= 0 ? (val-1) : (val+1)));
 		svcArbitrateAddress(arbiter, (u32)lock, ARBITRATION_SIGNAL, 1, 0);
-	}
 }
 
 void RecursiveLock_Init(RecursiveLock* lock)
@@ -71,6 +99,19 @@ void RecursiveLock_Lock(RecursiveLock* lock)
 		lock->thread_tag = tag;
 	}
 	lock->counter ++;
+}
+
+int RecursiveLock_TryLock(RecursiveLock* lock)
+{
+	u32 tag = (u32)getThreadLocalStorage();
+	if (lock->thread_tag != tag)
+	{
+		if (LightLock_TryLock(&lock->lock))
+			return 1; // Failure
+		lock->thread_tag = tag;
+	}
+	lock->counter ++;
+	return 0; // Success
 }
 
 void RecursiveLock_Unlock(RecursiveLock* lock)

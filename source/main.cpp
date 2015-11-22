@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	acInit();
 	cfguInit();
 	httpcInit();
-	ptmInit();
+	ptmuInit();
 	hidInit();
 	irrstInit();
 	aptOpenSession();
@@ -123,9 +123,9 @@ int main(int argc, char **argv)
 		char error[2048];		
 		
 		// Load main script
-		FS_path filePath=FS_makePath(PATH_CHAR, path);
-		FS_archive script=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-		Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
 		if (!ret){
 			FSFILE_GetSize(fileHandle, &size);
 			buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
@@ -140,8 +140,8 @@ int main(int argc, char **argv)
 		// Force LCDs power on
 		if ((!isTopLCDOn) || (!isBottomLCDOn)){
 			gspLcdInit();
-			if (!isTopLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_TOP);
-			if (!isBottomLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_BOTTOM);
+			if (!isTopLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_TOP);
+			if (!isBottomLCDOn) GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM);
 			gspLcdExit();
 			isTopLCDOn = true;
 			isBottomLCDOn = true;
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
 	fsExit();
 	irrstExit();
 	hidExit();
-	ptmExit();
+	ptmuExit();
 	hbExit();
 	acExit();
 	httpcExit();

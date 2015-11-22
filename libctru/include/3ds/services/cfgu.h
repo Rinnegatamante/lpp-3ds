@@ -1,3 +1,7 @@
+/**
+ * @file cfgu.h
+ * @brief CFGU (Configuration) Service
+ */
 #pragma once
 
 /// Configuration region values.
@@ -27,7 +31,7 @@ typedef enum
 	CFG_LANGUAGE_PT = 9,  ///< Portugese
 	CFG_LANGUAGE_RU = 10, ///< Russian
 	CFG_LANGUAGE_TW = 11, ///< Traditional Chinese
-} CFG_Langage;
+} CFG_Language;
 
 /// Initializes CFGU.
 Result cfguInit(void);
@@ -90,6 +94,6 @@ Result CFGU_GetConfigInfoBlk2(u32 size, u32 blkID, u8* outData);
 
 /**
  * @brief Gets the system's language.
- * @param language Pointer to write the language to. (see @ref CFG_Langage)
+ * @param language Pointer to write the language to. (see @ref CFG_Language)
  */
 Result CFGU_GetSystemLanguage(u8* language);

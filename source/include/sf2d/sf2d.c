@@ -202,7 +202,7 @@ void sf2d_swapbuffers()
 {
 	gfxSwapBuffersGpu();
 	if (vblank_wait) {
-		gspWaitForEvent(GSPEVENT_VBlank0, false);
+		gspWaitForEvent(GSPGPU_EVENT_VBlank0, false);
 	}
 	//Calculate FPS
 	frames++;

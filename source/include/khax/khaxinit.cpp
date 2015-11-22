@@ -268,7 +268,7 @@ void *KHAX::VersionData::ConvertLinearUserVAToKernelVA(void *address) const
 	u32 addr = reinterpret_cast<u32>(address);
 
 	// Convert the address to a physical address, since that's how we know the mapping.
-	u32 physical = osConvertVirtToPhys(addr);
+	u32 physical = osConvertVirtToPhys((void*)addr);
 	if (physical == 0)
 	{
 		return nullptr;

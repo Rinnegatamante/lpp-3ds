@@ -1,7 +1,7 @@
 #ifndef FTP_H
 #define FTP_H
 
-extern FS_archive sdmcArchive;
+extern FS_Archive sdmcArchive;
 extern char currentPath[];
 extern u32 currentIP;
 extern int dataPort;

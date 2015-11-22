@@ -60,10 +60,10 @@ static int lua_check(lua_State *L)
 		u32 pad = luaL_checknumber(L, 1);
 		u32 button = luaL_checknumber(L, 2);
 		if (button == KEY_HOME){
-			APP_STATUS status = aptGetStatus();
+			APT_AppStatus status = aptGetStatus();
 			lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 0));
 		}else if (button == KEY_POWER){
-			APP_STATUS status = aptGetStatus();
+			APT_AppStatus status = aptGetStatus();
 			lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 1));
 		}else lua_pushboolean(L, ((pad & button) == button));
         return 1;
@@ -169,14 +169,14 @@ static int lua_lcdon(lua_State *L)
 {
         if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
 		u32 screen = luaL_checkinteger(L, 1);
-		GSPLCD_Screens flag;
-		if (screen == 0) flag = GSPLCD_TOP;
-		else if (screen==1) flag = GSPLCD_BOTTOM;
+		u32 flag;
+		if (screen == 0) flag = GSPLCD_SCREEN_TOP;
+		else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
 		else return luaL_error(L, "wrong parameter.");
 		if (gspLcdInit() == 0){
 			GSPLCD_PowerOnBacklight(flag);
 			gspLcdExit();
-			if (flag == GSPLCD_TOP) isTopLCDOn = true;
+			if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = true;
 			else isBottomLCDOn = true;
 		}
 		return 0;
@@ -186,14 +186,14 @@ static int lua_lcdoff(lua_State *L)
 {
         if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
 		u32 screen = luaL_checkinteger(L, 1);
-		GSPLCD_Screens flag;
-		if (screen == 0) flag = GSPLCD_TOP;
-		else if (screen==1) flag = GSPLCD_BOTTOM;
+		u32 flag;
+		if (screen == 0) flag = GSPLCD_SCREEN_TOP;
+		else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
 		else return luaL_error(L, "wrong parameter.");
 		if (gspLcdInit() == 0){
 			GSPLCD_PowerOffBacklight(flag);
 			gspLcdExit();
-			if (flag == GSPLCD_TOP) isTopLCDOn = false;
+			if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = false;
 			else isBottomLCDOn = false;
 		}
 		return 0;

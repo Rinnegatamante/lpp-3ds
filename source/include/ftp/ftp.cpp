@@ -15,7 +15,7 @@
 #include "ftp_cmd.h"
 #define sprint sprintf
 
-FS_archive sdmcArchive;
+FS_Archive sdmcArchive;
 
 char tmpBuffer[512];
 const int commandPort=5000;
@@ -34,12 +34,12 @@ void ftp_init()
 	//ret=fsInit();
 	//sprint(shared_ftp,"fsInit %08X", (unsigned int)ret);
 
-	sdmcArchive=(FS_archive){0x00000009, (FS_path){PATH_EMPTY, 1, (u8*)""}};
+	sdmcArchive=(FS_Archive){0x00000009, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 	FSUSER_OpenArchive(&sdmcArchive);
 	sprint(shared_ftp,"FSUSER_OpenArchive %08X", (unsigned int)ret);
 	
 	ftp_mem = (u32*)memalign(0x1000, 0x100000);
-	ret=SOC_Initialize(ftp_mem, 0x100000);
+	ret=socInit(ftp_mem, 0x100000);
 	sprint(shared_ftp,"SOC_Initialize %08X", (unsigned int)ret);
 
 	sprintf(currentPath, "/");
@@ -51,7 +51,7 @@ void ftp_init()
 
 void ftp_exit()
 {
-	SOC_Shutdown();
+	socExit();
 	free(ftp_mem);
 }
 

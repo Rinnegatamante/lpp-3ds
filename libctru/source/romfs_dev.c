@@ -14,6 +14,7 @@
 #include <3ds/romfs.h>
 #include <3ds/services/fs.h>
 #include <3ds/util/utf.h>
+#include <3ds/env.h>
 
 static bool romFS_active;
 static Handle romFS_file;
@@ -24,7 +25,6 @@ static romfs_dir* romFS_cwd;
 static u32 *dirHashTable, *fileHashTable;
 static void *dirTable, *fileTable;
 
-extern u32 __service_ptr;
 extern int __system_argc;
 extern char** __system_argv;
 
@@ -117,7 +117,7 @@ static Result romfsInitCommon(void);
 Result romfsInit(void)
 {
 	if (romFS_active) return 0;
-	if (__service_ptr)
+	if (envIsHomebrew())
 	{
 		// RomFS appended to a 3DSX file
 		if (__system_argc == 0 || !__system_argv[0]) return 1;
@@ -133,14 +133,15 @@ Result romfsInit(void)
 		} else
 			return 2;
 
-		size_t units = utf8_to_utf16(__utf16path, (const uint8_t*)filename, PATH_MAX+1);
-		if (units == (size_t)-1) return 3;
+		ssize_t units = utf8_to_utf16(__utf16path, (const uint8_t*)filename, PATH_MAX);
+		if (units < 0)         return 3;
+		if (units >= PATH_MAX) return 4;
 		__utf16path[units] = 0;
 
-		FS_archive arch = { ARCH_SDMC, { PATH_EMPTY, 1, (u8*)"" }, 0, 0 };
-		FS_path path = { PATH_WCHAR, (units+1)*2, (u8*)__utf16path };
+		FS_Archive arch = { ARCHIVE_SDMC, { PATH_EMPTY, 1, (u8*)"" }, 0 };
+		FS_Path path = { PATH_UTF16, (units+1)*2, (u8*)__utf16path };
 
-		Result rc = FSUSER_OpenFileDirectly(&romFS_file, arch, path, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		Result rc = FSUSER_OpenFileDirectly(&romFS_file, arch, path, FS_OPEN_READ, 0);
 		if (R_FAILED(rc)) return rc;
 
 		_3DSX_Header hdr;
@@ -155,10 +156,10 @@ Result romfsInit(void)
 		u8 zeros[0xC];
 		memset(zeros, 0, sizeof(zeros));
 
-		FS_archive arch = { ARCH_ROMFS, { PATH_EMPTY, 1, (u8*)"" }, 0, 0 };
-		FS_path path = { PATH_BINARY, sizeof(zeros), zeros };
+		FS_Archive arch = { ARCHIVE_ROMFS, { PATH_EMPTY, 1, (u8*)"" }, 0 };
+		FS_Path path = { PATH_BINARY, sizeof(zeros), zeros };
 
-		Result rc = FSUSER_OpenFileDirectly(&romFS_file, arch, path, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		Result rc = FSUSER_OpenFileDirectly(&romFS_file, arch, path, FS_OPEN_READ, 0);
 		if (R_FAILED(rc)) return rc;
 	}
 
@@ -284,7 +285,7 @@ static romfs_file* searchForFile(romfs_dir* parent, u16* name, u32 namelen)
 
 static int navigateToDir(romfs_dir** ppDir, const char** pPath, bool isDir)
 {
-	size_t units;
+	ssize_t units;
 
 	char* colonPos = strchr(*pPath, ':');
 	if (colonPos) *pPath = colonPos+1;
@@ -331,9 +332,11 @@ static int navigateToDir(romfs_dir** ppDir, const char** pPath, bool isDir)
 			}
 		}
 
-		units = utf8_to_utf16(__utf16path, (const uint8_t*)component, PATH_MAX+1);
-		if (units == (size_t)-1)
+		units = utf8_to_utf16(__utf16path, (const uint8_t*)component, PATH_MAX);
+		if (units < 0)
 			return EILSEQ;
+		if (units >= PATH_MAX)
+			return ENAMETOOLONG;
 
 		*ppDir = searchForDir(*ppDir, __utf16path, units);
 		if (!*ppDir)
@@ -363,10 +366,15 @@ int romfs_open(struct _reent *r, void *fileStruct, const char *path, int flags, 
 	if (r->_errno != 0)
 		return -1;
 
-	size_t units = utf8_to_utf16(__utf16path, (const uint8_t*)path, PATH_MAX+1);
-	if (!units || units == (size_t)-1)
+	ssize_t units = utf8_to_utf16(__utf16path, (const uint8_t*)path, PATH_MAX);
+	if (units <= 0)
 	{
 		r->_errno = EILSEQ;
+		return -1;
+	}
+	if (units >= PATH_MAX)
+	{
+		r->_errno = ENAMETOOLONG;
 		return -1;
 	}
 

@@ -11,13 +11,12 @@
 /// The maximum value of a u64.
 #define U64_MAX	UINT64_MAX
 
-/// Possible media types.
-typedef enum
-{
-	mediatype_NAND,     ///< NAND
-	mediatype_SDMC,     ///< SDMC
-	mediatype_GAMECARD, ///< Game card
-} mediatypes_enum;
+/// would be nice if newlib had this already
+#ifndef SSIZE_MAX
+#ifdef SIZE_MAX
+#define SSIZE_MAX ((SIZE_MAX) >> 1)
+#endif
+#endif
 
 typedef uint8_t u8;   ///<  8-bit unsigned integer
 typedef uint16_t u16; ///< 16-bit unsigned integer

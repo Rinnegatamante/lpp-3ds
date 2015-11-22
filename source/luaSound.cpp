@@ -642,9 +642,9 @@ static int lua_openwav_old(lua_State *L)
 	bool mem_size = false;
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
 	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
 	u16 audiotype;
@@ -925,9 +925,9 @@ static int lua_openaiff_old(lua_State *L)
 	bool mem_size = false;
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
 	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 	//if(ret) return luaL_error(L, "error opening file");
 	u32 magic,bytesRead,jump,chunk=0x00000000;
 	u16 samplerate;
@@ -1293,9 +1293,9 @@ static int lua_openwav(lua_State *L)
 	
 	// Open file
 	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 	
 	// Check for magic
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
@@ -1424,9 +1424,9 @@ static int lua_openaiff(lua_State *L)
 	
 	// Opening file
 	Handle fileHandle;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 
 	// Init wav struct
 	u32 magic,bytesRead,jump,chunk=0x00000000;
@@ -1582,7 +1582,7 @@ static int lua_play(lua_State *L)
 	else raw_format = NDSP_FORMAT_STEREO_PCM16;
 	ndspChnReset(ch);
 	ndspChnWaveBufClear(ch);
-	ndspChnSetInterp(ch, interp);
+	ndspChnSetInterp(ch, (ndspInterpType)interp);
 	ndspChnSetRate(ch, float(src->samplerate));
 	ndspChnSetFormat(ch, raw_format);
 	ndspWaveBuf* waveBuf = (ndspWaveBuf*)calloc(1, sizeof(ndspWaveBuf));
@@ -1879,34 +1879,50 @@ static int lua_soundend(lua_State *L)
 static int lua_regsound(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	u32 time = luaL_checkinteger(L, 1);
-	u32 mem_size = (time + 1) * 32000; // time + 1 because first second is mute
+	u32 samplerate = luaL_checkinteger(L, 2);
+	MICU_SampleRate smplrt;
+	if (samplerate <= 8200){
+		smplrt = MICU_SAMPLE_RATE_8180;
+		samplerate = 8180;
+	}else if (samplerate <= 12000){
+		smplrt = MICU_SAMPLE_RATE_10910;
+		samplerate = 10910;
+	}else if (samplerate <= 18000){
+		smplrt = MICU_SAMPLE_RATE_16360;
+		samplerate = 16360;
+	}else{
+		smplrt = MICU_SAMPLE_RATE_32730; 
+		samplerate = 32730;		
+	}
+	u32 mem_size = time * 32000; // time + 1 because first second is mute
 	u8* audiobuf = (u8*)linearAlloc(mem_size);
 	u32 audiobuf_pos = 0;
-	u32* sharedmem = (u32*)memalign(0x1000, (0x8000) * (time + 1));
-	MIC_Initialize(sharedmem, (0x8000) * (time + 1), 0x40, 0, 3, 1, 1);
-	MIC_SetRecording(1);
-	u64 startRegister = osGetTime();
-	while ((osGetTime() - startRegister) <= ((time + 1) * 1000)){
-	audiobuf_pos+= MIC_ReadAudioData(&audiobuf[audiobuf_pos], mem_size-audiobuf_pos, 1);
+	u32* micbuf = (u32*)memalign(0x1000, 0x30000);
+	u32 micbuf_datasize = micGetSampleDataSize();
+	micInit((u8*)micbuf, 0x8000 * time);
+	u32 micbuf_pos = 0;
+	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, smplrt, 0, micbuf_datasize, true);
+	while (audiobuf_pos < mem_size){
+		u32 micbuf_readpos = micbuf_pos;
+		micbuf_pos = micGetLastSampleOffset();
+		while (audiobuf_pos < mem_size && micbuf_readpos != micbuf_pos){
+			audiobuf[audiobuf_pos] = micbuf[micbuf_readpos];
+			audiobuf_pos++;
+			micbuf_readpos = (micbuf_readpos + 1) % micbuf_datasize;
+		}
 	}
-	MIC_SetRecording(0);
-	MIC_Shutdown();
-	free(sharedmem);
-	
-	//Prevent first mute second to be allocated in wav struct
-	u8* nomute_audiobuf =  (u8*)linearAlloc(mem_size - 32000);
-	memcpy(nomute_audiobuf,&audiobuf[32000],mem_size - 32000);
-	linearFree(audiobuf);
-	
+	MICU_StopSampling();
+	micExit();
+	free(micbuf);	
 	Music* songFile = (Music*)malloc(sizeof(Music));
-	songFile->audiobuf = nomute_audiobuf;
+	songFile->audiobuf = audiobuf;
 	songFile->audiobuf2 = NULL;
 	songFile->big_endian = false;
 	songFile->mem_size = 0;
-	songFile->size = mem_size - 32000;
-	songFile->samplerate = 16000;
+	songFile->size = mem_size;
+	songFile->samplerate = samplerate;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->isPlaying = false;
@@ -1919,35 +1935,50 @@ static int lua_regsound(lua_State *L)
 static int lua_regsound_old(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	u32 time = luaL_checkinteger(L, 1);
-	u32 mem_size = (time + 1) * 32000; // time + 1 because first second is mute
+	u32 samplerate = luaL_checkinteger(L, 2);
+	MICU_SampleRate smplrt;
+	if (samplerate <= 8200){
+		smplrt = MICU_SAMPLE_RATE_8180;
+		samplerate = 8180;
+	}else if (samplerate <= 12000){
+		smplrt = MICU_SAMPLE_RATE_10910;
+		samplerate = 10910;
+	}else if (samplerate <= 18000){
+		smplrt = MICU_SAMPLE_RATE_16360;
+		samplerate = 16360;
+	}else{
+		smplrt = MICU_SAMPLE_RATE_32730; 
+		samplerate = 32730;		
+	}
+	u32 mem_size = time * 32000; // time + 1 because first second is mute
 	u8* audiobuf = (u8*)linearAlloc(mem_size);
 	u32 audiobuf_pos = 0;
-	u32* sharedmem = (u32*)memalign(0x1000, (0x8000) * (time + 1));
-	MIC_Initialize(sharedmem, (0x8000) * (time + 1), 0x40, 0, 3, 1, 1);
-	MIC_SetRecording(1);
-	u64 startRegister = osGetTime();
-	while ((osGetTime() - startRegister) <= ((time + 1) * 1000)){
-	audiobuf_pos+= MIC_ReadAudioData(&audiobuf[audiobuf_pos], mem_size-audiobuf_pos, 1);
+	u32* micbuf = (u32*)memalign(0x1000, 0x30000);
+	u32 micbuf_datasize = micGetSampleDataSize();
+	micInit((u8*)micbuf, 0x8000 * time);
+	u32 micbuf_pos = 0;
+	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, smplrt, 0, micbuf_datasize, true);
+	while (audiobuf_pos < mem_size){
+		u32 micbuf_readpos = micbuf_pos;
+		micbuf_pos = micGetLastSampleOffset();
+		while (audiobuf_pos < mem_size && micbuf_readpos != micbuf_pos){
+			audiobuf[audiobuf_pos] = micbuf[micbuf_readpos];
+			audiobuf_pos++;
+			micbuf_readpos = (micbuf_readpos + 1) % micbuf_datasize;
+		}
 	}
-	MIC_SetRecording(0);
-	MIC_Shutdown();
-	free(sharedmem);
-	
-	//Prevent first mute second to be allocated in wav struct
-	u8* nomute_audiobuf =  (u8*)linearAlloc(mem_size - 32000);
-	memcpy(nomute_audiobuf,&audiobuf[32000],mem_size - 32000);
-	linearFree(audiobuf);
-	
+	MICU_StopSampling();
+	micExit();
+	free(micbuf);	
 	wav* songFile = (wav*)malloc(sizeof(wav));
-	songFile->ch = 0xDEADBEEF;
-	songFile->audiobuf = nomute_audiobuf;
+	songFile->audiobuf = audiobuf;
 	songFile->audiobuf2 = NULL;
 	songFile->big_endian = false;
 	songFile->mem_size = 0;
-	songFile->size = mem_size - 32000;
-	songFile->samplerate = 16000;
+	songFile->size = mem_size;
+	songFile->samplerate = samplerate;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->isPlaying = false;
@@ -1969,9 +2000,9 @@ static int lua_save(lua_State *L)
 	const char* file = luaL_checkstring(L, 2);
 	Handle fileHandle;
 	u32 bytesWritten;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file);
-	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 	u32 four_bytes;
 	u16 two_bytes;
 	FSFILE_Write(fileHandle, &bytesWritten, 0, "RIFF", 4, FS_WRITE_FLUSH);
@@ -2012,9 +2043,9 @@ static int lua_save_old(lua_State *L)
 	const char* file = luaL_checkstring(L, 2);
 	Handle fileHandle;
 	u32 bytesWritten;
-	FS_archive sdmcArchive=(FS_archive){ARCH_SDMC, (FS_path){PATH_EMPTY, 1, (u8*)""}};
-	FS_path filePath=FS_makePath(PATH_CHAR, file);
-	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, FS_ATTRIBUTE_NONE);
+	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+	FS_Path filePath=fsMakePath(PATH_ASCII, file);
+	FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 	u32 four_bytes;
 	u16 two_bytes;
 	FSFILE_Write(fileHandle, &bytesWritten, 0, "RIFF", 4, FS_WRITE_FLUSH);

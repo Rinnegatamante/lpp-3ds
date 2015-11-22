@@ -48,8 +48,8 @@ void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data
 
 	if (encoding != CSND_ENCODING_PSG)
 	{
-		if (data0) paddr0 = osConvertVirtToPhys((u32)data0);
-		if (data1) paddr1 = osConvertVirtToPhys((u32)data1);
+		if (data0) paddr0 = osConvertVirtToPhys((void*)data0);
+		if (data1) paddr1 = osConvertVirtToPhys((void*)data1);
 
 		if (encoding == CSND_ENCODING_ADPCM)
 		{
@@ -79,7 +79,7 @@ void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data
 
 // createDspBlock: Create a new block for DSP service
 void createDspBlock(ndspWaveBuf* waveBuf, u16 bps, u32 size, bool loop, u32* data){
-	waveBuf->data_vaddr = (u32)data;
+	waveBuf->data_vaddr = (void*)data;
 	waveBuf->nsamples = size / bps;
 	waveBuf->looping = loop;
 	waveBuf->offset = 0;	

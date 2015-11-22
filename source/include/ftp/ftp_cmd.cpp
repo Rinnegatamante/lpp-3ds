@@ -43,14 +43,14 @@ void ftp_cmd_LIST(int s, char* cmd, char* arg)
 
 	//send LIST data
 	Handle dirHandle;
-	FS_path dirPath=FS_makePath(PATH_CHAR, currentPath);
+	FS_Path dirPath=fsMakePath(PATH_ASCII, currentPath);
 	FSUSER_OpenDirectory(&dirHandle, sdmcArchive, dirPath);
 
 	u32 entriesRead=0;
 	do{
 		u16 entryBuffer[512];
 		char data[256];
-		FSDIR_Read(dirHandle, &entriesRead, 1, (FS_dirent*)entryBuffer);
+		FSDIR_Read(dirHandle, &entriesRead, 1, (FS_DirectoryEntry*)entryBuffer);
 		if(!entriesRead)break;
 		unicodeToChar(data, entryBuffer);
 		siprintf((char*)entryBuffer, "%crwxrwxrwx   2 3DS        %d Feb  1  2009 %s\r",entryBuffer[0x21c/2]?'d':'-',entryBuffer[0x220/2]|(entryBuffer[0x222/2]<<16),data);
@@ -70,7 +70,7 @@ void ftp_cmd_MKD(int s, char* cmd, char* arg)
 	sprintf(tmpStr, "%s%s", currentPath, arg);
 
 	int ret;
-	ret=FSUSER_CreateDirectory(sdmcArchive, FS_makePath(PATH_CHAR, tmpStr));
+	ret=FSUSER_CreateDirectory(sdmcArchive, fsMakePath(PATH_ASCII, tmpStr), FS_ATTRIBUTE_DIRECTORY);
 	if(ret == PATH_EXISTS){
 		sprintf(shared_ftp," directory exists %s", tmpStr);
 		ftp_sendResponse(s, 521, "directory exists; no action");
@@ -85,7 +85,7 @@ void ftp_cmd_RMD(int s, char* cmd, char* arg)
 	sprintf(tmpStr, "%s%s", currentPath, arg);
 	
 	int ret;
-	ret=FSUSER_DeleteDirectory(sdmcArchive, FS_makePath(PATH_CHAR, arg));
+	ret=FSUSER_DeleteDirectory(sdmcArchive, fsMakePath(PATH_ASCII, arg));
 	sprintf(shared_ftp," delete result %s (%08X)", arg, ret);
 	ftp_sendResponse(s, 250, "delete completed");
 }
@@ -95,7 +95,7 @@ void ftp_cmd_DELE(int s, char* cmd, char* arg)
 	sprintf(tmpStr, "%s%s", currentPath, arg);
 	
 	int ret;
-	ret=FSUSER_DeleteFile(sdmcArchive, FS_makePath(PATH_CHAR, arg));
+	ret=FSUSER_DeleteFile(sdmcArchive, fsMakePath(PATH_ASCII, arg));
 	sprintf(shared_ftp," delete result %s (%08X)", arg, ret);
 	ftp_sendResponse(s, 250, "delete completed");
 }
@@ -107,7 +107,7 @@ void ftp_cmd_STOR(int s, char* cmd, char* arg)
 	int ret;
 
 	//Create the currentPath if it does not exist.
-	ret=FSUSER_CreateDirectory(sdmcArchive, FS_makePath(PATH_CHAR, currentPath));
+	ret=FSUSER_CreateDirectory(sdmcArchive, fsMakePath(PATH_ASCII, currentPath), FS_ATTRIBUTE_DIRECTORY);
 	if(ret == PATH_EXISTS){
 		sprintf(shared_ftp," directory exists %s", currentPath);
 	}else{
@@ -116,7 +116,7 @@ void ftp_cmd_STOR(int s, char* cmd, char* arg)
 
 	sprintf(tmpStr, "%s%s",currentPath,arg);
 	Handle fileHandle;
-	ret=FSUSER_OpenFile(&fileHandle, sdmcArchive, FS_makePath(PATH_CHAR, tmpStr), FS_OPEN_WRITE|FS_OPEN_CREATE, 0);
+	ret=FSUSER_OpenFile(&fileHandle, sdmcArchive, fsMakePath(PATH_ASCII, tmpStr), FS_OPEN_WRITE|FS_OPEN_CREATE, 0);
 	sprintf(shared_ftp,"  storing %s (%08X)", tmpStr, ret);
 	u32 totalSize=0;
 	while((ret=recv(data_s, dataBuffer, DATA_BUFFER_SIZE, 0))>0){FSFILE_Write(fileHandle, (u32*)&ret, totalSize, (u32*)dataBuffer, ret, 0x10001);totalSize+=ret;}
@@ -134,7 +134,7 @@ void ftp_cmd_RETR(int s, char* cmd, char* arg)
 	sprintf(tmpStr, "%s%s",currentPath,arg);
 	sprintf(shared_ftp,"%s",tmpStr);
 	Handle fileHandle;
-	FSUSER_OpenFile(&fileHandle, sdmcArchive, FS_makePath(PATH_CHAR, tmpStr), FS_OPEN_READ, 0);
+	FSUSER_OpenFile(&fileHandle, sdmcArchive, fsMakePath(PATH_ASCII, tmpStr), FS_OPEN_READ, 0);
 	int ret;
 	u32 readSize=0;
 	u32 totalSize=0;
@@ -192,8 +192,8 @@ void ftp_cmd_RNTO(int s, char* cmd, char* arg)
 	snprintf(tmpStr, sizeof(tmpStr), "%s", arg);
 
 	int ret = FSUSER_RenameFile(
-			sdmcArchive, FS_makePath(PATH_CHAR, renameSource),
-			sdmcArchive, FS_makePath(PATH_CHAR, arg));
+			sdmcArchive, fsMakePath(PATH_ASCII, renameSource),
+			sdmcArchive, fsMakePath(PATH_ASCII, arg));
 	sprintf(shared_ftp," rename result %s -> %s (%08X)", renameSource, arg, ret);
 
 	if (ret != 0)
@@ -201,8 +201,8 @@ void ftp_cmd_RNTO(int s, char* cmd, char* arg)
 		// If the file rename failed, try a directory rename in case that's
 		// what the user is trying to do.
 		ret = FSUSER_RenameDirectory(
-				sdmcArchive, FS_makePath(PATH_CHAR, renameSource),
-				sdmcArchive, FS_makePath(PATH_CHAR, arg));
+				sdmcArchive, fsMakePath(PATH_ASCII, renameSource),
+				sdmcArchive, fsMakePath(PATH_ASCII, arg));
 		sprintf(shared_ftp," rename dir result %s -> %s (%08X)", renameSource, arg, ret);
 	}
 

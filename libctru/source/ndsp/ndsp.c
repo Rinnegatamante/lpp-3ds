@@ -1,6 +1,7 @@
 #include "ndsp-internal.h"
 #include <3ds/services/cfgu.h>
 #include <3ds/services/fs.h>
+#include <3ds/env.h>
 
 #define NDSP_THREAD_STACK_SIZE 0x1000
 
@@ -296,7 +297,7 @@ static void ndspFinalize(bool suspend)
 	LightLock_Unlock(&ndspMutex);
 }
 
-static void ndspAptHook(int hook, void* param)
+static void ndspAptHook(APT_HookType hook, void* param)
 {
 	switch (hook)
 	{
@@ -311,6 +312,9 @@ static void ndspAptHook(int hook, void* param)
 		case APTHOOK_ONSLEEP:
 			bSleeping = true;
 			ndspFinalize(true);
+			break;
+
+		default:
 			break;
 	}
 }
@@ -385,7 +389,6 @@ void ndspUseComponent(const void* binary, u32 size, u16 progMask, u16 dataMask)
 
 static bool ndspFindAndLoadComponent(void)
 {
-	extern Handle __get_handle_from_list(const char* name);
 	Result rc;
 	Handle rsrc;
 	void* bin;
@@ -397,10 +400,10 @@ static bool ndspFindAndLoadComponent(void)
 	do
 	{
 		static const char dsp_filename[] = "/3ds/dspfirm.cdc";
-		FS_archive arch = { ARCH_SDMC, { PATH_EMPTY, 1, (u8*)"" }, 0, 0 };
-		FS_path path = { PATH_CHAR, sizeof(dsp_filename), (u8*)dsp_filename };
+		FS_Archive arch = { ARCHIVE_SDMC, { PATH_EMPTY, 1, (u8*)"" }, 0 };
+		FS_Path path = { PATH_ASCII, sizeof(dsp_filename), (u8*)dsp_filename };
 
-		rc = FSUSER_OpenFileDirectly(&rsrc, arch, path, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+		rc = FSUSER_OpenFileDirectly(&rsrc, arch, path, FS_OPEN_READ, 0);
 		if (R_FAILED(rc)) break;
 
 		u64 size = 0;
@@ -422,7 +425,7 @@ static bool ndspFindAndLoadComponent(void)
 	} while (0);
 
 	// Try loading the DSP component from hb:ndsp
-	rsrc = __get_handle_from_list("hb:ndsp");
+	rsrc = envGetHandle("hb:ndsp");
 	if (rsrc) do
 	{
 		extern u32 fake_heap_end;
@@ -544,7 +547,7 @@ void ndspSetMasterVol(float volume)
 	LightLock_Unlock(&ndspMaster.lock);
 }
 
-void ndspSetOutputMode(int mode)
+void ndspSetOutputMode(ndspOutputMode mode)
 {
 	LightLock_Lock(&ndspMaster.lock);
 	ndspMaster.outputMode = mode;
@@ -552,7 +555,7 @@ void ndspSetOutputMode(int mode)
 	LightLock_Unlock(&ndspMaster.lock);
 }
 
-void ndspSetClippingMode(int mode)
+void ndspSetClippingMode(ndspClippingMode mode)
 {
 	LightLock_Lock(&ndspMaster.lock);
 	ndspMaster.clippingMode = mode;
@@ -587,7 +590,7 @@ void ndspSurroundSetDepth(u16 depth)
 	LightLock_Unlock(&ndspMaster.lock);
 }
 
-void ndspSurroundSetPos(u16 pos)
+void ndspSurroundSetPos(ndspSpeakerPos pos)
 {
 	LightLock_Lock(&ndspMaster.lock);
 	ndspMaster.surround.pos = pos;
