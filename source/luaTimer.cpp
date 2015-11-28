@@ -44,8 +44,10 @@ struct Timer{
 };
 
 static int lua_newT(lua_State *L) {
-    int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	Timer* new_timer = (Timer*)malloc(sizeof(Timer));
 	new_timer->tick = osGetTime();
 	new_timer->magic = 0x4C544D52;
@@ -56,7 +58,9 @@ static int lua_newT(lua_State *L) {
 
 static int lua_time(lua_State *L) {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
     Timer* src = (Timer*)luaL_checkinteger(L,1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
@@ -72,7 +76,9 @@ static int lua_time(lua_State *L) {
 static int lua_pause(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
@@ -87,7 +93,9 @@ static int lua_pause(lua_State *L)
 static int lua_resume(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
@@ -102,7 +110,9 @@ static int lua_resume(lua_State *L)
 static int lua_reset(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
@@ -113,8 +123,10 @@ static int lua_reset(lua_State *L)
 }
 
 static int lua_wisPlaying(lua_State *L){
-int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	Timer* src = (Timer*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
@@ -125,7 +137,9 @@ int argc = lua_gettop(L);
 
 static int lua_destroy(lua_State *L) {
     int argc = lua_gettop(L);
-    if (argc != 1) return luaL_error(L, "wrong number of arguments");
+    #ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
     Timer* timer = (Timer*)luaL_checkinteger(L,1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (timer->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");

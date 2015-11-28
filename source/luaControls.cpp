@@ -47,7 +47,9 @@ extern bool isBottomLCDOn;
 static int lua_readC(lua_State *L)
 {
     int argc = lua_gettop(L);
-    if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
 	hidScanInput();
 	irrstScanInput();
 	lua_pushnumber(L, hidKeysHeld());
@@ -56,156 +58,200 @@ static int lua_readC(lua_State *L)
 
 static int lua_check(lua_State *L)
 {
-        if (lua_gettop(L) != 2) return luaL_error(L, "wrong number of arguments.");
-		u32 pad = luaL_checknumber(L, 1);
-		u32 button = luaL_checknumber(L, 2);
-		if (button == KEY_HOME){
-			APT_AppStatus status = aptGetStatus();
-			lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 0));
-		}else if (button == KEY_POWER){
-			APT_AppStatus status = aptGetStatus();
-			lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 1));
-		}else lua_pushboolean(L, ((pad & button) == button));
-        return 1;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 2) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u32 pad = luaL_checknumber(L, 1);
+	u32 button = luaL_checknumber(L, 2);
+	if (button == KEY_HOME){
+		APT_AppStatus status = aptGetStatus();
+		lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 0));
+	}else if (button == KEY_POWER){
+		APT_AppStatus status = aptGetStatus();
+		lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 1));
+	}else lua_pushboolean(L, ((pad & button) == button));
+    return 1;
 }
 
 static int lua_circlepad(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		circlePosition cpos;
-		hidCircleRead(&cpos);
-		lua_pushnumber(L, cpos.dx);
-		lua_pushnumber(L, cpos.dy);
-        return 2;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	circlePosition cpos;
+	hidCircleRead(&cpos);
+	lua_pushnumber(L, cpos.dx);
+	lua_pushnumber(L, cpos.dy);
+    return 2;
 }
 
 static int lua_headset(lua_State *L) {
 	int argc = lua_gettop(L);
-	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
 	lua_pushboolean(L,*(u8*)0x1FF810C0);
 	return 1;
 }
 
 static int lua_touchpad(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		touchPosition cpos;
-		hidTouchRead(&cpos);
-		lua_pushnumber(L, cpos.px);
-		lua_pushnumber(L, cpos.py);
-        return 2;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	touchPosition cpos;
+	hidTouchRead(&cpos);
+	lua_pushnumber(L, cpos.px);
+	lua_pushnumber(L, cpos.py);
+    return 2;
 }
 
 static int lua_gyro(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		angularRate cpos;
-		hidGyroRead(&cpos);
-		lua_pushnumber(L, cpos.x);
-		lua_pushnumber(L, cpos.y);
-		lua_pushnumber(L, cpos.z);
-        return 3;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	angularRate cpos;
+	hidGyroRead(&cpos);
+	lua_pushnumber(L, cpos.x);
+	lua_pushnumber(L, cpos.y);
+	lua_pushnumber(L, cpos.z);
+    return 3;
 }
 
 static int lua_accel(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		accelVector cpos;
-		hidAccelRead(&cpos);
-		lua_pushnumber(L, cpos.x);
-		lua_pushnumber(L, cpos.y);
-		lua_pushnumber(L, cpos.z);
-        return 3;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	accelVector cpos;
+	hidAccelRead(&cpos);
+	lua_pushnumber(L, cpos.x);
+	lua_pushnumber(L, cpos.y);
+	lua_pushnumber(L, cpos.z);
+	return 3;
 }
 
 static int lua_cstickpad(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		circlePosition cpos;
-		hidCstickRead(&cpos);
-		lua_pushnumber(L, cpos.dx);
-		lua_pushnumber(L, cpos.dy);
-        return 2;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	circlePosition cpos;
+	hidCstickRead(&cpos);
+	lua_pushnumber(L, cpos.dx);
+	lua_pushnumber(L, cpos.dy);
+    return 2;
 }
 
 static int lua_eg(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		HIDUSER_EnableGyroscope();
-		return 0;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	HIDUSER_EnableGyroscope();
+	return 0;
 }
 
 static int lua_ea(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		HIDUSER_EnableAccelerometer();
-		return 0;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	HIDUSER_EnableAccelerometer();
+	return 0;
 }
 
 static int lua_dg(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		HIDUSER_DisableGyroscope();
-		return 0;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	HIDUSER_DisableGyroscope();
+	return 0;
 }
 
 static int lua_da(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		HIDUSER_DisableAccelerometer();
-		return 0;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	HIDUSER_DisableAccelerometer();
+	return 0;
 }
 
 static int lua_volume(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		u8 value;
-		HIDUSER_GetSoundVolume(&value);
-		lua_pushnumber(L, value);
-		return 1;
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u8 value;
+	HIDUSER_GetSoundVolume(&value);
+	lua_pushnumber(L, value);
+	return 1;
 }
 
 static int lua_lcdon(lua_State *L)
 {
-        if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
-		u32 screen = luaL_checkinteger(L, 1);
-		u32 flag;
-		if (screen == 0) flag = GSPLCD_SCREEN_TOP;
-		else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
-		else return luaL_error(L, "wrong parameter.");
-		if (gspLcdInit() == 0){
-			GSPLCD_PowerOnBacklight(flag);
-			gspLcdExit();
-			if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = true;
-			else isBottomLCDOn = true;
-		}
-		return 0;
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u32 screen = luaL_checkinteger(L, 1);
+	u32 flag;
+	if (screen == 0) flag = GSPLCD_SCREEN_TOP;
+	else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
+	else return luaL_error(L, "wrong parameter.");
+	if (gspLcdInit() == 0){
+		GSPLCD_PowerOnBacklight(flag);
+		gspLcdExit();
+		if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = true;
+		else isBottomLCDOn = true;
+	}
+	return 0;
 }
 
 static int lua_lcdoff(lua_State *L)
 {
-        if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments.");
-		u32 screen = luaL_checkinteger(L, 1);
-		u32 flag;
-		if (screen == 0) flag = GSPLCD_SCREEN_TOP;
-		else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
-		else return luaL_error(L, "wrong parameter.");
-		if (gspLcdInit() == 0){
-			GSPLCD_PowerOffBacklight(flag);
-			gspLcdExit();
-			if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = false;
-			else isBottomLCDOn = false;
-		}
-		return 0;
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u32 screen = luaL_checkinteger(L, 1);
+	u32 flag;
+	if (screen == 0) flag = GSPLCD_SCREEN_TOP;
+	else if (screen==1) flag = GSPLCD_SCREEN_BOTTOM;
+	else return luaL_error(L, "wrong parameter.");
+	if (gspLcdInit() == 0){
+		GSPLCD_PowerOffBacklight(flag);
+		gspLcdExit();
+		if (flag == GSPLCD_SCREEN_TOP) isTopLCDOn = false;
+		else isBottomLCDOn = false;
+	}
+	return 0;
 }
 
 static int lua_shell(lua_State *L)
 {
-        if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
-		u8 shell;
-		PTMU_GetShellState(&shell);
-		lua_pushboolean(L, shell);
-		return 1;
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u8 shell;
+	PTMU_GetShellState(&shell);
+	lua_pushboolean(L, shell);
+	return 1;
 }
 
 //Register our Controls Functions
