@@ -4,9 +4,8 @@ This is the official repository for Lua Player Plus, the first lua interpreter f
 The interpreter runs under Lua 5.3.1 and is a strict porting of our Lua Player Plus for PSP/PSVITA.
 <br><br>
 Your main script must be in the same directory of 3dsx executable.<br>
-If you're using a Gateway please note that you cannot use Sound Module (it will be replaced by an empty module) and your main script must be in the root of the SD Card.
+If you're using a CIA/3DS build, the main script must be located in the root of your SD/microSD card.
 <br><br>
-Official support board: http://luaplayerplus.proboards.com<br>
 Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.html
 <br><br>
 <b>Interpreter features:</b>
@@ -40,7 +39,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 - xerpi for sf2dlib<br>
 - Sean Barrett for stb_truetype<br>
 - Jean-loup Gailly and Mark Adler for zlib<br>
-- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations
+- Special thanks to Aurelio and ihaveamac for testing, bug-fixing and various help with codes and implementations
 <br><br>
 NOTE: BMPV and JPGV video formats are made by me with the help of Aurelio.<br>
 More info about this formats and a simple converters in "BMPV" and "JPGV" folder of this repository.<br><br>
