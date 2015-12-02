@@ -18,7 +18,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 <br>- Native support to WAV/AIFF/OGG audio files
 <br>- Complete access to Nintendo 3DS controls
 <br>- I/O features for SDMC and EXTDATA
-<br>- Video system for reproducing video files with native support to BMPV/JPGV video files
+<br>- Video system for reproducing video files with native support to JPGV video files
 <br>- Timer system
 <br>- Native 3D support
 <br>- Advanced arithmetical functions
@@ -41,5 +41,5 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 - Jean-loup Gailly and Mark Adler for zlib<br>
 - Special thanks to Aurelio and ihaveamac for testing, bug-fixing and various help with codes and implementations
 <br><br>
-NOTE: BMPV and JPGV video formats are made by me with the help of Aurelio.<br>
-More info about this formats and a simple converters in "BMPV" and "JPGV" folder of this repository.<br><br>
+NOTE: JPGV video format is made by me with the help of Aurelio.<br>
+More info about this format and a simple converter could be found in "JPGV" folder of this repository.<br><br>
