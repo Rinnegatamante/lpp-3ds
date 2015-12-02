@@ -59,13 +59,13 @@ typedef struct{
 	u64 fileSize;				///< File size
 } FS_dirent;
 
-int FREAD = 0;
-int FWRITE = 1;
-int FCREATE = 2;
-int NAND = 0;
-int SDMC = 1;
-int OLD_3DS_CLOCK = 268;
-int NEW_3DS_CLOCK = 804;
+#define FREAD 0
+#define FWRITE 1
+#define FCREATE 2
+#define NAND 0
+#define SDMC 1
+#define OLD_3DS_CLOCK 268
+#define NEW_3DS_CLOCK 804
 int current_clock = OLD_3DS_CLOCK;
 extern bool isNinjhax2;
 
@@ -1427,23 +1427,23 @@ static int lua_gettime(lua_State *L){
 }
 
 u32 month_seconds[4] = {2592000,2419200,2678400,2505600}; // 30-28-31-29 days
-u8 day_values[7] = {4,5,6,7,1,2,3};
+u8 day_values[7] = {6,7,1,2,3,4,5};
 
 static int lua_getdate(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
-	u64 time = (osGetTime() / 1000) - 3629059200; // Time from 1st January 2015
+	u64 time = (osGetTime() / 1000) - 3155673600; // Time from 1st January 2000
 	u32 day_value = ((time / 86400) % 7);
-	u32 year = 2015;
+	u32 year = 2000;
 	u8 day = 1;
 	u8 month = 1;
 	u32 control;
 	if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) control = 31622400;
 	else control = 31536000;
 	while (time > control){
-		year = year + 1;
+		year++;
 		time = time - control;
 		if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) control = 31622400;
 		else control = 31536000;
@@ -1452,15 +1452,13 @@ static int lua_getdate(lua_State *L){
 	if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) extended = true;
 	control = month_seconds[2];
 	while (time > control){
-		month = month + 1;
+		month++;
 		time = time - control;
 		if ((month == 11) || (month == 4) || (month == 6) || (month == 9)) control = month_seconds[0];
 		else if (month == 2){
 			if (extended) control = month_seconds[3];
 			else control = month_seconds[1];
-		}else{
-		control = month_seconds[2];
-		}
+		}else control = month_seconds[2];
 	}
 	day = day + time / 86400;
 	lua_pushinteger(L,day_values[day_value]);
