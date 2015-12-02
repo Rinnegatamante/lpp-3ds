@@ -48,10 +48,12 @@
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
-int MAX_RAM_ALLOCATION = 524288;
-int MAX_RAM_ALLOCATION_44100 = 524288*2;
+#define MAX_RAM_ALLOCATION 524288
+#define MAX_RAM_ALLOCATION_44100 1048576
+
 u8* tmp_buf = NULL;
 extern bool audioChannels[24];
+extern bool csndAccess;
 
 struct JPGV{
 	u32 magic;
@@ -366,6 +368,8 @@ static int lua_loadJPGV(lua_State *L)
 	JPGV_file->tick = 0;
 	JPGV_file->audiobuf = NULL;
 	JPGV_file->audiobuf2 = NULL;
+	JPGV_file->ch1 = 0xDEADBEEF;
+	JPGV_file->ch2 = 0xDEADBEEF;
 	JPGV_file->thread = NULL;
 	JPGV_file->mem_size = JPGV_file->audio_size;
 	JPGV_file->magic = 0x4C4A5056;
@@ -377,18 +381,36 @@ static int lua_loadJPGV(lua_State *L)
 static int lua_startJPGV(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	int loop = luaL_checkinteger(L, 2);
-	int ch1 = luaL_checkinteger(L, 3);
-	if (argc == 4){
-	int ch2 = luaL_checkinteger(L, 4);
-	src->ch2 = ch2;
+	
+	// Selecting free channels
+	int ch = src->ch1;
+	int ch2 = src->ch2;
+	if (src->ch1 == 0xDEADBEEF){
+		ch = 0x08;
+		while (audioChannels[ch]){
+			ch++;
+			if (ch > 24) return luaL_error(L, "audio device is busy");
+		}
+		audioChannels[ch] = true;
+		ch2 = ch + 1;
+		if (src->audiotype == 2){
+			while (audioChannels[ch2]){
+				ch2++;
+				if (ch2 > 24) return luaL_error(L, "audio device is busy");
+			}
+			audioChannels[ch2] = true;
+		}
 	}
+	src->ch1 = ch;
+	src->ch2 = ch2;
+	
 	src->loop = loop;
 	src->isPlaying = true;
 	ThreadFunc streamFunction = streamWAV;
@@ -504,7 +526,6 @@ static int lua_startJPGV(lua_State *L){
 	}
 	src->stdio_handle = (u32)vf;
 	}
-	src->ch1 = ch1;
 	src->currentFrame = 0;
 	u32 bytesRead;
 	if (src->samplerate != 0 && src->audio_size != 0){
@@ -518,7 +539,7 @@ static int lua_startJPGV(lua_State *L){
 		}
 		if (src->audiotype == 1){			
 			if (src->audiocodec == 0) FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
-			My_CSND_playsound(ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 1.0, 2.0);
+			My_CSND_playsound(src->ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 1.0, 2.0);
 		}else{
 			if (src->audiocodec == 0){
 				u8* audiobuf = (u8*)linearAlloc(src->mem_size);
@@ -543,7 +564,7 @@ static int lua_startJPGV(lua_State *L){
 			My_CSND_playsound(src->ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size/2, 1.0, 1.0);
 			My_CSND_playsound(src->ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)src->audiobuf2, src->mem_size/2, 1.0, -1.0);
 		}
-	CSND_SetPlayState(ch1, 1);
+	CSND_SetPlayState(src->ch1, 1);
 	if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
 	CSND_UpdateInfo(0);
 	src->tick = osGetTime();
@@ -882,6 +903,8 @@ static int lua_unloadJPGV(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
+	audioChannels[src->ch1] = false;
+	if (src->audiotype == 2) audioChannels[src->ch2] = false;
 	if (src->thread != NULL){
 		closeStream = true;
 		svcSignalEvent(updateStream);
@@ -967,6 +990,11 @@ static int lua_resumeJPGV(lua_State *L){
 	return 0;
 }
 
+static int lua_dummy(lua_State *L){
+	int argc = lua_gettop(L);
+    return luaL_error(L, "JPGV module unavailable with dsp::DSP service.");
+}
+
 //Register our JPGV Functions
 static const luaL_Reg JPGV_functions[] = {
   {"load",				lua_loadJPGV},
@@ -985,9 +1013,28 @@ static const luaL_Reg JPGV_functions[] = {
   {0, 0}
 };
 
+//Register our JPGV (Dummy) Functions for dsp::DSP service
+static const luaL_Reg Dummy_functions[] = {
+  {"load",				lua_dummy},
+  {"start",				lua_dummy},
+  {"draw",				lua_dummy},
+  {"unload",			lua_dummy},
+  {"getFPS",			lua_dummy},
+  {"getFrame",			lua_dummy},
+  {"showFrame",			lua_dummy},
+  {"getSize",			lua_dummy},
+  {"getSrate",			lua_dummy},
+  {"isPlaying",			lua_dummy},
+  {"stop",				lua_dummy},
+  {"resume",			lua_dummy},
+  {"pause",				lua_dummy},
+  {0, 0}
+};
+
 void luaVideo_init(lua_State *L) {
 	lua_newtable(L);
-	luaL_setfuncs(L, JPGV_functions, 0);
+	if (csndAccess) luaL_setfuncs(L, JPGV_functions, 0);
+	else luaL_setfuncs(L, Dummy_functions, 0);
 	lua_setglobal(L, "JPGV");
 	int LOOP = 1;
 	int NO_LOOP = 0;
