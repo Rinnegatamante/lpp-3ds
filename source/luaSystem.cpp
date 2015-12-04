@@ -230,14 +230,15 @@ static int lua_screenshot(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *screenpath = luaL_checkstring(L, 1);
-	int compression = lua_toboolean(L, 2);
+	bool isJPG = false;
+	if (argc == 2) isJPG = lua_toboolean(L, 2);
 	Handle fileHandle;
 	int x, y;
 	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	if (compression == 0){ //BMP Format
+	if (!isJPG){ //BMP Format
 		FS_Path filePath=fsMakePath(PATH_ASCII, screenpath);
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 		//if(ret) return luaL_error(L, "error opening file");
@@ -254,7 +255,7 @@ static int lua_screenshot(lua_State *L)
 		*(u32*)&tempbuf[0x16] = 480;
 		*(u32*)&tempbuf[0x1A] = 0x00180001;
 		*(u32*)&tempbuf[0x22] = 576000;
-		u8* framebuf = (u8*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+		u8* framebuf = TopLFB;
 		for (y = 0; y < 240; y++){
 			for (x = 0; x < 400; x++){
 				int si = ((239 - y) + (x * 240)) * 3;
@@ -264,7 +265,7 @@ static int lua_screenshot(lua_State *L)
 				tempbuf[di++] = framebuf[si++];
 			}	
 		}
-		framebuf = (u8*)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+		framebuf = BottomFB;
 		for (y = 0; y < 240; y++){
 			for (x = 0; x < 320; x++){
 				int si = ((239 - y) + (x * 240)) * 3;
