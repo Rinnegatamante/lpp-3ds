@@ -56,6 +56,27 @@ void putPixel565(u8* dst, u8 x, u8 y, u16 v){
 	dst[(x+(47-y)*48)*3+2]=((v>>11)&0x1F)<<3;
 }
 
+void DrawRGB565Pixel(u8* dst, u16 x, u16 y, u16 v){
+	u8 b = (v&0x1F)<<3;
+	u8 g =((v>>5)&0x3F)<<2;
+	u8 r = ((v>>11)&0x1F)<<3;
+	u32 color = b | (g << 8) | (r << 16) | (0xFF << 24);
+	DrawPixel(dst,x,y,color);
+}
+
+void DrawRGB565Screen(u8* dst, u16* pic){
+	int x;
+	int y;
+	u16 width = 400;	
+	if (dst == BottomFB) width = 320;
+	for (y=0; y < 240; y++){
+		for (x=0; x < width; x++){
+			DrawRGB565Pixel(dst, x, y, *pic);
+			pic++;
+		}
+	}
+}
+
 Bitmap* LoadBitmap(char* fname){
 	Handle fileHandle;
 	u64 size;
@@ -311,9 +332,9 @@ screen->pixels[idx*4+3] = outA * 255.0f;
 }
 
 void RefreshScreen(){
-TopLFB = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-if (CONFIG_3D_SLIDERSTATE != 0) TopRFB = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-BottomFB = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+	TopLFB = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+	TopRFB = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
+	BottomFB = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 }
 
 void DrawScreenText(int x, int y, char* str, u32 color, int screen,int side){
