@@ -55,6 +55,7 @@ extern u8* TopLFB;
 extern u8* TopRFB;
 extern u8* BottomFB;
 Bitmap* LoadBitmap(char* fname);
+void printJpg(unsigned char* in,u64 size, u8* framebuffer);
 void putPixel565(u8* dst, u8 x, u8 y, u16 v);
 void PrintScreenBitmap(int xp,int yp, Bitmap* result,int screen,int side);
 void PrintPartialScreenBitmap(int xp,int yp,int st_x,int st_y,int width,int height, Bitmap* result,int screen,int side);

@@ -662,6 +662,151 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 	}
 }
 
+void draw3DJPGVfast(JPGV* src, u8* framebuf, bool use3D){
+	if (framebuf != TopLFB) use3D = false;
+	if (src->isPlaying){
+		if (src->currentFrame >= (src->tot_frame - 10)){
+			if (src->loop == 1){
+				src->currentFrame = 0;
+				src->moltiplier = 1;
+				src->tick = osGetTime();
+			}else{
+				src->isPlaying = false;
+				src->moltiplier = 1;
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				CSND_UpdateInfo(0);
+			}
+		}else{
+			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
+			src->currentFrame = (u32)floor(tmp);
+			if (src->currentFrame >= (src->tot_frame-10)) return;
+			else{
+				u32 bytesRead;
+				u64 offset_left;
+				u64 size_left;
+				u64 size_right;
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
+				u64 offset_right = size_left;
+				size_left = size_left - offset_left;
+				unsigned char* frame_left = (unsigned char*)malloc(size_left);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
+				printJpg(frame_left, size_left, framebuf);
+				free(frame_left);
+				if (use3D){
+					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
+					size_right = size_right - offset_right;
+					unsigned char* frame_right = (unsigned char*)malloc(size_right);
+					FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
+					printJpg(frame_right, size_right, TopRFB);
+					free(frame_right);
+				}
+			}
+		}
+	}else{
+		if (src->tick != 0){	
+			u32 bytesRead;
+			u64 offset;
+			u64 size;
+			u64 size_right;
+			u64 offset_right;
+			if (src->currentFrame < (src->tot_frame-10)){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
+				if (use3D){
+					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
+					size_right = size_right - size;
+					offset_right = size;
+				}
+			}
+			size = size - offset;
+			unsigned char* frame = (unsigned char*)malloc(size);
+			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+			printJpg(frame, size, framebuf);
+			free(frame);
+			if (use3D){
+				unsigned char* frame2 = (unsigned char*)malloc(size_right);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
+				printJpg(frame2, size_right, TopRFB);
+				free(frame2);
+			}
+		}
+	}
+}
+
+static int lua_drawJPGVfast(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
+	u32 bytesRead;
+	u8* framebuf;
+	if (luaL_checkinteger(L, 2) == 0) framebuf = TopLFB;
+	else framebuf = BottomFB;
+	bool use3D = false;
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	svcSignalEvent(updateStream);
+	if (argc == 3) use3D = lua_toboolean(L,3);
+	if (src->is3D){
+		draw3DJPGVfast(src,framebuf,use3D);
+		return 0;
+	}
+	if (src->isPlaying){
+		if (src->currentFrame >= (src->tot_frame - 5)){
+			if (src->loop == 1){
+				src->currentFrame = 0;
+				src->moltiplier = 1;
+				src->tick = osGetTime();
+			}else{
+				src->isPlaying = false;
+				src->moltiplier = 1;
+				CSND_SetPlayState(src->ch1, 0);
+				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+				CSND_UpdateInfo(0);
+			}
+		}else{
+			double tmp = (double)((double)(osGetTime() - src->tick) / 1000.0) * src->framerate;
+			src->currentFrame = (u32)floor(tmp);
+			if (src->currentFrame >= (src->tot_frame-5)) return 0;
+			else{
+				u32 bytesRead;
+				u64 offset;
+				u64 size;
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				size = size - offset;
+				unsigned char* frame = (unsigned char*)malloc(size);
+				FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+				printJpg(frame, size, framebuf);
+				free(frame);
+			}
+		}
+	}else{
+		if (src->tick != 0){	
+			u32 bytesRead;
+			u64 offset;
+			u64 size;
+			if (src->currentFrame >= (src->tot_frame-5)){
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
+			}else{
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+			}
+			size = size - offset;
+			unsigned char* frame = (unsigned char*)malloc(size);
+			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+			printJpg(frame, size, framebuf);
+			free(frame);
+		}
+	}
+	return 0;
+}
+
 static int lua_drawJPGV(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -1000,6 +1145,7 @@ static const luaL_Reg JPGV_functions[] = {
   {"load",				lua_loadJPGV},
   {"start",				lua_startJPGV},
   {"draw",				lua_drawJPGV},
+  {"drawFast",			lua_drawJPGVfast},
   {"unload",			lua_unloadJPGV},
   {"getFPS",			lua_getFPS2},
   {"getFrame",			lua_getCF2},

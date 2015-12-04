@@ -1521,6 +1521,29 @@ Bitmap* decodeJpg(unsigned char* in,u64 size)
     return result;
 }
 
+void printJpg(unsigned char* in,u64 size, u8* framebuffer)
+{
+    struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = my_error_exit;
+    jpeg_create_decompress(&cinfo);
+    jpeg_mem_src(&cinfo, in, size);
+    jpeg_read_header(&cinfo, TRUE);
+    jpeg_start_decompress(&cinfo);
+    int width = cinfo.output_width;
+    int height = cinfo.output_height;
+    int row_bytes = width * cinfo.num_components;
+    u8* bgr_buffer = framebuffer;
+    while (cinfo.output_scanline < cinfo.output_height) {
+        u8* buffer_array[1];
+        buffer_array[0] = bgr_buffer + (cinfo.output_scanline) * row_bytes;
+        jpeg_read_scanlines(&cinfo, buffer_array, 1);
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+}
+
 void saveJpg(char *filename, u32 *pixels, u32 width, u32 height){
 	FILE *outfile = fopen(filename, "wb");
 	struct jpeg_error_mgr jerr;
