@@ -1503,7 +1503,9 @@ static int lua_setcpu(lua_State *L){
 		if(argc != 1 ) return luaL_error(L, "wrong number of arguments.");	
 	#endif
 	u16 cpu_clock = luaL_checkinteger(L,1);
-	if (cpu_clock >= NEW_3DS_CLOCK){
+	bool isNew;
+	APT_CheckNew3DS((u8*)&isNew);
+	if (cpu_clock >= NEW_3DS_CLOCK && isNew){
 		osSetSpeedupEnable(1);
 		current_clock = NEW_3DS_CLOCK;
 	}else {
