@@ -37,7 +37,7 @@
 #include <3ds.h>
 #include "include/luaAudio.h"
 
-bool audioChannels[24];
+bool audioChannels[32];
 
 // Custom playsound function: Prevent desynchronization (luaVideo) and allows stereo sounds max volume setting
 void My_CSND_playsound(u32 chn, u32 flags, u32 sampleRate, u32 *data0, u32 *data1, u32 size, float vol, float pan){

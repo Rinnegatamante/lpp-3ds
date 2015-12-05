@@ -52,7 +52,7 @@
 #define MAX_RAM_ALLOCATION_44100 1048576
 
 u8* tmp_buf = NULL;
-extern bool audioChannels[24];
+extern bool audioChannels[32];
 extern bool csndAccess;
 
 struct JPGV{

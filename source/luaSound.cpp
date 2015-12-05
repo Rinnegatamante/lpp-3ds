@@ -75,7 +75,7 @@ struct wav{
 	u32 loop_index;
 };
 
-extern bool audioChannels[24];
+extern bool audioChannels[32];
 extern bool isNinjhax2;
 extern bool csndAccess;
 volatile bool closeStream = false;
