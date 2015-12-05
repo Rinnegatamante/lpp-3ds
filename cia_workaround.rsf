@@ -161,7 +161,7 @@ AccessControlInfo:
    - ptm:u
    - pxi:dev
    - soc:U
-   - ssl:C
+   - gsp::Lcd
    - y2r:u
    - ldr:ro
    - ir:USER
