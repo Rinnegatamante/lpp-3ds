@@ -48,33 +48,6 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define STREAM_MAX_ALLOC 524288
 
-struct wav{
-	u32 magic;
-	u32 samplerate;
-	u16 bytepersample;
-	u8* audiobuf;
-	u8* audiobuf2;
-	u32 size;
-	u32 mem_size;
-	Handle sourceFile;
-	u32 startRead;
-	char author[256];
-	char title[256];
-	u32 moltiplier;
-	u64 tick;
-	bool isPlaying;
-	u32 ch;
-	u32 ch2;
-	bool streamLoop;
-	bool big_endian;
-	u8 encoding;
-	u32* thread;
-	u32 audio_pointer;
-	u32 package_size;
-	u32 total_packages_size;
-	u32 loop_index;
-};
-
 extern bool audioChannels[32];
 extern bool isNinjhax2;
 extern bool csndAccess;
@@ -1918,122 +1891,6 @@ static int lua_soundend(lua_State *L)
 	return 0;
 }
 
-static int lua_regsound(lua_State *L)
-{
-    int argc = lua_gettop(L);
-	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	#endif
-	u32 time = luaL_checkinteger(L, 1);
-	u32 samplerate = luaL_checkinteger(L, 2);
-	MICU_SampleRate smplrt;
-	if (samplerate <= 8200){
-		smplrt = MICU_SAMPLE_RATE_8180;
-		samplerate = 8180;
-	}else if (samplerate <= 12000){
-		smplrt = MICU_SAMPLE_RATE_10910;
-		samplerate = 10910;
-	}else if (samplerate <= 18000){
-		smplrt = MICU_SAMPLE_RATE_16360;
-		samplerate = 16360;
-	}else{
-		smplrt = MICU_SAMPLE_RATE_32730; 
-		samplerate = 32730;		
-	}
-	u32 mem_size = time * 32000; // time + 1 because first second is mute
-	u8* audiobuf = (u8*)linearAlloc(mem_size);
-	u32 audiobuf_pos = 0;
-	u32* micbuf = (u32*)memalign(0x1000, 0x30000);
-	u32 micbuf_datasize = micGetSampleDataSize();
-	micInit((u8*)micbuf, 0x8000 * time);
-	u32 micbuf_pos = 0;
-	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, smplrt, 0, micbuf_datasize, true);
-	while (audiobuf_pos < mem_size){
-		u32 micbuf_readpos = micbuf_pos;
-		micbuf_pos = micGetLastSampleOffset();
-		while (audiobuf_pos < mem_size && micbuf_readpos != micbuf_pos){
-			audiobuf[audiobuf_pos] = micbuf[micbuf_readpos];
-			audiobuf_pos++;
-			micbuf_readpos = (micbuf_readpos + 1) % micbuf_datasize;
-		}
-	}
-	MICU_StopSampling();
-	micExit();
-	free(micbuf);	
-	Music* songFile = (Music*)malloc(sizeof(Music));
-	songFile->audiobuf = audiobuf;
-	songFile->audiobuf2 = NULL;
-	songFile->big_endian = false;
-	songFile->mem_size = 0;
-	songFile->size = mem_size;
-	songFile->samplerate = samplerate;
-	strcpy(songFile->author,"");
-	strcpy(songFile->title,"");
-	songFile->isPlaying = false;
-	songFile->bytepersample = 2;
-	songFile->magic = 0x4C534E44;
-	lua_pushinteger(L,(u32)songFile);
-	return 1;
-}
-
-static int lua_regsound_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
-	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	#endif
-	u32 time = luaL_checkinteger(L, 1);
-	u32 samplerate = luaL_checkinteger(L, 2);
-	MICU_SampleRate smplrt;
-	if (samplerate <= 8200){
-		smplrt = MICU_SAMPLE_RATE_8180;
-		samplerate = 8180;
-	}else if (samplerate <= 12000){
-		smplrt = MICU_SAMPLE_RATE_10910;
-		samplerate = 10910;
-	}else if (samplerate <= 18000){
-		smplrt = MICU_SAMPLE_RATE_16360;
-		samplerate = 16360;
-	}else{
-		smplrt = MICU_SAMPLE_RATE_32730; 
-		samplerate = 32730;		
-	}
-	u32 mem_size = time * 32000; // time + 1 because first second is mute
-	u8* audiobuf = (u8*)linearAlloc(mem_size);
-	u32 audiobuf_pos = 0;
-	u32* micbuf = (u32*)memalign(0x1000, 0x30000);
-	u32 micbuf_datasize = micGetSampleDataSize();
-	micInit((u8*)micbuf, 0x8000 * time);
-	u32 micbuf_pos = 0;
-	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, smplrt, 0, micbuf_datasize, true);
-	while (audiobuf_pos < mem_size){
-		u32 micbuf_readpos = micbuf_pos;
-		micbuf_pos = micGetLastSampleOffset();
-		while (audiobuf_pos < mem_size && micbuf_readpos != micbuf_pos){
-			audiobuf[audiobuf_pos] = micbuf[micbuf_readpos];
-			audiobuf_pos++;
-			micbuf_readpos = (micbuf_readpos + 1) % micbuf_datasize;
-		}
-	}
-	MICU_StopSampling();
-	micExit();
-	free(micbuf);	
-	wav* songFile = (wav*)malloc(sizeof(wav));
-	songFile->audiobuf = audiobuf;
-	songFile->audiobuf2 = NULL;
-	songFile->big_endian = false;
-	songFile->mem_size = 0;
-	songFile->size = mem_size;
-	songFile->samplerate = samplerate;
-	strcpy(songFile->author,"");
-	strcpy(songFile->title,"");
-	songFile->isPlaying = false;
-	songFile->bytepersample = 2;
-	songFile->magic = 0x4C534E44;
-	lua_pushinteger(L,(u32)songFile);
-	return 1;
-}
-
 static int lua_save(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -2295,7 +2152,6 @@ static const luaL_Reg Sound_DSP_functions[] = {
 	{"getTotalTime",			lua_getTotalTime},
 	{"resume",					lua_resume},
 	{"isPlaying",				lua_wisPlaying},
-	{"record",					lua_regsound},
 	{"updateStream",			lua_updatestream},
 	{"saveWav",					lua_save},
 	{"getService",				lua_service},
@@ -2319,7 +2175,6 @@ static const luaL_Reg Sound_CSND_functions[] = {
 	{"getTotalTime",			lua_getTotalTime_old},
 	{"resume",					lua_resume_old},
 	{"isPlaying",				lua_wisPlaying},
-	{"record",					lua_regsound_old},
 	{"updateStream",			lua_updatestream},
 	{"saveWav",					lua_save_old},
 	{"getService",				lua_service},
