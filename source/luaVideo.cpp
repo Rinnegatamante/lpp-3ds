@@ -396,14 +396,14 @@ static int lua_startJPGV(lua_State *L){
 		ch = 0x08;
 		while (audioChannels[ch]){
 			ch++;
-			if (ch > 24) return luaL_error(L, "audio device is busy");
+			if (ch > 32) return luaL_error(L, "audio device is busy");
 		}
 		audioChannels[ch] = true;
 		ch2 = ch + 1;
 		if (src->audiotype == 2){
 			while (audioChannels[ch2]){
 				ch2++;
-				if (ch2 > 24) return luaL_error(L, "audio device is busy");
+				if (ch2 > 32) return luaL_error(L, "audio device is busy");
 			}
 			audioChannels[ch2] = true;
 		}

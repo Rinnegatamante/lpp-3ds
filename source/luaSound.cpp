@@ -479,6 +479,7 @@ static int lua_openogg_old(lua_State *L)
 	wav_file->startRead = 0;
 	wav_file->total_packages_size = 0;
 	wav_file->loop_index = 1;
+	wav_file->ch = 0xDEADBEEF;
 	wav_file->package_size = 0;
 	wav_file->audio_pointer = 0;
 	strcpy(wav_file->author,"");
@@ -1589,10 +1590,11 @@ static int lua_play(lua_State *L)
 		ch = 0;
 		while (audioChannels[ch]){
 			ch++;
-			if (ch > 24) return luaL_error(L, "audio device is busy");
+			if (ch > 32) return luaL_error(L, "audio device is busy");
 		}
 		audioChannels[ch] = true;
 	}
+	src->ch = ch;
 	
 	// Non native Audiocodecs support
 	ThreadFunc streamFunction = streamWAV_DSP;
@@ -1660,18 +1662,20 @@ static int lua_play_old(lua_State *L)
 		ch = 0x08;
 		while (audioChannels[ch]){
 			ch++;
-			if (ch > 24) return luaL_error(L, "audio device is busy");
+			if (ch > 32) return luaL_error(L, "audio device is busy");
 		}
 		audioChannels[ch] = true;
 		ch2 = ch + 1;
 		if (src->audiobuf2 != NULL){
 			while (audioChannels[ch2]){
 				ch2++;
-				if (ch2 > 24) return luaL_error(L, "audio device is busy");
+				if (ch2 > 32) return luaL_error(L, "audio device is busy");
 			}
 			audioChannels[ch2] = true;
 		}
 	}
+	src->ch = ch;
+	src->ch2 = ch2;
 	
 	bool non_native_encode = false;
 	ThreadFunc streamFunction = streamWAV_CSND;
@@ -1699,9 +1703,8 @@ static int lua_play_old(lua_State *L)
 			if (interp != 0xDEADBEEF) My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 2.0);
 			else My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->size, 1.0, 2.0);
 		}
-		src->ch = ch;
 		src->tick = osGetTime();
-		CSND_SetPlayState(ch, 1);
+		CSND_SetPlayState(src->ch, 1);
 		CSND_UpdateInfo(0);
 	}else{
 		if (src->mem_size > 0){
@@ -1729,8 +1732,6 @@ static int lua_play_old(lua_State *L)
 				My_CSND_playsound(ch2, SOUND_FORMAT(src->encoding) | looping, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->size, 1.0, 1.0);
 			}
 		}
-		src->ch = ch;
-		src->ch2 = ch2;
 		src->tick = osGetTime();
 		CSND_SetPlayState(ch, 1);
 		CSND_SetPlayState(ch2, 1);

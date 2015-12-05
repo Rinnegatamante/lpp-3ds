@@ -50,7 +50,7 @@ bool isTopLCDOn;
 bool isBottomLCDOn;
 bool isNinjhax2;
 bool csndAccess;
-extern bool audioChannels[24];
+extern bool audioChannels[32];
 
 int main(int argc, char **argv)
 {
@@ -92,9 +92,10 @@ int main(int argc, char **argv)
 	
 	// Init Audio-Device
 	int i = 0;
-	for (i=0;i < 24; i++){
-		if (csndAccess || ((!isNinjhax2) && (i < 0x08))) audioChannels[i] = true;
-		else audioChannels[i] = false;
+	for (i=0;i < 32; i++){
+		audioChannels[i] = false;
+		if (!isNinjhax2 && (i < 0x08))  audioChannels[i] = true;
+		else if (csndAccess && (i < 0x08)) audioChannels[i] = true;
 	}
 	
 	// Set main script
