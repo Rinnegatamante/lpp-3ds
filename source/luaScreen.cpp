@@ -261,15 +261,16 @@ static int lua_flipBitmap(lua_State *L)
 static int lua_saveimg(lua_State *L){
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 3) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Bitmap* src = (Bitmap*)luaL_checkinteger(L, 1);
 	char* text = (char*)(luaL_checkstring(L, 2));
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	int compression = lua_toboolean(L, 3);
-	if (compression == 0){ //BMP Format
+	bool isJPG = false;
+	if (argc == 3) isJPG = lua_toboolean(L, 3);
+	if (!isJPG){ //BMP Format
 		Handle fileHandle;
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		FS_Path filePath=fsMakePath(PATH_ASCII, text);
