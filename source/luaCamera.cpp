@@ -151,6 +151,40 @@ static int lua_camoutput(lua_State *L)
 	return 0;
 }
 
+static int lua_camimage(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
+	if (SCREEN_SIZE == 153600) result->width = 320;
+	else result->width = 400;
+	result->height = 240;
+	result->magic = 0x4C494D47;
+	result->bitperpixel = 24;
+	u32 bytes_to_process = SCREEN_SIZE / 2;
+	result->pixels = (u8*)malloc(bytes_to_process * 3);
+	u16* frame_buf = (u16*)cam_buf;
+	u32 i = 0;
+	u32 x;
+	u32 y;
+	for (y = 0; y < result->height; y++){
+		for (x = 0; x < result->width; x++){
+			int di = (x + (((result->height - 1) - y) * result->width)) * 3;
+			u8 b = (frame_buf[i]&0x1F)<<3;
+			u8 g = ((frame_buf[i]>>5)&0x3F)<<2;
+			u8 r = ((frame_buf[i]>>11)&0x1F)<<3;
+			result->pixels[di++] = b;
+			result->pixels[di++] = g;
+			result->pixels[di++] = r;
+			i++;
+		}
+	}
+	lua_pushinteger(L,(u32)result);
+	return 1;
+}
+
 static int lua_camshot(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -235,6 +269,28 @@ static int lua_camshot(lua_State *L)
 		FSFILE_Close(fileHandle);
 		svcCloseHandle(fileHandle);
 		free(tempbuf);
+	}else{
+		u8* tempbuf = (u8*)malloc(BUFFER_SIZE);
+		int si = 0;
+		for (y = 0; y < height; y++){
+			for (x = 0; x < width; x++){
+				int di = (x + (y*width)) * 3;
+				u8 b = (frame_buf[si]&0x1F)<<3;
+				u8 g = ((frame_buf[si]>>5)&0x3F)<<2;
+				u8 r = ((frame_buf[si]>>11)&0x1F)<<3;
+				tempbuf[di++] = b;
+				tempbuf[di++] = g;
+				tempbuf[di++] = r;
+				si++;
+			}	
+		}
+		sdmcInit();
+		char tmpPath2[1024];
+		strcpy(tmpPath2,"sdmc:");
+		strcat(tmpPath2,(char*)screenpath);
+		saveJpg(tmpPath2,(u32*)tempbuf,width,height);
+		sdmcExit();
+		free(tempbuf);
 	}
 	svcCloseHandle(camReceiveEvent);
 	CAMU_StopCapture(PORT_CAM1);
@@ -267,6 +323,7 @@ static const luaL_Reg Camera_functions[] = {
 	{"init",					lua_caminit},
 	{"getOutput",				lua_camoutput},
 	{"takePhoto",				lua_camshot},
+	{"takeImage",				lua_camimage},
 	{"term",					lua_camexit},
 	{0, 0}
 };
