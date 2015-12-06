@@ -45,6 +45,7 @@
 
 u32* micbuf = NULL;
 u32 micsize;
+u32 cur_offset;
 MICU_SampleRate srate;
 extern bool csndAccess;
 
@@ -78,10 +79,13 @@ static int lua_regsound(lua_State *L)
 		mem_base = 0x10000;
 	}
 	u32 micbuf_pos = 0;
-	u32 mem_size = mem_base * (time + 1);
-	micbuf = (u32*)memalign(0x1000, mem_size); // time + 1 cause first second is mute
+	u32 mem_size = mem_base * time;
+	micbuf = (u32*)memalign(0x1000, mem_size);
 	micInit((u8*)micbuf, mem_size);
 	micsize = micGetSampleDataSize();
+	bool power;
+	cur_offset = 0;
+	svcSleepThread(1000000000);
 	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, srate, 0, micsize, false);
 	return 0;
 }
@@ -113,12 +117,8 @@ static int lua_stoprec_CSND(lua_State *L)
 	}else offset = micsize;
 	u32 samplerate = sampleSize(srate);
 	u32 mute_size = samplerate * 2;
-	u32 audio_size = offset - mute_size;
-	u8* bytebuf = (u8*)linearAlloc(audio_size);
-	
-	// Remove first mute second
-	memcpy(bytebuf, &(((u8*)micbuf)[mute_size]), audio_size);
-
+	u8* bytebuf = (u8*)linearAlloc(offset);
+	memcpy(bytebuf, (u8*)micbuf, offset);
 	micExit();
 	free(micbuf);
 	wav* songFile = (wav*)malloc(sizeof(wav));
@@ -127,7 +127,7 @@ static int lua_stoprec_CSND(lua_State *L)
 	songFile->big_endian = false;
 	songFile->mem_size = 0;
 	songFile->ch = 0xDEADBEEF;
-	songFile->size = audio_size;
+	songFile->size = offset;
 	songFile->samplerate = samplerate;
 	songFile->encoding = CSND_ENCODING_PCM16;	
 	strcpy(songFile->author,"");
@@ -154,22 +154,19 @@ static int lua_stoprec_CSND(lua_State *L)
 	}else offset = micsize;
 	u32 samplerate = sampleSize(srate);
 	u32 mute_size = samplerate * 2;
-	u32 audio_size = offset - mute_size;
-	u8* bytebuf = (u8*)linearAlloc(audio_size);
-	
-	// Remove first mute second
-	memcpy(bytebuf, &(((u8*)micbuf)[mute_size]), audio_size);
-	
+	u8* bytebuf = (u8*)linearAlloc(offset);
+	memcpy(bytebuf, (u8*)micbuf, offset);
 	micExit();
+	free(micbuf);
 	Music* songFile = (Music*)malloc(sizeof(Music));
-	songFile->audiobuf = (u8*)micbuf;
+	songFile->audiobuf = bytebuf;
 	songFile->audiobuf2 = NULL;
 	songFile->big_endian = false;
 	songFile->mem_size = 0;
 	songFile->ch = 0xDEADBEEF;
-	songFile->size = audio_size;
+	songFile->size = offset;
 	songFile->samplerate = samplerate;
-	songFile->encoding = CSND_ENCODING_PCM16;
+	songFile->encoding = CSND_ENCODING_PCM16;	
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->isPlaying = false;
@@ -179,11 +176,41 @@ static int lua_stoprec_CSND(lua_State *L)
 	return 1;
 }
 
+static int lua_pausemic(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	bool isSampling;
+	MICU_IsSampling(&isSampling);
+	if (isSampling){
+		cur_offset = micGetLastSampleOffset();
+		MICU_StopSampling();
+	}
+	return 0;
+}
+
+static int lua_resumemic(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	bool isSampling;
+	MICU_IsSampling(&isSampling);
+	u32 offset;
+	if (!isSampling) MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, srate, cur_offset, micsize - cur_offset, false);
+	return 0;
+}
+
 //Register our Mic Functions
 static const luaL_Reg Mic_DSP_functions[] = {
 	{"start",					lua_regsound},
 	{"isRecording",				lua_micplaying},	
 	{"stop",					lua_stoprec_DSP},	
+	{"pause",					lua_pausemic},	
+	{"resume",					lua_resumemic},	
 	{0, 0}
 };
 
@@ -191,6 +218,8 @@ static const luaL_Reg Mic_CSND_functions[] = {
 	{"start",					lua_regsound},
 	{"isRecording",				lua_micplaying},
 	{"stop",					lua_stoprec_CSND},	
+	{"pause",					lua_pausemic},	
+	{"resume",					lua_resumemic},	
 	{0, 0}
 };
 
