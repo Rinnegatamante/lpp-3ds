@@ -64,8 +64,8 @@ typedef struct{
 #define FCREATE 2
 #define NAND 0
 #define SDMC 1
-#define OLD_3DS_CLOCK 268
-#define NEW_3DS_CLOCK 804
+u16 OLD_3DS_CLOCK = 268;
+u16 NEW_3DS_CLOCK = 804;
 int current_clock = OLD_3DS_CLOCK;
 extern bool isNinjhax2;
 

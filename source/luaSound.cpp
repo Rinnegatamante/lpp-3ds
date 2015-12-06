@@ -2131,7 +2131,7 @@ static int lua_service(lua_State *L){
 	if (csndAccess) sprintf(srv,"csnd:SND");
 	else sprintf(srv,"dsp::DSP");
 	lua_pushstring(L, srv);
-	return 0;
+	return 1;
 }
 
 //Register our Sound Functions
