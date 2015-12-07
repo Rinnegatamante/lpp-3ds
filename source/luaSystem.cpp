@@ -59,11 +59,6 @@ typedef struct{
 	u64 fileSize;				///< File size
 } FS_dirent;
 
-#define FREAD 0
-#define FWRITE 1
-#define FCREATE 2
-#define NAND 0
-#define SDMC 1
 u16 OLD_3DS_CLOCK = 268;
 u16 NEW_3DS_CLOCK = 804;
 int current_clock = OLD_3DS_CLOCK;
@@ -1586,6 +1581,11 @@ void luaSystem_init(lua_State *L) {
 	lua_setglobal(L, "System");
 	VariableRegister(L,APP_EXITING);
 	VariableRegister(L,APP_RUNNING);
+	u8 FREAD = 0;
+	u8 FWRITE = 1;
+	u8 FCREATE = 2;
+	u8 NAND = 0;
+	u8 SDMC = 1;
 	VariableRegister(L,FREAD);
 	VariableRegister(L,FWRITE);
 	VariableRegister(L,FCREATE);
