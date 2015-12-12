@@ -139,7 +139,7 @@ static int lua_stoprec_CSND(lua_State *L)
 	return 1;
 }
 
-static int lua_stoprec_CSND(lua_State *L)
+static int lua_stoprec_DSP(lua_State *L)
 {
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
