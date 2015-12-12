@@ -49,7 +49,7 @@ static int connfd;
 typedef struct
 {
 	u32 magic;
-	u32 sock;
+	int sock;
 	struct sockaddr_in addrTo;
 	bool serverSocket;
 } Socket;
@@ -429,7 +429,7 @@ static int lua_accept(lua_State *L)
 
 	struct sockaddr_in addrAccept;
 	socklen_t cbAddrAccept = sizeof(addrAccept);
-	u32 sockClient = accept(my_socket->sock, (struct sockaddr*)&addrAccept, &cbAddrAccept);
+	int sockClient = accept(my_socket->sock, (struct sockaddr*)&addrAccept, &cbAddrAccept);
 	if (sockClient <= 0) {
 		return 0;
 	}
