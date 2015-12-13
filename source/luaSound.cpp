@@ -1161,6 +1161,7 @@ static int lua_openogg(lua_State *L)
 	// Allocating music info
 	Music* songFile = (Music*)malloc(sizeof(Music));
 	songFile->ch = 0xDEADBEEF;
+	songFile->savestate = NULL;
 	songFile->magic = 0x4C534E44;
 	vorbis_info* my_info = ov_info(vf,-1);
 	songFile->samplerate = my_info->rate;
@@ -1296,6 +1297,7 @@ static int lua_openwav(lua_State *L)
 		// Init wav struct
 		Music* songFile = (Music*)malloc(sizeof(Music));
 		songFile->ch = 0xDEADBEEF;
+		songFile->savestate = NULL;
 		strcpy(songFile->author,"");
 		strcpy(songFile->title,"");
 		u64 size;
@@ -1428,6 +1430,7 @@ static int lua_openaiff(lua_State *L)
 	if (magic != 0x46464941) return luaL_error(L, "corrupt AIFF file");
 	Music* songFile = (Music*)malloc(sizeof(Music));
 	songFile->ch = 0xDEADBEEF;
+	songFile->savestate = NULL;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
 	songFile->encoding = CSND_ENCODING_PCM16;
@@ -1755,7 +1758,9 @@ static int lua_closesong(lua_State *L)
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (tmp_buf != NULL) linearFree(tmp_buf);
+	if (src->savestate != NULL) free(src->savestate);
 	free(src);
+	
 	return 0;
 }
 
@@ -1869,12 +1874,13 @@ static int lua_resume(lua_State *L)
 		ndspWaveBuf* next = src->savestate->waveBuf->next;
 		u32 samplePos = src->savestate->waveBuf->offset;
 		u8* audiobuf = (u8*)src->savestate->waveBuf->data_vaddr;
-		src->savestate->waveBuf->data_vaddr = (void*)&audiobuf[samplePos * 2];
+		src->savestate->waveBuf->data_vaddr = (void*)&audiobuf[samplePos * src->bytepersample];
 		src->savestate->waveBuf->nsamples = src->savestate->waveBuf->nsamples - samplePos;
 		src->savestate->waveBuf->offset = 0;
 		ndspChnWaveBufAdd(src->ch, src->savestate->waveBuf);
-		ndspChnWaveBufAdd(src->ch, next);
+		if (next != NULL) ndspChnWaveBufAdd(src->ch, next);
 		free(src->savestate);
+		src->savestate = NULL;
 		src->lastCheck = 0;
 		src->isPlaying = true;
 		src->tick = (osGetTime()-src->tick);
