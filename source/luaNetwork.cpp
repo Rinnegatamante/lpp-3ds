@@ -405,9 +405,10 @@ static int lua_connect(lua_State *L)
 	fcntl(my_socket->sock, F_SETFL, O_NONBLOCK);
 
 	int err = connect(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
-	#ifndef SKIP_ERROR_HANDLING
-		if (err < 0 ) return luaL_error(L, "Failed connecting server.");
-	#endif
+	if (err < 0 ){
+		free(my_socket);
+		return 0;
+	}
 	
 	lua_pushinteger(L, (u32)my_socket);
 	return 1;
@@ -430,9 +431,7 @@ static int lua_accept(lua_State *L)
 	struct sockaddr_in addrAccept;
 	socklen_t cbAddrAccept = sizeof(addrAccept);
 	int sockClient = accept(my_socket->sock, (struct sockaddr*)&addrAccept, &cbAddrAccept);
-	if (sockClient <= 0) {
-		return 0;
-	}
+	if (sockClient <= 0) return 0;
 
 	Socket* incomingSocket = (Socket*) malloc(sizeof(Socket));
 	incomingSocket->serverSocket = 0;
