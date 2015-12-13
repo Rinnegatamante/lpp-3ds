@@ -37,7 +37,7 @@ typedef struct
 
 } ndspChnSt;
 
-static ndspChnSt ndspChn[24];
+ndspChnSt ndspChn[24];
 
 void ndspChnReset(int id)
 {

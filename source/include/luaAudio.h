@@ -31,6 +31,7 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
+
 // Additional encoding
 typedef enum{
 	CSND_ENCODING_VORBIS = 4
@@ -42,6 +43,30 @@ struct PurgeTable{
 	PurgeTable* next;
 };
 
+typedef struct
+{
+	u32 flags;
+
+	LightLock lock;
+	u16 syncCount, waveBufSeqPos;
+	u32 samplePos;
+
+	ndspWaveBuf* waveBuf;
+	u16 wavBufCount, wavBufIdNext;
+
+	bool playing;
+	u8 interpType, iirFilterType;
+
+	u16 format;
+	u16 wavBufSeq;
+
+	float rate;
+	float mix[12];
+
+	u16 adpcmCoefs[16];
+
+} ndspChnSt;
+
 struct Music{
 	u32 magic;
 	u32 samplerate;
@@ -50,14 +75,14 @@ struct Music{
 	u8* audiobuf2;
 	ndspWaveBuf* wavebuf;
 	ndspWaveBuf* wavebuf2;
-	u16 lastCheck;
+	ndspChnSt* savestate;
+	u32 lastCheck;
 	u32 size;
 	u32 mem_size;
 	Handle sourceFile;
 	u32 startRead;
 	char author[256];
 	char title[256];
-	u32 resumeSample;
 	u64 tick;
 	bool isPlaying;
 	u32 ch;

@@ -484,7 +484,7 @@ Result ndspInit(void)
 	rc = svcCreateEvent(&sleepEvent, 0);
 	if (R_FAILED(rc)) goto _fail2;
 
-	rc = svcCreateThread(&ndspThread, ndspThreadMain, 0x0, (u32*)(&ndspThreadStack[NDSP_THREAD_STACK_SIZE/8]), 0x31, -2);
+	rc = svcCreateThread(&ndspThread, ndspThreadMain, 0x0, (u32*)(&ndspThreadStack[NDSP_THREAD_STACK_SIZE/8]), 0x18, 1);
 	if (R_FAILED(rc)) goto _fail3;
 
 	aptHook(&aptCookie, ndspAptHook, NULL);
