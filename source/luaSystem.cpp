@@ -1291,6 +1291,40 @@ static int lua_ZipExtract(lua_State *L) {
 	return 1;
 }
 
+static int lua_getfilefromzip(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 3 && argc != 4 ) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	const char *FileToExtract = luaL_checkstring(L, 1);
+	const char *FileToExtract2 = luaL_checkstring(L, 2);
+	const char *Dest = luaL_checkstring(L, 3);
+	const char *Password = (argc == 4) ? luaL_checkstring(L, 4) : NULL;
+	char tmpFile2[1024];
+	sdmcInit();
+	strcpy(tmpFile2,"sdmc:");
+	strcat(tmpFile2,(char*)FileToExtract);
+	Zip *handle = ZipOpen(tmpFile2);
+	if (handle == NULL) luaL_error(L, "error opening ZIP file.");
+	ZipFile* file = ZipFileRead(handle, FileToExtract2, Password);
+	if (file == NULL) lua_pushboolean(L, false);
+	else{
+		Handle fileHandle;
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, Dest);
+		Result ret = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE | FS_OPEN_WRITE, 0x00000000);
+		u32 bytesWritten;
+		ret=FSFILE_Write(fileHandle, &bytesWritten, 0, file->data, file->size, FS_WRITE_FLUSH);
+		FSFILE_Close(fileHandle);
+		svcCloseHandle(fileHandle);
+		ZipFileFree(file);
+		lua_pushboolean(L, true);
+	}
+	ZipClose(handle);
+	sdmcExit();
+	return 1;
+}
+
 static int lua_model(lua_State *L) {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -1564,6 +1598,7 @@ static const luaL_Reg System_functions[] = {
 	{"addNotification",		lua_addnews},
 	{"setCpuSpeed",			lua_setcpu},
 	{"getCpuSpeed",			lua_getcpu},
+	{"extractFromZIP",		lua_getfilefromzip},
 // I/O Module and Dofile Patch
 	{"openFile",			lua_openfile},
 	{"getFileSize",			lua_getsize},
