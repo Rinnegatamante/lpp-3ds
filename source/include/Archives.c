@@ -1254,7 +1254,7 @@ ZipFile* ZipFileRead(Zip* zip, const char *filename, const char *password)
 	}
 }
 
-void ZipFileFreePatch(ZipFile* file)
+void ZipFileFree(ZipFile* file)
 {
 	if(file->data)
 		FreePatch(file->data);
