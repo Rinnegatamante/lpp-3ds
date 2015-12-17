@@ -835,6 +835,12 @@ void streamOGG_DSP(void* arg){
 				// Check if file reached EOF
 				if (src->audio_pointer >= src->size){
 				
+					// Looping feature (TODO: Seems to not work)
+					if (src->streamLoop){
+						ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+						src->audio_pointer = 0;
+					}
+				
 					// Check if playback ended
 					if (!ndspChnIsPlaying(src->ch)){
 						src->isPlaying = false;
@@ -1071,7 +1077,10 @@ void streamWAV_DSP(void* arg){
 			
 				// Check if file reached EOF
 				if (src->audio_pointer >= src->size){
-				
+					
+					// Looping feature
+					if (src->streamLoop) src->audio_pointer = src->startRead;
+					
 					// Check if playback ended
 					if (!ndspChnIsPlaying(src->ch)){
 						src->isPlaying = false;
