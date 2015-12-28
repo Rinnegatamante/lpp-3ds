@@ -51,7 +51,7 @@ CFLAGS	:=	-g -O2 -mword-relocations \
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DLODEPNG_NO_COMPILE_ENCODER -DLUA_C89_NUMBERS -DLIBCTRU_NO_DEPRECATION
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -Wno-write-strings
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive  -Wno-write-strings
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)

@@ -38,10 +38,6 @@
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
 #include "include/Archives.h"
-/*#include "include/boot/descriptor.h"
-extern "C"{
-	#include "include/boot/boot.h"
-}*/
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
@@ -852,9 +848,13 @@ static int lua_readsmdh(lua_State *L){
 //Boot Func
 extern void (*__system_retAddr)(void);
 static Handle hbHandle;
+static u32 argbuffer[0x100];
+static u32 argbuffer_length = 0;
 void (*callBootloader)(Handle hb, Handle file);
 void (*setArgs)(u32* src, u32 length);
 static void launchFile(void){ callBootloader(0x00000000, hbHandle); }
+void (*callBootloader_2x)(Handle file, u32* argbuf, u32 arglength) = (void*)0x00100000;
+static void launchFile_2x(void){ callBootloader_2x(hbHandle, argbuffer, argbuffer_length); }
 
 static int lua_launch(lua_State *L){
 	int argc = lua_gettop(L);
@@ -862,7 +862,11 @@ static int lua_launch(lua_State *L){
 		if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char* file = luaL_checkstring(L, 1);
-	HB_GetBootloaderAddresses((void**)&callBootloader, (void**)&setArgs);
+	if (isNinjhax2){
+		argbuffer[0] = 1;
+		snprintf((char*)&argbuffer[1], sizeof(argbuffer) - 4, "sdmc:%s", file);
+		argbuffer_length = 0x100;
+	}else HB_GetBootloaderAddresses((void**)&callBootloader, (void**)&setArgs);
 	fsExit();
 	fsInit();
 	FS_Archive sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
@@ -871,30 +875,19 @@ static int lua_launch(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (ret) return luaL_error(L, "script doesn't exist.");
 	#endif
-	static u32 argbuffer[0x200];
-	argbuffer[0]=1;
-	snprintf((char*)&argbuffer[1], 0x200*4, "sdmc:%s", file);
-	setArgs(argbuffer, 0x200*4);
-	__system_retAddr = launchFile;
+	if (isNinjhax2) __system_retAddr = launchFile_2x;
+	else{
+		static u32 argbuffer_nh1[0x200];
+		argbuffer_nh1[0]=1;
+		snprintf((char*)&argbuffer_nh1[1], 0x200*4, "sdmc:%s", file);
+		setArgs(argbuffer_nh1, 0x200*4);
+		__system_retAddr = launchFile;
+	}
 	char string[20];
 	strcpy(string,"lpp_exit_0456432");
 	luaL_dostring(L, "collectgarbage()");
 	return luaL_error(L, string); // NOTE: This is a fake error
 }
-
-/*static int lua_launch(lua_State *L){						 /* Future NH 2.x bootloader support
-	int argc = lua_gettop(L);
-	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	const char* file = luaL_checkstring(L, 1);
-	menuEntry_s me;
-	initMenuEntry(&me, (char*)file);
-	scanMenuEntry(&me);
-	bootApp(me.executablePath, &me.descriptor.executableMetadata, me.arg);
-	char string[20];
-	strcpy(string,"lpp_exit_0456432");
-	luaL_dostring(L, "collectgarbage()");
-	return luaL_error(L, string); // NOTE: This is a fake error
-}*/
 
 static int lua_listExtdata(lua_State *L){
 	int argc = lua_gettop(L);
