@@ -38,6 +38,9 @@
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
 #include "include/Archives.h"
+extern "C"{
+	#include "include/brahma/brahma.h"
+}
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
@@ -1328,6 +1331,23 @@ static int lua_model(lua_State *L) {
 	lua_pushinteger(L,model);
 	return 1;
 }
+
+static int lua_brahmaloader(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 2 ) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	const char *file = luaL_checkstring(L, 1);
+	u32 offset = luaL_checkinteger(L, 2);
+	brahma_init();
+	load_arm9_payload_offset (file, offset, 0x10000);
+	firm_reboot();
+    brahma_exit();
+	char string[20];
+	strcpy(string,"lpp_exit_0456432");
+	luaL_dostring(L, "collectgarbage()");
+	return luaL_error(L, string); // NOTE: This is a fake error
+}
 	
 static int lua_syscall1(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -1569,6 +1589,7 @@ static const luaL_Reg System_functions[] = {
 	{"startKeyboard",		lua_keyboard},
 	{"launch3DSX",			lua_launch},
 	{"launchCIA",			lua_launchCia},
+	{"launchPayload",		lua_brahmaloader},
 	{"extractSMDH",			lua_readsmdh},
 	{"scanExtdata",			lua_listExtdata},
 	{"listExtdataDir",		lua_listExtdataDir},

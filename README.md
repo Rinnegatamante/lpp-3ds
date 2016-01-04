@@ -40,6 +40,7 @@ Official temporary documentation: http://rinnegatamante.netsons.org/lpp-3ds_doc.
 - xerpi for sf2dlib<br>
 - Sean Barrett for stb_truetype<br>
 - Jean-loup Gailly and Mark Adler for zlib<br>
+- Everyone involved in Brahma developing<br>
 - Special thanks to Aurelio and ihaveamac for testing, bug-fixing and various help with codes and implementations
 <br><br>
 NOTE: JPGV video format is made by me with the help of Aurelio.<br>
