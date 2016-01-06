@@ -1,4 +1,5 @@
 -- This sample can be viewed in action here: https://www.youtube.com/watch?v=NsRG-f-okI0
+-- Take the video performance as outdated, JPGV player performances test can be viewed here: http://rinnegatamante.it/O3DSvsN3DS.mp4
 test = JPGV.load("/output.jpgv")
 tot_time_sec = math.ceil(JPGV.getSize(test) / JPGV.getFPS(test))
 tot_time_min = 0
