@@ -52,7 +52,7 @@ static int lua_readC(lua_State *L)
 	#endif
 	hidScanInput();
 	irrstScanInput();
-	lua_pushnumber(L, hidKeysHeld());
+	lua_pushinteger(L, hidKeysHeld());
 	return 1;
 }
 
@@ -62,8 +62,8 @@ static int lua_check(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (argc != 2) return luaL_error(L, "wrong number of arguments.");
 	#endif
-	u32 pad = luaL_checknumber(L, 1);
-	u32 button = luaL_checknumber(L, 2);
+	u32 pad = luaL_checkinteger(L, 1);
+	u32 button = luaL_checkinteger(L, 2);
 	if (button == KEY_HOME){
 		APT_AppStatus status = aptGetStatus();
 		lua_pushboolean(L,((status == APP_SUSPENDING) && aptGetStatusPower() == 0));
@@ -82,8 +82,8 @@ static int lua_circlepad(lua_State *L)
 	#endif
 	circlePosition cpos;
 	hidCircleRead(&cpos);
-	lua_pushnumber(L, cpos.dx);
-	lua_pushnumber(L, cpos.dy);
+	lua_pushinteger(L, cpos.dx);
+	lua_pushinteger(L, cpos.dy);
     return 2;
 }
 
@@ -104,8 +104,8 @@ static int lua_touchpad(lua_State *L)
 	#endif
 	touchPosition cpos;
 	hidTouchRead(&cpos);
-	lua_pushnumber(L, cpos.px);
-	lua_pushnumber(L, cpos.py);
+	lua_pushinteger(L, cpos.px);
+	lua_pushinteger(L, cpos.py);
     return 2;
 }
 
@@ -145,8 +145,8 @@ static int lua_cstickpad(lua_State *L)
 	#endif
 	circlePosition cpos;
 	hidCstickRead(&cpos);
-	lua_pushnumber(L, cpos.dx);
-	lua_pushnumber(L, cpos.dy);
+	lua_pushinteger(L, cpos.dx);
+	lua_pushinteger(L, cpos.dy);
     return 2;
 }
 
