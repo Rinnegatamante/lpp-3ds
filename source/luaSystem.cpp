@@ -44,6 +44,7 @@ extern "C"{
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+#define MAX_RAM_ALLOCATION	10485760
 
 typedef struct{
 	u16 name[0x106];		 ///< UTF-16 encoded name
@@ -107,7 +108,7 @@ static int lua_dofile (lua_State *L) {
 	#endif
 	FSFILE_GetSize(fileHandle, &size);
 	buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
-	FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
+	FSFILE_Read(fileHandle, &bytesRead, 0, buffer, size);
 	buffer[size]=0;
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
@@ -876,7 +877,7 @@ static int lua_launch(lua_State *L){
 	FSUSER_OpenArchive( &sdmcArchive);
 	Result ret = FSUSER_OpenFileDirectly( &hbHandle, sdmcArchive, fsMakePath(PATH_ASCII, file), FS_OPEN_READ, 0x00000000);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ret) return luaL_error(L, "script doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 	#endif
 	if (isNinjhax2) __system_retAddr = launchFile_2x;
 	else{
@@ -1067,13 +1068,12 @@ static int lua_installCia(lua_State *L){
 	Handle fileHandle;
 	Handle ciaHandle;
 	u64 size;
-	int MAX_RAM_ALLOCATION = 10485760;
 	u32 bytes;
 	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 	FS_Path filePath=fsMakePath(PATH_ASCII, path);
 	Result ret = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ret) return luaL_error(L, "script doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 	#endif
 	amInit();
 	AM_StartCiaInstall(MEDIATYPE_SD, &ciaHandle);
@@ -1081,7 +1081,7 @@ static int lua_installCia(lua_State *L){
 	if (size < MAX_RAM_ALLOCATION){
 		char* cia_buffer = (char*)(malloc((size) * sizeof (char)));
 		FSFILE_Read(fileHandle, &bytes, 0x0, cia_buffer, size);
-		FSFILE_Write(ciaHandle, &bytes, 0, cia_buffer, size, 0x10001);
+		FSFILE_Write(ciaHandle, &bytes, 0, cia_buffer, size, 0);
 		free(cia_buffer);
 	}else{
 		u64 i = 0;
@@ -1096,7 +1096,7 @@ static int lua_installCia(lua_State *L){
 				bytesToRead = MAX_RAM_ALLOCATION;
 			}
 			FSFILE_Read(fileHandle, &bytes, i, cia_buffer, bytesToRead);
-			FSFILE_Write(ciaHandle, &bytes, i, cia_buffer, bytesToRead, 0x10001);
+			FSFILE_Write(ciaHandle, &bytes, i, cia_buffer, bytesToRead, 0);
 			i = i + bytesToRead;
 			free(cia_buffer);
 		}
@@ -1239,7 +1239,7 @@ static int lua_ciainfo(lua_State *L){
 	FS_Path filePath=fsMakePath(PATH_ASCII, file);
 	Result ret = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ret) return luaL_error(L, "script doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 	#endif
 	u32 unique_id;
 	FSFILE_Read(fileHandle, &bytesRead, 0x3A50, title, 16);
