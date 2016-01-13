@@ -46,6 +46,7 @@ u32 SCREEN_SIZE;
 u32 bufSize;
 int cam_type;
 bool is3D;
+CAMU_PhotoMode pmode = PHOTO_MODE_NORMAL;
 
 void initCam(CAMU_Size res, bool enable3D, bool isVideo){
 	u16 width;
@@ -81,7 +82,9 @@ void initCam(CAMU_Size res, bool enable3D, bool isVideo){
 	CAMU_SetNoiseFilter(cam_type, true);
 	CAMU_SetAutoExposure(cam_type, true);
 	CAMU_SetAutoWhiteBalance(cam_type, true);
-	CAMU_SetTrimming(PORT_CAM1, false);
+	if (enable3D) CAMU_SetTrimming(PORT_BOTH, false);
+	else CAMU_SetTrimming(PORT_CAM1, false);
+	CAMU_SetPhotoMode(cam_type, pmode);
 	if (enable3D) CAMU_SetTrimming(PORT_CAM2, false);
 	CAMU_GetMaxBytes(&bufSize, width, height);
 	if (enable3D) CAMU_SetTransferBytes(PORT_BOTH, bufSize, width, height);
@@ -101,12 +104,13 @@ static int lua_caminit(lua_State *L)
 {
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments.");
+       if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	int screen = luaL_checkinteger(L,1);
 	cam_type = luaL_checkinteger(L,2);
+	pmode = (CAMU_PhotoMode)luaL_checkinteger(L,3);
 	is3D = false;
-	if (argc == 3) is3D = lua_toboolean(L, 3);
+	if (argc == 3) is3D = lua_toboolean(L, 4);
 	u16 width;
 	u16 height = 240;
 	camInit();
@@ -356,5 +360,9 @@ void luaCamera_init(lua_State *L) {
 	VariableRegister(L,DS_RES);
 	VariableRegister(L,HDS_RES);
 	VariableRegister(L,CTR_RES);
-
+	VariableRegister(L,PHOTO_MODE_NORMAL);
+	VariableRegister(L,PHOTO_MODE_PORTRAIT);
+	VariableRegister(L,PHOTO_MODE_LANDSCAPE);
+	VariableRegister(L,PHOTO_MODE_NIGHTVIEW);
+	VariableRegister(L,PHOTO_MODE_LETTER);
 }
