@@ -1,5 +1,6 @@
 -- NOTE: This sample currently works only with 3DS/CIA builds
 
+-- Main Loop
 while true do
 	
 	-- Draw something on screen

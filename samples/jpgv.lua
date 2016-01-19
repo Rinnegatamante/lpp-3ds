@@ -1,27 +1,54 @@
 -- This sample can be viewed in action here: https://www.youtube.com/watch?v=NsRG-f-okI0
 -- Take the video performance as outdated, JPGV player performances test can be viewed here: http://rinnegatamante.it/O3DSvsN3DS.mp4
+
+-- Loading a JPGV video
 test = JPGV.load("/output.jpgv")
+
+-- Calculating video duration
 tot_time_sec = math.ceil(JPGV.getSize(test) / JPGV.getFPS(test))
 tot_time_min = 0
 while (tot_time_sec >= 60) do
 	tot_time_sec = tot_time_sec - 60
 	tot_time_min = tot_time_min + 1
 end
+
+-- Initializing Sound module
 Sound.init()
+
+-- Starting video in non-looping mode
 JPGV.start(test,NO_LOOP)
-oldpad = Controls.read()
+
+-- Initializing oldpad
+oldpad = 0
+
+-- Initializing a timer for lyrics purposes
 timer = Timer.new()
+
+-- Initializing a color
 white = Color.new(255,255,255)
+
+-- Main Loop
 while true do
+
+	-- Updating screens
 	Screen.waitVblankStart()
 	Screen.refresh()
 	Screen.clear(TOP_SCREEN)
+	
+	-- Drawing current frame for the video on screen
 	JPGV.draw(0,0,test,BOTTOM_SCREEN)
+	
+	-- Reading controls input
 	pad = Controls.read()
+	
+	-- Exiting sample
 	if (Controls.check(pad,KEY_A)) then
+		JPGV.unload(test)
 		Sound.term()
 		System.exit()
 	end
+	
+	-- Drawing lyrics
 	if (Timer.getTime(timer) <= 3500) then
 		Screen.debugPrint(0,14,"Seid ihr das Essen?",white,TOP_SCREEN)
 		Screen.debugPrint(0,28,"Nein, wir sind der Jaegar",white,TOP_SCREEN)
@@ -77,8 +104,13 @@ while true do
 		Screen.debugPrint(0,60,"Achieved with LPP!",white,TOP_SCREEN)
 	end
 	
+	-- Drawing Infos
 	Screen.debugPrint(0,100,"Infos:",white,TOP_SCREEN)
+	
+	-- Drawing Framerate
 	Screen.debugPrint(0,114,"FPS: "..JPGV.getFPS(test),white,TOP_SCREEN)
+	
+	-- Drawing current time of the video
 	cur_time_sec = math.ceil(JPGV.getFrame(test) / JPGV.getFPS(test))
 	cur_time_min = 0
 	while (cur_time_sec >= 60) do
@@ -92,12 +124,16 @@ while true do
 	end
 	Screen.debugPrint(0,142,"Samplerate: "..JPGV.getSrate(test),white,TOP_SCREEN)
 	
+	-- Drawing percentage
 	percentage = math.ceil((JPGV.getFrame(test) * 100) / JPGV.getSize(test))
 	Screen.debugPrint(0,200,"Percentage: " ..percentage .. "%",white,TOP_SCREEN)
+	
+	-- Drawing progress bar
 	Screen.fillEmptyRect(2,398,214,234,white,TOP_SCREEN)
 	move = ((394 * percentage) / 100)
 	Screen.fillRect(3,3 + move,215,233,white,TOP_SCREEN)
 	
+	-- Pause / Resume video
 	if (Controls.check(pad,KEY_B)) and not (Controls.check(oldpad,KEY_B)) then
 		if (JPGV.isPlaying(test)) then
 			JPGV.pause(test)
@@ -105,6 +141,11 @@ while true do
 			JPGV.resume(test)
 		end
 	end
+	
+	-- Flipping screens
 	Screen.flip()
+	
+	-- Updating oldpad
 	oldpad = pad
+	
 end
