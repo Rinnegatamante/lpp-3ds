@@ -114,6 +114,7 @@ static int lua_download(lua_State *L){
 	const char* url = luaL_checkstring(L,1);
 	const char* file = luaL_checkstring(L,2);
 	httpcContext context;
+	u32 statuscode=0;
 	Result ret = httpcOpenContext(&context, (char*)url , 0);
 	#ifndef SKIP_ERROR_HANDLING
 		if(ret==0){
@@ -124,30 +125,29 @@ static int lua_download(lua_State *L){
 		while (loading == 0x5){
 			httpcGetRequestState(&context, &loading);
 		}*/
-		u32 statuscode=0;
 		u32 contentsize=0;
 		httpcGetResponseStatusCode(&context, &statuscode, 0);
-		#ifndef SKIP_ERROR_HANDLING
-			if (statuscode != 200) luaL_error(L, "download request error");
-		#endif
-		httpcGetDownloadSizeState(&context, NULL, &contentsize);
-		u8* buf = (u8*)malloc(contentsize);
-		memset(buf, 0, contentsize);
-		httpcDownloadData(&context, buf, contentsize, NULL);
-		Handle fileHandle;
-		u32 bytesWritten;
-		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-		FS_Path filePath=fsMakePath(PATH_ASCII, file);
-		FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
-		FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
-		free(buf);
+		if (statuscode == 200){
+			httpcGetDownloadSizeState(&context, NULL, &contentsize);
+			u8* buf = (u8*)malloc(contentsize);
+			memset(buf, 0, contentsize);
+			httpcDownloadData(&context, buf, contentsize, NULL);
+			Handle fileHandle;
+			u32 bytesWritten;
+			FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+			FS_Path filePath=fsMakePath(PATH_ASCII, file);
+			FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
+			FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
+			FSFILE_Close(fileHandle);
+			svcCloseHandle(fileHandle);
+			free(buf);
+		}
 	#ifndef SKIP_ERROR_HANDLING
 		}else luaL_error(L, "error opening url");
 	#endif
 	httpcCloseContext(&context);
-	return 0;
+	lua_pushinteger(L, statuscode);
+	return 1;
 }
 
 static int lua_downstring(lua_State *L){
@@ -305,6 +305,8 @@ static int lua_createServerSocket(lua_State *L)
 		if (my_socket->sock <= 0) return luaL_error(L, "invalid socket.");
 	#endif
 
+	int rcvbuf = 32768;
+	setsockopt(my_socket->sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
 	my_socket->addrTo.sin_family = AF_INET;
 	my_socket->addrTo.sin_port = htons(port);
 	my_socket->addrTo.sin_addr.s_addr = 0;
@@ -438,6 +440,8 @@ static int lua_accept(lua_State *L)
 	incomingSocket->sock = sockClient;
 	incomingSocket->addrTo = addrAccept;
 	incomingSocket->magic = 0xDEADDEAD;
+	int rcvbuf = 32768;
+	setsockopt(incomingSocket->sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
 	lua_pushinteger(L, (u32)incomingSocket);
 	return 1;
 }
