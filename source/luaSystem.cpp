@@ -1062,9 +1062,13 @@ static int lua_listExtdataDir(lua_State *L){
 static int lua_installCia(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char* path = luaL_checkstring(L, 1);
+	u8 mediatype = luaL_checkinteger(L, 2);
+	FS_MediaType media;
+	if (mediatype == 1) media = MEDIATYPE_SD;
+	else media = MEDIATYPE_NAND;
 	Handle fileHandle;
 	Handle ciaHandle;
 	u64 size = 0;
@@ -1077,7 +1081,7 @@ static int lua_installCia(lua_State *L){
 	#endif
 	FSFILE_GetSize(fileHandle, &size);
 	amInit();
-	AM_StartCiaInstall(MEDIATYPE_SD, &ciaHandle);
+	AM_StartCiaInstall(media, &ciaHandle);
 	if (size < MAX_RAM_ALLOCATION){
 		u8* cia_buffer = (u8*)(malloc(size * sizeof (u8)));
 		FSFILE_Read(fileHandle, &bytes, 0, cia_buffer, size);
@@ -1581,8 +1585,10 @@ static int lua_getnews(lua_State *L){
 	u32 id = luaL_checkinteger(L, 1);
 	u16 message[0x1780];
 	char result[0x1780 * 2];
+	newsInit();
 	NEWS_GetNotificationMessage(id, message);
 	unicodeToChar(result, message);
+	newsExit();
 	lua_pushstring(L, result);
 	return 1;
 }
@@ -1596,7 +1602,9 @@ static int lua_erasenews(lua_State *L){
 	u16 message[0x1780];
 	char result[0x1780 * 2];
 	NotificationHeader header = { 0 };
-	Result NEWS_SetNotificationHeader(id, header);
+	newsInit();
+	NEWS_SetNotificationHeader(id, header);
+	newsExit();
 	return 0;
 }
 
