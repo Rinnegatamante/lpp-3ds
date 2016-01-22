@@ -1067,7 +1067,7 @@ static int lua_installCia(lua_State *L){
 	const char* path = luaL_checkstring(L, 1);
 	Handle fileHandle;
 	Handle ciaHandle;
-	u64 size;
+	u64 size = 0;
 	u32 bytes;
 	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 	FS_Path filePath=fsMakePath(PATH_ASCII, path);
@@ -1075,24 +1075,24 @@ static int lua_installCia(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (ret) return luaL_error(L, "file doesn't exist.");
 	#endif
+	FSFILE_GetSize(fileHandle, &size);
 	amInit();
 	AM_StartCiaInstall(MEDIATYPE_SD, &ciaHandle);
-	FSFILE_GetSize(fileHandle, &size);
 	if (size < MAX_RAM_ALLOCATION){
-		char* cia_buffer = (char*)(malloc((size) * sizeof (char)));
-		FSFILE_Read(fileHandle, &bytes, 0x0, cia_buffer, size);
+		u8* cia_buffer = (u8*)(malloc(size * sizeof (u8)));
+		FSFILE_Read(fileHandle, &bytes, 0, cia_buffer, size);
 		FSFILE_Write(ciaHandle, &bytes, 0, cia_buffer, size, 0);
 		free(cia_buffer);
 	}else{
 		u64 i = 0;
-		char* cia_buffer;
+		u8* cia_buffer;
 		while (i < size){
 			u64 bytesToRead;
 			if	(i+MAX_RAM_ALLOCATION > size){
-				cia_buffer = (char*)(malloc((size-i) * sizeof(char)));
+				cia_buffer = (u8*)(malloc((size-i) * sizeof(u8)));
 				bytesToRead = size - i;
 			}else{
-				cia_buffer = (char*)(malloc((MAX_RAM_ALLOCATION) * sizeof(char)));
+				cia_buffer = (u8*)(malloc((MAX_RAM_ALLOCATION) * sizeof(u8)));
 				bytesToRead = MAX_RAM_ALLOCATION;
 			}
 			FSFILE_Read(fileHandle, &bytes, i, cia_buffer, bytesToRead);
@@ -1511,6 +1511,39 @@ static int lua_getdate(lua_State *L){
 	return 4;
 }
 
+static int lua_listnews(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	lua_newtable(L);
+	u32 tot;
+	u32 i = 1;
+	newsInit();
+	NEWS_GetTotalNotifications(&tot);
+	while (i <= tot){
+		NotificationHeader header;
+		NEWS_GetNotificationHeader(i-1, &header);
+		char title[32];
+		unicodeToChar(title,header.title);
+		lua_pushinteger(L, i);
+		lua_newtable(L);
+		lua_pushstring(L, "id");
+		lua_pushinteger(L, i-1);
+		lua_settable(L, -3);
+		lua_pushstring(L, "hasImage");
+		lua_pushboolean(L, header.enableJPEG);
+		lua_settable(L, -3);
+		lua_pushstring(L, "title");
+		lua_pushstring(L, title);
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+		i++;
+	}
+	newsExit();
+	return 1;
+}
+
 static int lua_addnews(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -1537,6 +1570,33 @@ static int lua_addnews(lua_State *L){
 	newsExit();
 	free(uni_title);
 	free(uni_text);
+	return 0;
+}
+
+static int lua_getnews(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	u32 id = luaL_checkinteger(L, 1);
+	u16 message[0x1780];
+	char result[0x1780 * 2];
+	NEWS_GetNotificationMessage(id, message);
+	unicodeToChar(result, message);
+	lua_pushstring(L, result);
+	return 1;
+}
+
+static int lua_erasenews(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	u32 id = luaL_checkinteger(L, 1);
+	u16 message[0x1780];
+	char result[0x1780 * 2];
+	NotificationHeader header = { 0 };
+	Result NEWS_SetNotificationHeader(id, header);
 	return 0;
 }
 
@@ -1609,7 +1669,10 @@ static const luaL_Reg System_functions[] = {
 	{"getDate",				lua_getdate},
 	{"getUsername",			lua_getUsername},
 	{"getBirthday",			lua_getBirth},
-	{"addNotification",		lua_addnews},
+	{"addNews",				lua_addnews},
+	{"listNews",			lua_listnews},
+	{"getNews",				lua_getnews},
+	{"eraseNews",			lua_erasenews},
 	{"setCpuSpeed",			lua_setcpu},
 	{"getCpuSpeed",			lua_getcpu},
 	{"extractFromZIP",		lua_getfilefromzip},
