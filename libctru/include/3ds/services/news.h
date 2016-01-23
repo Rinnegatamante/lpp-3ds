@@ -8,10 +8,13 @@ typedef struct {
 	bool dataSet;
 	bool unread;
 	bool enableJPEG;
-	u8 unkFlag1;
-	u8 unkFlag2;
+	bool isSpotPass;
+	bool isOptedOut;
+	u8 unkData[3];
 	u64 processID;
-	u8 unkData[24];
+	u8 unkData2[8];
+	u64 jumpParam;
+	u8 unkData3[8];
 	u64 time;
 	u16 title[32];
 } NotificationHeader;

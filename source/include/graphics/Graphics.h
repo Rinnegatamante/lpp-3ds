@@ -106,6 +106,7 @@ Bitmap* OpenJPG(const char* filename);
 Bitmap* decodeJpg(unsigned char* in,u64 size);
 void RAW2FB(int xp,int yp, Bitmap* result,int screen,int side);
 void saveJpg(char *filename, u32 *pixels, u32 width, u32 height);
+u32* toJpg(u32 *size, u32 *pixels, u32 width, u32 height);
 Bitmap* decodePNGfile(const char* filename);
 Bitmap* decodeJPGfile(const char* filename);
 Bitmap* decodeBMPfile(const char* filename);

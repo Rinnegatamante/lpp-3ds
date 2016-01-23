@@ -1105,7 +1105,7 @@ static int lua_installCia(lua_State *L){
 			free(cia_buffer);
 		}
 	}
-	AM_FinishCiaInstall(MEDIATYPE_SD, &ciaHandle);
+	AM_FinishCiaInstall(media, &ciaHandle);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
 	amExit();
@@ -1538,6 +1538,12 @@ static int lua_listnews(lua_State *L){
 		lua_pushstring(L, "hasImage");
 		lua_pushboolean(L, header.enableJPEG);
 		lua_settable(L, -3);
+		lua_pushstring(L, "unread");
+		lua_pushboolean(L, header.unread);
+		lua_settable(L, -3);
+		lua_pushstring(L, "isSpotPass");
+		lua_pushboolean(L, header.isSpotPass);
+		lua_settable(L, -3);
 		lua_pushstring(L, "title");
 		lua_pushstring(L, title);
 		lua_settable(L, -3);
@@ -1551,26 +1557,100 @@ static int lua_listnews(lua_State *L){
 static int lua_addnews(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
+		if ((argc != 2) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *title = luaL_checkstring(L, 1);
 	const char *text = luaL_checkstring(L, 2);
-	u8* image = NULL; // TODO: Image support currently not working
+	u32* image = NULL;
 	u32 img_size = 0;
-	if (argc == 3){
-		Bitmap* file = (Bitmap*)luaL_checkinteger(L, 3);
-		#ifndef SKIP_ERROR_HANDLING
-			if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
-		#endif
-		image = file->pixels;
-		img_size = file->width * file->height * 3;
+	bool hasImage = false;
+	bool processed = false;
+	Bitmap* file;
+	if (argc == 4){
+		bool isFile = lua_toboolean(L, 4);
+		if (isFile){
+			Handle fileHandle;
+			const char *text = luaL_checkstring(L, 3);
+			FS_Path filePath=fsMakePath(PATH_ASCII, text);
+			FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+			FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
+			u16 magic;
+			u64 long_magic;
+			u32 bytesRead;
+			u64 size;
+			FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
+			if (magic == 0xD8FF){
+				FSFILE_GetSize(fileHandle, &size);
+				img_size = size;
+				if (img_size > 0x10000){
+					FSFILE_Close(fileHandle);
+					svcCloseHandle(fileHandle);
+					return luaL_error(L, "image is too big.");
+				}
+				u8* buffer = (u8*)malloc(img_size);
+				FSFILE_Read(fileHandle, &bytesRead, 0, buffer, img_size);
+				FSFILE_Close(fileHandle);
+				svcCloseHandle(fileHandle);
+				image = (u32*)buffer;
+				processed = true;
+			}else{
+				if (magic == 0x5089){
+					FSFILE_Read(fileHandle, &bytesRead, 0, &long_magic, 8);
+					FSFILE_Close(fileHandle);
+					svcCloseHandle(fileHandle);
+					if (long_magic == 0x0A1A0A0D474E5089) file = loadPng(text);
+				}else if (magic == 0x4D42){
+					FSFILE_Close(fileHandle);
+					svcCloseHandle(fileHandle);
+					file = LoadBitmap(text);
+				}else{
+					FSFILE_Close(fileHandle);
+					svcCloseHandle(fileHandle);
+					return luaL_error(L, "wrong file format.");
+				}
+			}
+		}else{
+			file = (Bitmap*)luaL_checkinteger(L, 3);
+			#ifndef SKIP_ERROR_HANDLING
+				if (file->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+			#endif
+		}
+		if (!processed){
+			u8 moltiplier = file->bitperpixel / 8;
+			u8* flip_pixels = (u8*)malloc((file->width)*(file->height)*moltiplier);
+			flip_pixels = flipBitmap(flip_pixels, file);
+			if (moltiplier == 4){ // 32bpp image - Need to delete alpha channel
+				u8* tmp = flip_pixels;
+				flip_pixels = (u8*)malloc((file->width)*(file->height)*3);
+				u32 i = 0;
+				u32 j = 0;
+				while ((i+1) < ((file->width)*(file->height)*(moltiplier))){
+					flip_pixels[j++] = tmp[i];
+					flip_pixels[j++] = tmp[i+1];
+					flip_pixels[j++] = tmp[i+2];
+					i = i + 4;
+				}
+				free(tmp);
+			}
+			image = toJpg(&img_size,(u32*)flip_pixels,file->width,file->height);
+			if (isFile){
+				free(file->pixels);
+				free(file);
+			}
+			if (img_size > 0x10000){
+				free(image);
+				return luaL_error(L, "image is too big.");
+			}
+		}
+		hasImage = true;
 	}
 	u16* uni_title = (u16*)malloc(strlen(title)*sizeof(u16));
 	u16* uni_text = (u16*)malloc(strlen(text)*sizeof(u16));
 	CharToUnicode(uni_title,(char*)title);
 	CharToUnicode(uni_text,(char*)text);
 	newsInit();
-	NEWS_AddNotification(uni_title, strlen(title), uni_text, strlen(text), image, img_size, false);
+	NEWS_AddNotification(uni_title, strlen(title), uni_text, strlen(text), image, img_size, hasImage);
+	if (image != NULL) free(image);
 	newsExit();
 	free(uni_title);
 	free(uni_text);
