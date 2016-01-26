@@ -1245,16 +1245,25 @@ static int lua_ciainfo(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (ret) return luaL_error(L, "file doesn't exist.");
 	#endif
-	u32 unique_id;
+	AM_TitleEntry info;
+	amInit();
+	AM_GetCiaFileInfo(1, &info, fileHandle);
+	amExit();
 	FSFILE_Read(fileHandle, &bytesRead, 0x3A50, title, 16);
-	FSFILE_Read(fileHandle, &bytesRead, 0x2C20, &unique_id, 4);
 	lua_newtable(L);
 	lua_newtable(L);
 	lua_pushstring(L, "title");
 	lua_pushstring(L, title);
 	lua_settable(L, -3);
 	lua_pushstring(L, "unique_id");
-	lua_pushinteger(L, Endian_UInt32_Conversion(unique_id));
+	u64 unique_id = ((info.titleID << 32) >> 32);
+	lua_pushinteger(L, unique_id);
+	lua_settable(L, -3);
+	lua_pushstring(L, "version");
+	lua_pushinteger(L, info.version);
+	lua_settable(L, -3);
+	lua_pushstring(L, "install_size");
+	lua_pushnumber(L, info.size);
 	lua_settable(L, -3);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
