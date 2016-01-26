@@ -1129,6 +1129,10 @@ static int lua_listCia(lua_State *L){
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	amInit();
+	if (!isTitleDatabaseInit){
+		isTitleDatabaseInit = true;
+		AM_InitializeExternalTitleDatabase(false);
+	}
 	u32 cia_nums;
 	AM_GetTitleCount(MEDIATYPE_SD, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
@@ -1219,6 +1223,10 @@ static int lua_uninstallCia(lua_State *L){
 	if (mediatype == 1) media = MEDIATYPE_SD;
 	else media = MEDIATYPE_NAND;
 	amInit();
+	if (!isTitleDatabaseInit){
+		isTitleDatabaseInit = true;
+		AM_InitializeExternalTitleDatabase(false);
+	}
 	u32 cia_nums;
 	AM_GetTitleCount(media, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
