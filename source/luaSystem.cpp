@@ -63,6 +63,7 @@ u16 OLD_3DS_CLOCK = 268;
 u16 NEW_3DS_CLOCK = 804;
 int current_clock = OLD_3DS_CLOCK;
 extern bool isNinjhax2;
+bool isTitleDatabaseInit = false;
 
 FS_Archive main_extdata_archive;
 
@@ -1081,6 +1082,10 @@ static int lua_installCia(lua_State *L){
 	#endif
 	FSFILE_GetSize(fileHandle, &size);
 	amInit();
+	if (!isTitleDatabaseInit){
+		isTitleDatabaseInit = true;
+		AM_InitializeExternalTitleDatabase(false);
+	}
 	AM_StartCiaInstall(media, &ciaHandle);
 	if (size < MAX_RAM_ALLOCATION){
 		u8* cia_buffer = (u8*)(malloc(size * sizeof (u8)));
