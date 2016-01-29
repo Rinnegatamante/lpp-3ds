@@ -86,6 +86,20 @@ Result AM_ListTitles(u8 mediatype, u32 titleCount, u64 *titleIdList, AM_TitleEnt
 	return (Result)cmdbuf[1];
 }
 
+Result AM_InitializeExternalTitleDatabase(bool overwrite)
+{
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = IPC_MakeHeader(0x18,2,0); // 0x180080
+	cmdbuf[1] = 1; // No other media type is accepted
+	cmdbuf[2] = overwrite;
+
+	if(R_FAILED(ret = svcSendSyncRequest(amHandle))) return ret;
+
+	return (Result)cmdbuf[1];
+}
+
 Result AM_GetDeviceId(u32 *deviceID)
 {
 	Result ret = 0;

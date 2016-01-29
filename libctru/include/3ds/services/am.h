@@ -112,3 +112,5 @@ Result AM_GetTitleProductCode(u8 mediatype, u64 titleID, char* productCode);
  * @param fileHandle Handle of the CIA file to read.
  */
 Result AM_GetCiaFileInfo(u8 mediatype, AM_TitleEntry *titleEntry, Handle fileHandle);
+
+Result AM_InitializeExternalTitleDatabase(bool overwrite);
