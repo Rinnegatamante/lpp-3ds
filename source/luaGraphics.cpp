@@ -34,6 +34,8 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
 int cur_screen;
 
@@ -453,6 +455,21 @@ static int lua_getHeight(lua_State *L)
 	return 1;
 }
 
+static int lua_viewport(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	#endif
+	u32 x = luaL_checkinteger(L,1);
+	u32 y = luaL_checkinteger(L,2);
+	u32 w = luaL_checkinteger(L,3);
+	u32 h = luaL_checkinteger(L,4);
+	GPU_SCISSORMODE mode = (GPU_SCISSORMODE)luaL_checkinteger(L,5);
+	sf2d_set_scissor_test(mode, x, y, w, h);
+	return 0;
+}
+
 static int lua_pixel2(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -499,6 +516,7 @@ static const luaL_Reg Graphics_functions[] = {
   {"freeImage",				lua_free},
   {"getImageWidth",			lua_getWidth},
   {"getImageHeight",		lua_getHeight}, 
+  {"setViewport",			lua_viewport}, 
   {"getPixel",				lua_pixel2}, 
   {"convertFrom",			lua_convert},
   {0, 0}
@@ -508,4 +526,8 @@ void luaGraphics_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Graphics_functions, 0);
 	lua_setglobal(L, "Graphics");
+	u8 BORDER = 1;
+	u8 CENTER = 3;
+	VariableRegister(L,BORDER);
+	VariableRegister(L,CENTER);
 }
