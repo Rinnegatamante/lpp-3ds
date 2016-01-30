@@ -129,7 +129,7 @@ static int lua_openfile(lua_State *L)
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	int type = luaL_checkinteger(L, 2);
-	u64 archive_id;
+	u32 archive_id;
 	bool extdata = false;
 	if (argc == 3){
 		archive_id = luaL_checknumber(L,3);
@@ -903,7 +903,7 @@ static int lua_listExtdata(lua_State *L){
 	int z = 1;
 	Handle extdata_dir;
 	static char name[1024];
-	u64 i;
+	u32 i;
 	for (i=0; i<0x2000; ++i) {
 		u32 extdata_archive_lowpathdata[3] = {MEDIATYPE_SD, i, 0};
 		FS_Archive extdata_archive = (FS_Archive){ARCHIVE_EXTDATA, (FS_Path){PATH_BINARY, 0xC, (u8*)extdata_archive_lowpathdata}};
@@ -1010,7 +1010,7 @@ static int lua_listExtdataDir(lua_State *L){
 		if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char* path = luaL_checkstring(L, 1);
-	u64 archive_id = luaL_checknumber(L, 2);
+	u32 archive_id = luaL_checkinteger(L, 2);
 	lua_newtable(L);
 	int z = 1;
 	static char name[1024];
@@ -1363,10 +1363,10 @@ static int lua_brahmaloader(lua_State *L) {
 	#ifndef SKIP_ERROR_HANDLING
 		if(argc != 2 ) return luaL_error(L, "wrong number of arguments.");
 	#endif
-	const char *file = luaL_checkstring(L, 1);
+	const char* file = luaL_checkstring(L, 1);
 	u32 offset = luaL_checkinteger(L, 2);
 	brahma_init();
-	load_arm9_payload_offset (file, offset, 0x10000);
+	load_arm9_payload_offset ((char*)file, offset, 0x10000);
 	firm_reboot();
     brahma_exit();
 	char string[20];
@@ -1624,7 +1624,7 @@ static int lua_addnews(lua_State *L){
 				}else if (magic == 0x4D42){
 					FSFILE_Close(fileHandle);
 					svcCloseHandle(fileHandle);
-					file = LoadBitmap(text);
+					file = LoadBitmap((char*)text);
 				}else{
 					FSFILE_Close(fileHandle);
 					svcCloseHandle(fileHandle);

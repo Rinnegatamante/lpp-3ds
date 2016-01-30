@@ -43,30 +43,6 @@ struct PurgeTable{
 	PurgeTable* next;
 };
 
-typedef struct
-{
-	u32 flags;
-
-	LightLock lock;
-	u16 syncCount, waveBufSeqPos;
-	u32 samplePos;
-
-	ndspWaveBuf* waveBuf;
-	u16 wavBufCount, wavBufIdNext;
-
-	bool playing;
-	u8 interpType, iirFilterType;
-
-	u16 format;
-	u16 wavBufSeq;
-
-	float rate;
-	float mix[12];
-
-	u16 adpcmCoefs[16];
-
-} ndspChnSt;
-
 struct Music{
 	u32 magic;
 	u32 samplerate;
@@ -75,7 +51,6 @@ struct Music{
 	u8* audiobuf2;
 	ndspWaveBuf* wavebuf;
 	ndspWaveBuf* wavebuf2;
-	ndspChnSt* savestate;
 	u32 lastCheck;
 	u32 size;
 	u32 mem_size;
