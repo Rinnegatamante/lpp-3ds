@@ -3,17 +3,13 @@
  * @brief Provides synchronization locks.
  */
 #pragma once
+#include <sys/lock.h>
 
 /// A light lock.
-typedef s32 LightLock;
+typedef _LOCK_T LightLock;
 
 /// A recursive lock.
-typedef struct
-{
-	LightLock lock; ///< Inner light lock.
-	u32 thread_tag; ///< Tag of the thread that currently has the lock.
-	u32 counter;    ///< Lock count.
-} RecursiveLock;
+typedef _LOCK_RECURSIVE_T RecursiveLock;
 
 /// Performs a Data Synchronization Barrier operation.
 static inline void __dsb(void)
@@ -62,6 +58,12 @@ static inline bool __strex(s32* addr, s32 val)
 #define AtomicPostDecrement(ptr) __atomic_fetch_sub((u32*)(ptr), 1, __ATOMIC_SEQ_CST)
 /// Performs an atomic swap operation.
 #define AtomicSwap(ptr, value) __atomic_exchange_n((u32*)(ptr), (value), __ATOMIC_SEQ_CST)
+
+/**
+ * @brief Retrieves the synchronization subsystem's address arbiter handle.
+ * @return The synchronization subsystem's address arbiter handle.
+ */
+Handle __sync_get_arbiter(void);
 
 /**
  * @brief Initializes a light lock.

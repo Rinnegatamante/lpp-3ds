@@ -4,6 +4,7 @@
  */
 #pragma once
 
+/// Notification header data.
 typedef struct {
 	bool dataSet;
 	bool unread;
@@ -37,8 +38,37 @@ void newsExit(void);
  */
 Result NEWS_AddNotification(const u16* title, u32 titleLength, const u16* message, u32 messageLength, const void* imageData, u32 imageSize, bool jpeg);
 
+/**
+ * @brief Gets current total notifications number.
+ * @param num Pointer where total number will be saved.
+ */
 Result NEWS_GetTotalNotifications(u32* num);
-Result NEWS_SetNotificationHeader(u32 id, NotificationHeader header);
-Result NEWS_GetNotificationImage(u32 id, u8* buffer, u32* size);
-Result NEWS_GetNotificationMessage(u32 id, u16* message);
-Result NEWS_GetNotificationHeader(u32 id, NotificationHeader* header);
+
+/**
+ * @brief Sets a custom header for a specific notification.
+ * @param news_id Identification number of the notification.
+ * @param header Pointer to notification header to set.
+ */
+Result NEWS_SetNotificationHeader(u32 news_id, const NotificationHeader* header);
+
+/**
+ * @brief Gets the header of a specific notification.
+ * @param news_id Identification number of the notification.
+ * @param header Pointer where header of the notification will be saved.
+ */
+Result NEWS_GetNotificationHeader(u32 news_id, NotificationHeader* header);
+
+/**
+ * @brief Gets the message of a specific notification.
+ * @param news_id Identification number of the notification.
+ * @param message Pointer where UTF-16 message of the notification will be saved.
+ */
+Result NEWS_GetNotificationMessage(u32 news_id, u16* message);
+
+/**
+ * @brief Gets the image of a specific notification.
+ * @param news_id Identification number of the notification.
+ * @param buffer Pointer where MPO image of the notification will be saved.
+ * @param size Pointer where size of the image data will be saved in bytes.
+ */
+Result NEWS_GetNotificationImage(u32 news_id, void* buffer, u32* size);

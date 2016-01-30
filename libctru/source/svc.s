@@ -137,7 +137,11 @@ SVC_BEGIN svcCreateTimer
 	bx  lr
 
 SVC_BEGIN svcSetTimer
+	str r4, [sp, #-4]!
+	ldr r1, [sp, #4]
+	ldr r4, [sp, #8]
 	svc 0x1B
+	ldr r4, [sp], #4
 	bx  lr
 
 SVC_BEGIN svcCancelTimer
@@ -173,10 +177,8 @@ SVC_BEGIN svcCreateAddressArbiter
 
 SVC_BEGIN svcArbitrateAddress
 	push {r4, r5}
-	add sp, #8
-	ldr r5, [sp]
-	ldr r4, [sp, #4]
-	sub sp, #8
+	ldr r4, [sp, #8]
+	ldr r5, [sp, #12]
 	svc 0x22
 	pop {r4, r5}
 	bx  lr
@@ -400,6 +402,23 @@ SVC_BEGIN svcMapProcessMemory
 
 SVC_BEGIN svcUnmapProcessMemory
 	svc 0x72
+	bx  lr
+
+SVC_BEGIN svcCreateCodeSet
+	str r0, [sp, #-0x4]!
+	ldr r0, [sp, #4]
+	svc 0x73
+	ldr r2, [sp, #0]
+	str r1, [r2]
+	add sp, sp, #4
+	bx  lr
+
+SVC_BEGIN svcCreateProcess
+	str r0, [sp, #-0x4]!
+	svc 0x75
+	ldr r2, [sp, #0]
+	str r1, [r2]
+	add sp, sp, #4
 	bx  lr
 
 SVC_BEGIN svcTerminateProcess

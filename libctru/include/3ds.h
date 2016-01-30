@@ -16,6 +16,7 @@ extern "C" {
 #include <3ds/srv.h>
 #include <3ds/os.h>
 #include <3ds/synchronization.h>
+#include <3ds/thread.h>
 #include <3ds/gfx.h>
 #include <3ds/console.h>
 #include <3ds/env.h>
@@ -54,6 +55,8 @@ extern "C" {
 #include <3ds/services/y2r.h>
 #include <3ds/services/hb.h>
 
+#include <3ds/services/ampxi.h>
+
 #include <3ds/gpu/gx.h>
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/gpu-old.h>
@@ -65,6 +68,7 @@ extern "C" {
 
 #include <3ds/sdmc.h>
 #include <3ds/romfs.h>
+#include <3ds/font.h>
 
 #ifdef __cplusplus
 }
@@ -78,47 +82,13 @@ extern "C" {
  * @example graphics/printing/both-screen-text/source/main.c
  * @example graphics/printing/colored-text/source/main.c
  * @example graphics/printing/multiple-windows-text/source/main.c
-
+ * @example graphics/printing/system-font/source/main.c
+ * @example graphics/gpu/fragment_light/source/main.c
  * @example graphics/gpu/geoshader/source/main.c
-   graphics/gpu/geoshader/source/gpu.h
-   @include graphics/gpu/geoshader/source/gpu.h
-   graphics/gpu/geoshader/source/gpu.c
-   @include graphics/gpu/geoshader/source/gpu.c
-   graphics/gpu/geoshader/source/3dmath.h
-   @include graphics/gpu/geoshader/source/3dmath.h
-   graphics/gpu/geoshader/source/3dmath.c
-   @include graphics/gpu/geoshader/source/3dmath.c
-   graphics/gpu/geoshader/source/vshader.pica
-   @include graphics/gpu/geoshader/source/vshader.pica
-   graphics/gpu/geoshader/source/gshader.pica
-   @include graphics/gpu/geoshader/source/gshader.pica
-
-   
+ * @example graphics/gpu/gpusprites/source/main.c
+ * @example graphics/gpu/immediate/source/main.c
  * @example graphics/gpu/simple_tri/source/main.c
-   graphics/gpu/simple_tri/source/gpu.h
-   @include graphics/gpu/simple_tri/source/gpu.h
-   graphics/gpu/simple_tri/source/gpu.c
-   @include graphics/gpu/simple_tri/source/gpu.c
-   graphics/gpu/simple_tri/source/3dmath.h
-   @include graphics/gpu/simple_tri/source/3dmath.h
-   graphics/gpu/simple_tri/source/3dmath.c
-   @include graphics/gpu/simple_tri/source/3dmath.c
-   graphics/gpu/simple_tri/source/vshader.pica
-   @include graphics/gpu/simple_tri/source/vshader.pica
-
-   
  * @example graphics/gpu/textured_cube/source/main.c
-   graphics/gpu/textured_cube/source/gpu.h
-   @include graphics/gpu/textured_cube/source/gpu.h
-   graphics/gpu/textured_cube/source/gpu.c
-   @include graphics/gpu/textured_cube/source/gpu.c
-   graphics/gpu/textured_cube/source/3dmath.h
-   @include graphics/gpu/textured_cube/source/3dmath.h
-   graphics/gpu/textured_cube/source/3dmath.c
-   @include graphics/gpu/textured_cube/source/3dmath.c
-   graphics/gpu/textured_cube/source/vshader.pica
-   @include graphics/gpu/textured_cube/source/vshader.pica
-
  * @example http/source/main.c
  * @example input/read-controls/source/main.c
  * @example input/touch-screen/source/main.c
@@ -126,6 +96,7 @@ extern "C" {
  * @example mvd/source/main.c
  * @example qtm/source/main.c
  * @example sdmc/source/main.c
+ * @example threads/thread-basic/source/main.c
  * @example threads/event/source/main.c
  * @example time/rtc/source/main.c
  */

@@ -97,6 +97,9 @@ Result AM_DeleteAppTitle(u8 mediatype, u64 titleID);
 /// Installs the current NATIVE_FIRM title to NAND (firm0:/ & firm1:/)
 Result AM_InstallNativeFirm(void);
 
+/// Similar to InstallNativeFirm, but doesn't use AMPXI_GetTitleList (NATIVE_FIRM: 0004013800000002 or 0004013820000002 (N3DS))
+Result AM_InstallFirm(u64 titleID);
+
 /**
  * @brief Gets the product code of a title.
  * @param mediatype Mediatype of the title.
@@ -113,4 +116,14 @@ Result AM_GetTitleProductCode(u8 mediatype, u64 titleID, char* productCode);
  */
 Result AM_GetCiaFileInfo(u8 mediatype, AM_TitleEntry *titleEntry, Handle fileHandle);
 
+/**
+ * @brief Initializes the external (SD) title database.
+ * @param overwrite Overwrites the database if it already exists.
+ */
 Result AM_InitializeExternalTitleDatabase(bool overwrite);
+
+/**
+ * @brief Queries whether the external title database is available.
+ * @param[out] available Pointer to output the availability status to.
+ */
+Result AM_QueryAvailableExternalTitleDatabase(bool* available);

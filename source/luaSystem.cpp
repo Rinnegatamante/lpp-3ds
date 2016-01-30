@@ -1705,7 +1705,7 @@ static int lua_erasenews(lua_State *L){
 	char result[0x1780 * 2];
 	NotificationHeader header = { 0 };
 	newsInit();
-	NEWS_SetNotificationHeader(id, header);
+	NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
 	newsExit();
 	return 0;
 }

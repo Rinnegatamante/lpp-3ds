@@ -86,20 +86,6 @@ Result AM_ListTitles(u8 mediatype, u32 titleCount, u64 *titleIdList, AM_TitleEnt
 	return (Result)cmdbuf[1];
 }
 
-Result AM_InitializeExternalTitleDatabase(bool overwrite)
-{
-	Result ret = 0;
-	u32 *cmdbuf = getThreadCommandBuffer();
-
-	cmdbuf[0] = IPC_MakeHeader(0x18,2,0); // 0x180080
-	cmdbuf[1] = 1; // No other media type is accepted
-	cmdbuf[2] = overwrite;
-
-	if(R_FAILED(ret = svcSendSyncRequest(amHandle))) return ret;
-
-	return (Result)cmdbuf[1];
-}
-
 Result AM_GetDeviceId(u32 *deviceID)
 {
 	Result ret = 0;
@@ -213,6 +199,19 @@ Result AM_InstallNativeFirm(void)
 	return (Result)cmdbuf[1];
 }
 
+Result AM_InstallFirm(u64 titleID){
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = IPC_MakeHeader(0x401,2,0); // 0x04010080
+	cmdbuf[1] = titleID & 0xffffffff;
+	cmdbuf[2] = (u32)(titleID >> 32);
+
+	if(R_FAILED(ret = svcSendSyncRequest(amHandle))) return ret;
+
+	return (Result)cmdbuf[1];
+}
+
 Result AM_GetTitleProductCode(u8 mediatype, u64 titleID, char* productCode)
 {
 	Result ret = 0;
@@ -246,4 +245,35 @@ Result AM_GetCiaFileInfo(u8 mediatype, AM_TitleEntry *titleEntry, Handle fileHan
 	if(titleEntry) memcpy(titleEntry, &cmdbuf[2], sizeof(AM_TitleEntry));
 
 	return (Result)cmdbuf[1];
+}
+
+Result AM_InitializeExternalTitleDatabase(bool overwrite)
+{
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = IPC_MakeHeader(0x18,2,0); // 0x180080
+	cmdbuf[1] = 1; // No other media type is accepted
+	cmdbuf[2] = overwrite;
+
+	if(R_FAILED(ret = svcSendSyncRequest(amHandle))) return ret;
+
+	return (Result)cmdbuf[1];
+}
+
+Result AM_QueryAvailableExternalTitleDatabase(bool* available)
+{
+	Result ret = 0;
+	u32 *cmdbuf = getThreadCommandBuffer();
+
+	cmdbuf[0] = IPC_MakeHeader(0x19,1,0); // 0x190040
+	cmdbuf[1] = 1; // No other media type is accepted
+
+	if(R_FAILED(ret = svcSendSyncRequest(amHandle))) return ret;
+	if(R_FAILED(ret = (Result)cmdbuf[1])) return ret;
+
+	// Only accept this if the command was a success
+	if(available) *available = cmdbuf[2];
+
+	return ret;
 }

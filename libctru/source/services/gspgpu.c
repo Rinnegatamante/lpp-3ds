@@ -7,6 +7,7 @@
 #include <3ds/synchronization.h>
 #include <3ds/services/gspgpu.h>
 #include <3ds/ipc.h>
+#include <3ds/thread.h>
 
 #define GSP_EVENT_STACK_SIZE 0x1000
 
@@ -15,9 +16,11 @@ static int gspRefCount;
 
 Handle gspEvents[GSPGPU_EVENT_MAX];
 vu32 gspEventCounts[GSPGPU_EVENT_MAX];
-u64 gspEventStack[GSP_EVENT_STACK_SIZE/sizeof(u64)]; //u64 so that it's 8-byte aligned
+ThreadFunc gspEventCb[GSPGPU_EVENT_MAX];
+void* gspEventCbData[GSPGPU_EVENT_MAX];
+bool gspEventCbOneShot[GSPGPU_EVENT_MAX];
 volatile bool gspRunEvents;
-Handle gspEventThread;
+Thread gspEventThread;
 
 static Handle gspEvent;
 static vu8* gspEventData;
@@ -37,6 +40,15 @@ void gspExit(void)
 {
 	if (AtomicDecrement(&gspRefCount)) return;
 	svcCloseHandle(gspGpuHandle);
+}
+
+void gspSetEventCallback(GSPGPU_Event id, ThreadFunc cb, void* data, bool oneShot)
+{
+	if(id>= GSPGPU_EVENT_MAX)return;
+
+	gspEventCb[id] = cb;
+	gspEventCbData[id] = data;
+	gspEventCbOneShot[id] = oneShot;
 }
 
 Result gspInitEventHandler(Handle _gspEvent, vu8* _gspSharedMem, u8 gspThreadId)
@@ -60,15 +72,16 @@ Result gspInitEventHandler(Handle _gspEvent, vu8* _gspSharedMem, u8 gspThreadId)
 	gspEvent = _gspEvent;
 	gspEventData = _gspSharedMem + gspThreadId*0x40;
 	gspRunEvents = true;
-	return svcCreateThread(&gspEventThread, gspEventThreadMain, 0x0, (u32*)((char*)gspEventStack + sizeof(gspEventStack)), 0x31, 0xfffffffe);
+	gspEventThread = threadCreate(gspEventThreadMain, 0x0, GSP_EVENT_STACK_SIZE, 0x31, -2, true);
+	return 0;
 }
 
 void gspExitEventHandler(void)
 {
 	// Stop event thread
 	gspRunEvents = false;
-	svcWaitSynchronization(gspEventThread, 1000000000);
-	svcCloseHandle(gspEventThread);
+	svcSignalEvent(gspEvent);
+	threadJoin(gspEventThread, U64_MAX);
 
 	// Free events
 	int i;
@@ -85,6 +98,15 @@ void gspWaitForEvent(GSPGPU_Event id, bool nextEvent)
 	svcWaitSynchronization(gspEvents[id], U64_MAX);
 	if (!nextEvent)
 		svcClearEvent(gspEvents[id]);
+}
+
+GSPGPU_Event gspWaitForAnyEvent(void)
+{
+	s32 which = 0;
+	Result rc = svcWaitSynchronizationN(&which, gspEvents, GSPGPU_EVENT_MAX, false, U64_MAX);
+	if (R_FAILED(rc)) return -1;
+	svcClearEvent(gspEvents[which]);
+	return which;
 }
 
 static int popInterrupt()
@@ -137,13 +159,20 @@ void gspEventThreadMain(void *arg)
 			if (curEvt == -1)
 				break;
 
-			if (curEvt < GSPGPU_EVENT_MAX) {
+			if (curEvt < GSPGPU_EVENT_MAX)
+			{
+				if (gspEventCb[curEvt])
+				{
+					ThreadFunc func = gspEventCb[curEvt];
+					if (gspEventCbOneShot[curEvt])
+						gspEventCb[curEvt] = NULL;
+					func(gspEventCbData[curEvt]);
+				}
 				svcSignalEvent(gspEvents[curEvt]);
 				gspEventCounts[curEvt]++;
 			}
 		}
 	}
-	svcExitThread();
 }
 
 //essentially : get commandIndex and totalCommands, calculate offset of new command, copy command and update totalCommands

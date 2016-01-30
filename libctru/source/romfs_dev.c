@@ -114,14 +114,19 @@ typedef struct
 
 static Result romfsInitCommon(void);
 
+__attribute__((weak)) const char* __romfs_path = NULL;
+
 Result romfsInit(void)
 {
 	if (romFS_active) return 0;
 	if (envIsHomebrew())
 	{
 		// RomFS appended to a 3DSX file
-		if (__system_argc == 0 || !__system_argv[0]) return 1;
-		const char* filename = __system_argv[0];
+		const char* filename = __romfs_path;
+		if (__system_argc > 0 && __system_argv[0])
+			filename = __system_argv[0];
+		if (!filename) return 1;
+
 		if (strncmp(filename, "sdmc:/", 6) == 0)
 			filename += 5;
 		else if (strncmp(filename, "3dslink:/", 9) == 0)
@@ -203,7 +208,6 @@ Result romfsInitCommon(void)
 	romFS_active = true;
 
 	AddDevice(&romFS_devoptab);
-	chdir("romfs:/");
 
 	return 0;
 
@@ -225,7 +229,7 @@ Result romfsExit(void)
 	if (!romFS_active) return 0;
 	romFS_active = false;
 
-	RemoveDevice("romfs");
+	RemoveDevice("romfs:");
 	FSFILE_Close(romFS_file);
 	free(dirHashTable);
 	free(fileHashTable);

@@ -6,6 +6,7 @@
 
 #include <sys/time.h>
 #include <reent.h>
+#include <unistd.h>
 
 #define TICKS_PER_USEC 268.123480
 #define TICKS_PER_MSEC 268123.480
@@ -49,6 +50,12 @@ void* osConvertOldLINEARMemToNew(const void* addr) {
 	if(vaddr >= 0x30000000 && vaddr < 0x40000000)return (void*)vaddr;
 	if(vaddr >= 0x14000000 && vaddr < 0x1c000000)return (void*)(vaddr+0x1c000000);
 	return 0;
+}
+
+s64 osGetMemRegionUsed(MemRegion region) {
+	s64 mem_used;
+	svcGetSystemInfo(&mem_used, 0, region);
+	return mem_used;
 }
 
 //---------------------------------------------------------------------------------
@@ -152,4 +159,13 @@ void osSetSpeedupEnable(bool enable)
 {
 	__ctru_speedup = enable;
 	__ctru_speedup_config();
+}
+
+int usleep(useconds_t useconds)
+{
+
+	svcSleepThread(useconds * 1000ull);
+
+	return 0;
+
 }

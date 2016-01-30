@@ -48,7 +48,6 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define STREAM_MAX_ALLOC 524288
 
-extern ndspChnSt ndspChn[24];
 extern bool audioChannels[32];
 extern bool isNinjhax2;
 extern bool csndAccess;
@@ -1854,14 +1853,7 @@ static int lua_pause(lua_State *L)
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
-		ndspChnSt* chn = &ndspChn[src->ch];
-		LightLock_Lock(&chn->lock);
-		src->savestate = (ndspChnSt*)malloc(sizeof(ndspChnSt));
-		memcpy(src->savestate,chn,sizeof(ndspChnSt));
-		LightLock_Unlock(&chn->lock);
-		u32 samplePos = ndspChnGetSamplePos(src->ch);
-		ndspChnWaveBufClear(src->ch);
-		src->savestate->waveBuf->offset = samplePos; // Think it as a temp variable
+		ndspChnSetPaused(src->ch, true);
 		src->isPlaying = false;
 		src->tick = (osGetTime()-src->tick);
 	}
@@ -1879,17 +1871,7 @@ static int lua_resume(lua_State *L)
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (!src->isPlaying){
-		ndspChnSt* chn = &ndspChn[src->ch];
-		ndspWaveBuf* next = src->savestate->waveBuf->next;
-		u32 samplePos = src->savestate->waveBuf->offset;
-		u8* audiobuf = (u8*)src->savestate->waveBuf->data_vaddr;
-		src->savestate->waveBuf->data_vaddr = (void*)&audiobuf[samplePos * src->bytepersample];
-		src->savestate->waveBuf->nsamples = src->savestate->waveBuf->nsamples - samplePos;
-		src->savestate->waveBuf->offset = 0;
-		ndspChnWaveBufAdd(src->ch, src->savestate->waveBuf);
-		if (next != NULL) ndspChnWaveBufAdd(src->ch, next);
-		free(src->savestate);
-		src->savestate = NULL;
+		ndspChnSetPaused(src->ch, false);
 		src->lastCheck = 0;
 		src->isPlaying = true;
 		src->tick = (osGetTime()-src->tick);

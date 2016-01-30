@@ -77,45 +77,44 @@ Result NEWS_GetTotalNotifications(u32* num)
 	return (Result)cmdbuf[1];
 }
 
-Result NEWS_SetNotificationHeader(u32 id, NotificationHeader header)
+Result NEWS_SetNotificationHeader(u32 news_id, const NotificationHeader* header)
 {
 	Result ret = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
 	cmdbuf[0] = IPC_MakeHeader(0x7,2,2);
-	cmdbuf[1] = id;
+	cmdbuf[1] = news_id;
 	cmdbuf[2] = sizeof(NotificationHeader);
 	cmdbuf[3] = IPC_Desc_Buffer(sizeof(NotificationHeader),IPC_BUFFER_R);
-	cmdbuf[4] = (u32)&header;
+	cmdbuf[4] = (u32)header;
 	
 	if(R_FAILED(ret = svcSendSyncRequest(newsHandle))) return ret;
 	return (Result)cmdbuf[1];	
 }
 
-Result NEWS_GetNotificationImage(u32 id, u8* buffer, u32* size)
+Result NEWS_GetNotificationHeader(u32 news_id, NotificationHeader* header)
 {
 	Result ret = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = IPC_MakeHeader(0xD,2,2);
-	cmdbuf[1] = id;
-	cmdbuf[2] = 0x10000;
-	cmdbuf[3] = IPC_Desc_Buffer((size_t)0x10000,IPC_BUFFER_W);
-	cmdbuf[4] = (u32)buffer;
+	cmdbuf[0] = IPC_MakeHeader(0xB,2,2);
+	cmdbuf[1] = news_id;
+	cmdbuf[2] = sizeof(NotificationHeader);
+	cmdbuf[3] = IPC_Desc_Buffer(sizeof(NotificationHeader),IPC_BUFFER_W);
+	cmdbuf[4] = (u32)header;
 	
 	if(R_FAILED(ret = svcSendSyncRequest(newsHandle))) return ret;
-	*size = cmdbuf[2];
-	return (Result)cmdbuf[1];	
+	return (Result)cmdbuf[1];
 }
 
-Result NEWS_GetNotificationMessage(u32 id, u16* message)
+Result NEWS_GetNotificationMessage(u32 news_id, u16* message)
 {
 	Result ret = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
 	cmdbuf[0] = IPC_MakeHeader(0xC,2,2);
-	cmdbuf[1] = id;
-	cmdbuf[2] = 0x1780;
+	cmdbuf[1] = news_id;
+	cmdbuf[2] = 0x1780; // Default size used by Notifications Applet
 	cmdbuf[3] = IPC_Desc_Buffer((size_t)0x1780,IPC_BUFFER_W);
 	cmdbuf[4] = (u32)message;
 	
@@ -123,17 +122,18 @@ Result NEWS_GetNotificationMessage(u32 id, u16* message)
 	return (Result)cmdbuf[1];
 }
 
-Result NEWS_GetNotificationHeader(u32 id, NotificationHeader* header)
+Result NEWS_GetNotificationImage(u32 news_id, void* buffer, u32* size)
 {
 	Result ret = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 
-	cmdbuf[0] = IPC_MakeHeader(0xB,2,2);
-	cmdbuf[1] = id;
-	cmdbuf[2] = sizeof(NotificationHeader);
-	cmdbuf[3] = IPC_Desc_Buffer(sizeof(NotificationHeader),IPC_BUFFER_W);
-	cmdbuf[4] = (u32)header;
+	cmdbuf[0] = IPC_MakeHeader(0xD,2,2);
+	cmdbuf[1] = news_id;
+	cmdbuf[2] = 0x10000; // Default size used by Notifications Applet
+	cmdbuf[3] = IPC_Desc_Buffer((size_t)0x10000,IPC_BUFFER_W);
+	cmdbuf[4] = (u32)buffer;
 	
 	if(R_FAILED(ret = svcSendSyncRequest(newsHandle))) return ret;
-	return (Result)cmdbuf[1];
+	*size = cmdbuf[2];
+	return (Result)cmdbuf[1];	
 }

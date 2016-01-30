@@ -13,6 +13,7 @@
 #include <3ds/services/gspgpu.h>
 #include <3ds/ipc.h>
 #include <3ds/env.h>
+#include <3ds/thread.h>
 
 #define APT_HANDLER_STACKSIZE (0x1000)
 
@@ -28,8 +29,7 @@ Handle aptLockHandle;
 Handle aptuHandle;
 Handle aptEvents[3];
 
-Handle aptEventHandlerThread;
-u64 aptEventHandlerStack[APT_HANDLER_STACKSIZE/8]; // u64 so that it's 8-byte aligned
+Thread aptEventHandlerThread;
 
 LightLock aptStatusMutex;
 Handle aptStatusEvent;
@@ -442,8 +442,6 @@ void aptEventHandler(void *arg)
 				break;
 		}
 	}
-
-	svcExitThread();
 }
 
 static int aptRefCount = 0;
@@ -498,8 +496,7 @@ Result aptInit(void)
 		aptCloseSession();
 
 		// create APT event handler thread
-		svcCreateThread(&aptEventHandlerThread, aptEventHandler, 0x0,
-			(u32*)(&aptEventHandlerStack[APT_HANDLER_STACKSIZE/8]), 0x31, 0xfffffffe);
+		aptEventHandlerThread = threadCreate(aptEventHandler, 0x0, APT_HANDLER_STACKSIZE, 0x31, -2, true);
 
 		// Wait for the state to become APT_RUNNING
 		aptWaitStatusEvent();
@@ -554,8 +551,7 @@ void aptExit(void)
 	}
 
 	svcSignalEvent(aptEvents[2]);
-	svcWaitSynchronization(aptEventHandlerThread, U64_MAX);
-	svcCloseHandle(aptEventHandlerThread);
+	threadJoin(aptEventHandlerThread, U64_MAX);
 	svcCloseHandle(aptEvents[2]);
 	
 	svcCloseHandle(aptSleepSync);
@@ -944,6 +940,8 @@ Result APT_NotifyToWait(NS_APPID appID)
 
 Result APT_AppletUtility(u32* out, u32 a, u32 size1, u8* buf1, u32 size2, u8* buf2)
 {
+	u32 saved_threadstorage[2];
+	
 	u32* cmdbuf=getThreadCommandBuffer();
 	cmdbuf[0]=IPC_MakeHeader(0x4B,3,2); // 0x4B00C2
 	cmdbuf[1]=a;
@@ -953,12 +951,19 @@ Result APT_AppletUtility(u32* out, u32 a, u32 size1, u8* buf1, u32 size2, u8* bu
 	cmdbuf[5]=(u32)buf1;
 
 	u32 *staticbufs = getThreadStaticBuffers();
+	saved_threadstorage[0]=staticbufs[0];
+	saved_threadstorage[1]=staticbufs[1];
+	
 	staticbufs[0]=IPC_Desc_StaticBuffer(size2,0);
 	staticbufs[1]=(u32)buf2;
 	
-	Result ret=0;
-	if(R_FAILED(ret=svcSendSyncRequest(aptuHandle)))return ret;
-
+	Result ret=svcSendSyncRequest(aptuHandle);
+	
+	staticbufs[0]=saved_threadstorage[0];
+	staticbufs[1]=saved_threadstorage[1];
+	
+	if(R_FAILED(ret))return ret;
+	
 	if(out)*out=cmdbuf[2];
 
 	return cmdbuf[1];
@@ -1337,3 +1342,16 @@ Result APT_StartSystemApplet(NS_APPID appID, u32 bufSize, Handle applHandle, u8 
 	return cmdbuf[1];
 }
 
+Result APT_GetSharedFont(Handle* fontHandle, u32* mapAddr)
+{
+	u32* cmdbuf=getThreadCommandBuffer();
+	cmdbuf[0] = IPC_MakeHeader(0x44,0,0); // 0x00440000
+
+	Result ret=0;
+	if(R_FAILED(ret=svcSendSyncRequest(aptuHandle)))return ret;
+
+	if(fontHandle) *fontHandle = cmdbuf[4];
+	if(mapAddr) *mapAddr = cmdbuf[2];
+
+	return cmdbuf[1];
+}
