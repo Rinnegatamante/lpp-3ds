@@ -5,11 +5,6 @@ BasicInfo:
   ContentType             : Application
   Logo                    : Nintendo # Nintendo / Licensed / Distributed / iQue / iQueForSystem
 
-Rom:
-  # Specifies the root path of the file system to include in the ROM.
-  HostRoot                : "romfs"
-
-
 TitleInfo:
   UniqueId                : 0x1337
   Category                : Application
@@ -25,21 +20,6 @@ Option:
   MediaFootPadding        : false # If true CCI files are created with padding
   EnableCrypt             : true # Enables encryption for NCCH and CIA
   EnableCompress          : true # Compresses exefs code
-
-ExeFs: # these are the program segments from the ELF, check your elf for the appropriate segment names
-  ReadOnly: 
-   - .rodata
-   - RO
-  ReadWrite: 
-   - .data
-   - RO
-  Text: 
-   - .init
-   - .text
-   - STUP_ENTRY
-   
-PlainRegion: # only used with SDK ELFs 
- - .module_id
   
 AccessControlInfo:
   #UseExtSaveData : true
@@ -152,7 +132,7 @@ AccessControlInfo:
    - http:C
    - mic:u
    - ndm:u
-   - news:u
+   - news:s
    - nwm::UDS
    - ptm:u
    - pxi:dev
@@ -227,7 +207,7 @@ CommonHeaderKey:
     9GSU8AJGhvc3RpbzAkaG9zdGlvMWFjOnUAAAAAYm9zczpVAABjYW06dQAAAGN
     lY2Q6dQAAY2ZnOnUAAABkbHA6RktDTGRscDpTUlZSZHNwOjpEU1BmcmQ6dQAA
     AGZzOlVTRVIAZ3NwOjpHcHVoaWQ6VVNFUmh0dHA6QwAAbWljOnUAAABuZG06d
-    QAAAG5ld3M6dQAAbndtOjpVRFNwdG06dQAAAHB4aTpkZXYAc29jOlUAAABnc3
+    QAAAG5ld3M6cwAAbndtOjpVRFNwdG06dQAAAHB4aTpkZXYAc29jOlUAAABnc3
     A6OkxjZHkycjp1AAAAbGRyOnJvAABpcjpVU0VSAGFtOnUAAAAAY3NuZDpTTkR
     uczpzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     AABOn/rw/7//8ec/APIA8JH/APaR/1D/gf9Y/4H/cP+B/3j/gf8BAQD/AAIA/
