@@ -55,6 +55,33 @@ Official documentation: http://rinnegatamante.it/lpp-3ds_doc.html
 * Timer system
 * Advanced arithmetical functions support (math library)
 
+# Showcase
+
+Here are some 3DS homebrews made using Lua Player Plus 3DS:
+
+##### Games
+* [Labyrinth 3D](http://gbatemp.net/threads/re-release-labyrinth-3d.409007/)
+* [Blackjack 3DS](http://gbatemp.net/threads/release-blackjack-3ds.398776/)
+* [Asteroids 3D](https://gbatemp.net/threads/release-asteroids-3d.385600/)
+* [PixelRoad](http://gbatemp.net/threads/pixelroad-a-stupid-game-hb-to-test-lpp.375292/)
+* [3DSudoku](http://gbatemp.net/threads/release-3dsudoku-sudoku-game-for-3ds.388253/)
+* [WANT3D](http://gbatemp.net/threads/release-want3d.398822/)
+* [4Rows](https://gbatemp.net/threads/release-4rows.384352/)
+* [3DSHangman](https://gbatemp.net/threads/release-3dshangman.379285/)
+* [3DS Briscola](http://gbatemp.net/threads/3ds-briscola-briscola-card-game-for-3ds.376901/)
+
+##### Utilities
+* [CHMM2](http://gbatemp.net/threads/release-chmm2-custom-home-menu-manager-2.397543/)
+* [Sunshell](http://gbatemp.net/threads/release-sunshell-a-powerfull-shell-for-3ds.382483/)
+* [ORGANIZ3D](http://gbatemp.net/threads/release-organiz3d-filebrowser-for-3ds.377783/)
+* [NASA](http://gbatemp.net/threads/release-nasa-universal-cia-manager-for-fw-4-1-10-3.409806/)
+* [Manga Reader](http://gbatemp.net/threads/release-manga-reader.399276/)
+* [Alarm Clock](http://gbatemp.net/threads/release-alarm-clock.397624/)
+* [SOON!](http://gbatemp.net/threads/soon-super-cool-installer-a-new-cool-legal-open-source-cia-installer.387268/)
+* [Bird Whisperer](http://gbatemp.net/threads/release-bird-whisperer-a-notification-creater.404669/)
+* [Dice 3DS](https://gbatemp.net/threads/release-dice-3ds-roll-some-dice-pretty-straightforward.400086/)
+* [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
+
 # Credits
 
 * Everyone involved in ctrulib creation
@@ -66,4 +93,5 @@ Official documentation: http://rinnegatamante.it/lpp-3ds_doc.html
 * Sean Barrett for stb_truetype
 * Jean-loup Gailly and Mark Adler for zlib
 * Everyone involved in Brahma developing
+* Misledz for the Lua Player Plus 3DS logo
 * Special thanks to Aurelio and ihaveamac for testing interpreter features
