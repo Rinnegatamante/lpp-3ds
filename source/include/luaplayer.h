@@ -55,6 +55,7 @@ void luaVideo_init(lua_State *L);
 void luaGraphics_init(lua_State *L);
 void luaNetwork_init(lua_State *L);
 void luaCamera_init(lua_State *L);
+void luaRender_init(lua_State *L);
 void luaMic_init(lua_State *L);
 void stackDump (lua_State *L);
 
