@@ -56,15 +56,21 @@ typedef struct{
 	float n3;
 } vertex;
 
+typedef struct{
+	u32 magic;
+	u8* vbo_data;
+	u32 vertex_count;
+	C3D_Tex* texture;
+} model;
+
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static int uLoc_lightVec, uLoc_lightHalfVec, uLoc_lightClr, uLoc_material;
 static C3D_Mtx projection;
-static u8* vbo_data;
 static C3D_RenderTarget* target;
-static C3D_Tex textures[64];
 static bool is_texture_set[64];
+static u32 blend_val = 0;
 static C3D_Mtx material =
 {
 	{
@@ -150,76 +156,108 @@ static int lua_init(lua_State *L){
 static int lua_loadModel(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	luaL_checktype(L, 1, LUA_TTABLE);
 	int len = lua_rawlen(L, 1);
-	
-	// Create the VBO (vertex buffer object)
-	u32 vertex_size = len*8*sizeof(float);
-	vbo_data = (u8*)linearAlloc(vertex_size);
-	
-	for(int i = 0; i < len; i++) {
-		lua_pushinteger(L, i+1);
-		lua_gettable(L, -2);
-		vertex* vert = (vertex*)lua_tointeger(L, -1);
-		memcpy(&vbo_data[i*sizeof(vertex)], vert, sizeof(vertex));
-		lua_pop(L, 1);
-	}
-	
-	// Configure buffers
-	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
-	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vbo_data, sizeof(vertex), 3, 0x210);
-	
-	// Update vertex list count
-	vertex_list_count += len;
-	
-	return 0;
-}
-
-static int lua_loadTexture(lua_State *L){
-	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	#endif	
-	u8 id = luaL_checkinteger(L, 1);
 	gpu_text* tex = (gpu_text*)luaL_checkinteger(L, 2);
 	#ifndef SKIP_ERROR_HANDLING
 		if (tex->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
-	// Load the texture and bind it to the first texture unit
-	C3D_TexInit(&textures[id] , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
-	C3D_TexUpload(&textures[id], tex->tex->data);
-	C3D_TexSetFilter(&textures[id], GPU_LINEAR, GPU_NEAREST);
-	C3D_TexBind(id, &textures[id]);
+	// Create the VBO (vertex buffer object)
+	u32 vertex_size = len*8*sizeof(float);
+	u8* vbo_data = (u8*)linearAlloc(vertex_size);
+	for(int i = 0; i < len; i++) {
+		lua_pushinteger(L, i+1);
+		lua_gettable(L, -3);
+		vertex* vert = (vertex*)lua_tointeger(L, -1);
+		memcpy(&vbo_data[i*sizeof(vertex)], vert, sizeof(vertex));
+		lua_pop(L, 1);
+	}
 	
-	// Configure the first fragment shading substage
-	C3D_TexEnv* env = C3D_GetTexEnv(id);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
-	C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	// Load the texture
+	C3D_Tex* texture = (C3D_Tex*)linearAlloc(sizeof(C3D_Tex));
+	C3D_TexInit(texture , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
+	C3D_TexUpload(texture, tex->tex->data);
+	C3D_TexSetFilter(texture, GPU_LINEAR, GPU_NEAREST);
 	
-	is_texture_set[id] = true;
+	// Create a model object and push it into Lua stack
+	model* res = (model*)malloc(sizeof(model));
+	res->vertex_count = len;
+	res->vbo_data = vbo_data;
+	res->magic = 0xC00FFEEE;
+	res->texture = texture;
+	lua_pushinteger(L, (u32)res);
+	return 1;
+}
+
+static int lua_initblend(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+	C3D_FrameDrawOn(target);
+	return 0;
+}
+
+static int lua_termblend(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	blend_val = 0;
+	C3D_FrameEnd(0);
+	return 0;
+}
+
+static int lua_unloadModel(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	model* object = (model*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	linearFree(object->vbo_data);
+	C3D_TexDelete(object->texture);
+	linearFree(object->texture);
+	free(object);
 	return 0;
 }
 
 static int lua_blend(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 5) return luaL_error(L, "wrong number of arguments");
+		if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
-	float x = luaL_checknumber(L, 1);
-	float y = luaL_checknumber(L, 2);
-	float z = luaL_checknumber(L, 3);
-	float angleX = luaL_checknumber(L, 4);
-	float angleY = luaL_checknumber(L, 5);
+	model* object = (model*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	float z = luaL_checknumber(L, 4);
+	float angleX = luaL_checknumber(L, 5);
+	float angleY = luaL_checknumber(L, 6);
 	
-	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-	C3D_FrameDrawOn(target);
+	// Configure buffers
+	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, object->vbo_data, sizeof(vertex), 3, 0x210);
 	
-	C3D_DrawArrays(GPU_TRIANGLES, 0, vertex_list_count);
+	// Bind texture
+	C3D_TexBind(0, object->texture);
+	
+	// Configure the first fragment shading substage
+	C3D_TexEnv env;
+	C3D_TexEnvSrc(&env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+	C3D_TexEnvOp(&env, C3D_Both, 0, 0, 0);
+	C3D_TexEnvFunc(&env, C3D_Both, GPU_MODULATE);
+	C3D_SetTexEnv(0, &env);
+	blend_val++;
 	
 	// Calculate the modelView matrix
 	C3D_Mtx modelView;
@@ -235,11 +273,9 @@ static int lua_blend(lua_State *L){
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightVec,     0.0f, 0.0f, -1.0f, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightHalfVec, 0.0f, 0.0f, -1.0f, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightClr,     1.0f, 1.0f,  1.0f, 1.0f);
-
-	// Draw the VBO
-	C3D_DrawArrays(GPU_TRIANGLES, 0, vertex_list_count);
 	
-	C3D_FrameEnd(0);
+	// Draw the VBO
+	C3D_DrawArrays(GPU_TRIANGLES, 0, object->vertex_count);
 	
 	return 0;
 }
@@ -249,18 +285,6 @@ static int lua_term(lua_State *L){
     #ifndef SKIP_ERROR_HANDLING
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
-	
-	// Resetting texture database
-	int i;
-	for (i=0;i<64;i++){
-		if (is_texture_set[i]){
-			C3D_TexDelete(&textures[i]);
-		}
-		is_texture_set[i] = false;
-	}
-	
-	// Free the VBO
-	linearFree(vbo_data);
 
 	// Free the shader program
 	shaderProgramFree(&program);
@@ -276,9 +300,11 @@ static int lua_term(lua_State *L){
 static const luaL_Reg Render_functions[] = {
 	{"createVertex", 	lua_newVertex},
 	{"loadModel", 		lua_loadModel},
-	{"loadTexture", 	lua_loadTexture},
+	{"unloadModel", 	lua_unloadModel},
 	{"init", 			lua_init},
-	{"blendScene", 		lua_blend},
+	{"drawModel", 		lua_blend},
+	{"initBlend", 		lua_initblend},
+	{"termBlend", 		lua_termblend},
 	{"term", 			lua_term},
 	{0, 0}
 };
