@@ -159,13 +159,13 @@ static int lua_loadModel(lua_State *L){
 	u32 vertex_size = len*8*sizeof(float);
 	vbo_data = (u8*)linearAlloc(vertex_size);
 	
-    for(int i = 0; i < len; i++) {
-        lua_pushinteger(L, i+1);
-        lua_gettable(L, -2);
+	for(int i = 0; i < len; i++) {
+		lua_pushinteger(L, i+1);
+		lua_gettable(L, -2);
 		vertex* vert = (vertex*)lua_tointeger(L, -1);
 		memcpy(&vbo_data[i*sizeof(vertex)], vert, sizeof(vertex));
-        lua_pop(L, 1);
-    }
+		lua_pop(L, 1);
+	}
 	
 	// Configure buffers
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
@@ -190,7 +190,7 @@ static int lua_loadTexture(lua_State *L){
 	#endif
 	
 	// Load the texture and bind it to the first texture unit
-	C3D_TexInit(&textures[id] , tex->width, tex->height, GPU_RGBA8);
+	C3D_TexInit(&textures[id] , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
 	C3D_TexUpload(&textures[id], tex->tex->data);
 	C3D_TexSetFilter(&textures[id], GPU_LINEAR, GPU_NEAREST);
 	C3D_TexBind(id, &textures[id]);
@@ -218,6 +218,8 @@ static int lua_blend(lua_State *L){
 	
 	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 	C3D_FrameDrawOn(target);
+	
+	C3D_DrawArrays(GPU_TRIANGLES, 0, vertex_list_count);
 	
 	// Calculate the modelView matrix
 	C3D_Mtx modelView;
