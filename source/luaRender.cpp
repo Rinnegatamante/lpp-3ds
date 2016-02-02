@@ -38,13 +38,20 @@
 #include "vshader_shbin.h"
 #include "include/graphics/Graphics.h"
 
-#define CLEAR_COLOR 0x68B0D8FF
+u32 CLEAR_COLOR = 0x68B0D8FF;
+float light_r = 1.0f;
+float light_g = 1.0f;
+float light_b = 1.0f;
+float light_a = 1.0f;
+float light_x = 0.0f;
+float light_y = 0.0f;
+float light_z = -1.0f;
 
 #define DISPLAY_TRANSFER_FLAGS \
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
 	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
 	GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
-
+	
 typedef struct{
 	float x;
 	float y;
@@ -61,7 +68,16 @@ typedef struct{
 	u8* vbo_data;
 	u32 vertex_count;
 	C3D_Tex* texture;
+	C3D_Mtx* material;
 } model;
+
+typedef struct{
+	u32 magic;
+	float r;
+	float g;
+	float b;
+	float a;
+} color;
 
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;
@@ -69,19 +85,17 @@ static int uLoc_projection, uLoc_modelView;
 static int uLoc_lightVec, uLoc_lightHalfVec, uLoc_lightClr, uLoc_material;
 static C3D_Mtx projection;
 static C3D_RenderTarget* target;
-static bool is_texture_set[64];
-static u32 blend_val = 0;
-static C3D_Mtx material =
-{
-	{
-	{ { 0.0f, 0.2f, 0.2f, 0.2f } }, // Ambient
-	{ { 0.0f, 0.4f, 0.4f, 0.4f } }, // Diffuse
-	{ { 0.0f, 0.8f, 0.8f, 0.8f } }, // Specular
-	{ { 1.0f, 0.0f, 0.0f, 0.0f } }, // Emission
-	}
-};
-u32 vertex_list_count = 0;
 
+void int2float(u32 color, float* r, float* g, float* b, float* a){
+	u32 b1 = color & 0xFF;
+	u32 g1 = (color >> 8) & 0xFF;
+	u32 r1 = (color >> 16) & 0xFF;
+	u32 a1 = (color >> 24) & 0xFF;
+	*r = float(r1) / 255.0f;
+	*b = float(b1) / 255.0f;
+	*g = float(g1) / 255.0f;
+	*a = float(a1) / 255.0f;
+}
 
 static int lua_newVertex(lua_State *L){
 	int argc = lua_gettop(L);
@@ -142,13 +156,7 @@ static int lua_init(lua_State *L){
 	AttrInfo_AddLoader(attrInfo, 2, GPU_FLOAT, 3); // v2=normal
 	
 	// Compute the projection matrix
-	Mtx_PerspTilt(&projection, 80.0f*M_PI/180.0f, float(w/h), 0.01f, 1000.0f);
-	
-	// Resetting texture database
-	int i;
-	for (i=0;i<64;i++){
-		is_texture_set[i] = false;
-	}
+	Mtx_PerspTilt(&projection, 80.0f*M_PI/180.0f, float(w)/float(h), 0.01f, 1000.0f);
 	
 	return 0;
 }
@@ -156,13 +164,20 @@ static int lua_init(lua_State *L){
 static int lua_loadModel(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+		if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
 	luaL_checktype(L, 1, LUA_TTABLE);
 	int len = lua_rawlen(L, 1);
 	gpu_text* tex = (gpu_text*)luaL_checkinteger(L, 2);
+	color* ambient = (color*)luaL_checkinteger(L, 3);
+	color* diffuse = (color*)luaL_checkinteger(L, 4);
+	color* specular = (color*)luaL_checkinteger(L, 5);
+	float emission = luaL_checknumber(L, 6);
 	#ifndef SKIP_ERROR_HANDLING
 		if (tex->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
+		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Create the VBO (vertex buffer object)
@@ -170,7 +185,7 @@ static int lua_loadModel(lua_State *L){
 	u8* vbo_data = (u8*)linearAlloc(vertex_size);
 	for(int i = 0; i < len; i++) {
 		lua_pushinteger(L, i+1);
-		lua_gettable(L, -3);
+		lua_gettable(L, -(argc+1));
 		vertex* vert = (vertex*)lua_tointeger(L, -1);
 		memcpy(&vbo_data[i*sizeof(vertex)], vert, sizeof(vertex));
 		lua_pop(L, 1);
@@ -182,13 +197,26 @@ static int lua_loadModel(lua_State *L){
 	C3D_TexUpload(texture, tex->tex->data);
 	C3D_TexSetFilter(texture, GPU_LINEAR, GPU_NEAREST);
 	
+	// Set object material attributes
+	C3D_Mtx* material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
+	*material = {
+		{
+		{ { ambient->r, ambient->g, ambient->b, ambient->a } }, // Ambient
+		{ { diffuse->r, diffuse->g, diffuse->b, diffuse->a } }, // Diffuse
+		{ { specular->r, specular->g, specular->b, specular->a } }, // Specular
+		{ { emission, 0.0f, 0.0f, 0.0f } }, // Emission
+		}
+	};
+	
 	// Create a model object and push it into Lua stack
 	model* res = (model*)malloc(sizeof(model));
 	res->vertex_count = len;
 	res->vbo_data = vbo_data;
 	res->magic = 0xC00FFEEE;
 	res->texture = texture;
+	res->material = material;
 	lua_pushinteger(L, (u32)res);
+	
 	return 1;
 }
 
@@ -199,6 +227,27 @@ static int lua_initblend(lua_State *L){
 	#endif
 	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 	C3D_FrameDrawOn(target);
+	
+	// Update the uniforms
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightVec,     light_x, light_y, light_z, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightHalfVec, light_x, light_y, light_z, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightClr, light_r, light_g, light_b, light_a);
+	
+	return 0;
+}
+
+static int lua_lightdir(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	#endif
+	float x = luaL_checknumber(L, 1);
+	float y = luaL_checknumber(L, 2);
+	float z = luaL_checknumber(L, 3);
+	light_x = x;
+	light_y = y;
+	light_z = z;
 	return 0;
 }
 
@@ -207,7 +256,6 @@ static int lua_termblend(lua_State *L){
     #ifndef SKIP_ERROR_HANDLING
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
-	blend_val = 0;
 	C3D_FrameEnd(0);
 	return 0;
 }
@@ -224,6 +272,7 @@ static int lua_unloadModel(lua_State *L){
 	linearFree(object->vbo_data);
 	C3D_TexDelete(object->texture);
 	linearFree(object->texture);
+	linearFree(object->material);
 	free(object);
 	return 0;
 }
@@ -257,7 +306,6 @@ static int lua_blend(lua_State *L){
 	C3D_TexEnvOp(&env, C3D_Both, 0, 0, 0);
 	C3D_TexEnvFunc(&env, C3D_Both, GPU_MODULATE);
 	C3D_SetTexEnv(0, &env);
-	blend_val++;
 	
 	// Calculate the modelView matrix
 	C3D_Mtx modelView;
@@ -267,12 +315,8 @@ static int lua_blend(lua_State *L){
 	Mtx_RotateY(&modelView, angleY, true);
 
 	// Update the uniforms
-	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView,  &modelView);
-	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_material,   &material);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightVec,     0.0f, 0.0f, -1.0f, 0.0f);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightHalfVec, 0.0f, 0.0f, -1.0f, 0.0f);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightClr,     1.0f, 1.0f,  1.0f, 1.0f);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_material,   object->material);
 	
 	// Draw the VBO
 	C3D_DrawArrays(GPU_TRIANGLES, 0, object->vertex_count);
@@ -295,6 +339,42 @@ static int lua_term(lua_State *L){
 	
 	return 0;
 }
+
+static int lua_newcolor(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 4) return luaL_error(L, "wrong number of arguments");
+	#endif
+	float r = luaL_checknumber(L, 1);
+	float g = luaL_checknumber(L, 2);
+	float b = luaL_checknumber(L, 3);
+	float a = luaL_checknumber(L, 4);
+	
+	color* res = (color*)malloc(sizeof(color));
+	res->r = r;
+	res->g = g;
+	res->b = b;
+	res->a = a;
+	res->magic = 0xC0C0C0C0;
+	lua_pushinteger(L,(u32)res);
+	return 1;
+}
+
+static int lua_setlightc(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	color* colour = (color*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (colour->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	light_r = colour->r;
+	light_g = colour->g;
+	light_b = colour->b;
+	light_a = colour->a;
+	return 0;
+}
 	
 //Register our Render Functions
 static const luaL_Reg Render_functions[] = {
@@ -305,6 +385,9 @@ static const luaL_Reg Render_functions[] = {
 	{"drawModel", 		lua_blend},
 	{"initBlend", 		lua_initblend},
 	{"termBlend", 		lua_termblend},
+	{"setLightColor", 	lua_setlightc},
+	{"setLightSource", 	lua_lightdir},
+	{"createColor", 	lua_newcolor},
 	{"term", 			lua_term},
 	{0, 0}
 };
