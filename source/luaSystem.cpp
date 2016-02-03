@@ -323,12 +323,10 @@ static int lua_screenshot(lua_State *L)
 				tempbuf[di++] = 0;
 			}
 		}
-		sdmcInit();
 		char tmpPath2[1024];
 		strcpy(tmpPath2,"sdmc:");
 		strcat(tmpPath2,(char*)screenpath);
 		saveJpg(tmpPath2,(u32*)tempbuf,400,480);
-		sdmcExit();
 		free(tempbuf);
 	}
 	return 0;
@@ -1298,7 +1296,6 @@ static int lua_ZipExtract(lua_State *L) {
 	FSUSER_CloseArchive( &sdmcArchive);
 	char tmpFile2[1024];
 	char tmpPath2[1024];
-	sdmcInit();
 	strcpy(tmpPath2,"sdmc:");
 	strcat(tmpPath2,(char*)DirTe);
 	chdir(tmpPath2);
@@ -1308,7 +1305,6 @@ static int lua_ZipExtract(lua_State *L) {
 	if (handle == NULL) luaL_error(L, "error opening ZIP file.");
 	int result = ZipExtract(handle, Password);
 	ZipClose(handle);
-	sdmcExit();
 	lua_pushinteger(L, result);
 	return 1;
 }
@@ -1323,7 +1319,6 @@ static int lua_getfilefromzip(lua_State *L){
 	const char *Dest = luaL_checkstring(L, 3);
 	const char *Password = (argc == 4) ? luaL_checkstring(L, 4) : NULL;
 	char tmpFile2[1024];
-	sdmcInit();
 	strcpy(tmpFile2,"sdmc:");
 	strcat(tmpFile2,(char*)FileToExtract);
 	Zip *handle = ZipOpen(tmpFile2);
@@ -1343,7 +1338,6 @@ static int lua_getfilefromzip(lua_State *L){
 		lua_pushboolean(L, true);
 	}
 	ZipClose(handle);
-	sdmcExit();
 	return 1;
 }
 
