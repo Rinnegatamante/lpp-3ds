@@ -108,10 +108,10 @@ int main(int argc, char **argv)
 			i++;
 		}
 		strcpy(path,&argv[0][5]);
-		path[latest_slash-5] = 0;
+		path[latest_slash-4] = 0;
 		strcpy(start_dir,path);
 		strcpy(cur_dir,path); // Set current dir
-		strcat(path,"/index.lua");
+		strcat(path,"index.lua");
 	}else{
 		strcpy(start_dir,"/");
 		strcpy(cur_dir,"/"); // Set current dir for GW Mode
