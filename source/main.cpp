@@ -38,7 +38,7 @@
 #include "include/graphics/Graphics.h"
 #include "include/ftp/ftp.h"
 #include "include/khax/khax.h"
-#include "include/luaAudio.h"
+#include "include/audio.h"
 
 const char *errMsg;
 unsigned char *buffer;

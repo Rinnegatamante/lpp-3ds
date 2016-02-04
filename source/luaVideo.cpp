@@ -40,7 +40,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
-#include "include/luaAudio.h"
+#include "include/audio.h"
 #include "include/ogg/ogg.h"
 #include "include/ogg/codec.h"
 #include "include/ogg/vorbisfile.h"

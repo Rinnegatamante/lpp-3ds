@@ -38,7 +38,7 @@
 #include <malloc.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/luaAudio.h"
+#include "include/audio.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
