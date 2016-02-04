@@ -40,7 +40,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
-#include "include/audio.h"
+#include "include/luaAudio.h"
 #include "include/ogg/ogg.h"
 #include "include/ogg/codec.h"
 #include "include/ogg/vorbisfile.h"
@@ -361,6 +361,7 @@ static int lua_loadJPGV(lua_State *L)
 		char myFile[512];
 		strcpy(myFile,"sdmc:");
 		strcat(myFile,file_tbo);
+		sdmcInit();
 		JPGV_file->stdio_handle = (u32)fopen(myFile,"rb");
 	}
 	JPGV_file->sourceFile = fileHandle;
@@ -1056,6 +1057,7 @@ static int lua_unloadJPGV(lua_State *L){
 		svcCloseHandle(updateStream);
 		svcCloseHandle(streamThread);
 		free(src->thread);
+		sdmcExit();
 	}
 	if (src->samplerate != 0 && src->audio_size != 0 && src->audiobuf != NULL){
 		linearFree(src->audiobuf);

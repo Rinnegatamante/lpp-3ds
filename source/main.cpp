@@ -38,7 +38,7 @@
 #include "include/graphics/Graphics.h"
 #include "include/ftp/ftp.h"
 #include "include/khax/khax.h"
-#include "include/audio.h"
+#include "include/luaAudio.h"
 
 const char *errMsg;
 unsigned char *buffer;
@@ -67,7 +67,6 @@ int main(int argc, char **argv)
 	Result ret=APT_SetAppCpuTimeLimit(30);
 	aptCloseSession();
 	fsInit();
-	sdmcInit();
 	ftp_state = false;
 	isTopLCDOn = true;
 	isBottomLCDOn = true;
@@ -209,7 +208,6 @@ int main(int argc, char **argv)
 		}
 	}
 	if (!CIA_MODE) khaxExit();
-	sdmcExit();
 	fsExit();
 	irrstExit();
 	hidExit();

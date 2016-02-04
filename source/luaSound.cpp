@@ -39,7 +39,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
-#include "include/audio.h"
+#include "include/luaAudio.h"
 #include "include/ogg/ogg.h"
 #include "include/ogg/codec.h"
 #include "include/ogg/vorbisfile.h"
@@ -426,6 +426,7 @@ static int lua_openogg_old(lua_State *L)
 	char myFile[512];
 	strcpy(myFile,"sdmc:");
 	strcat(myFile,file_tbo);
+	sdmcInit();
 	
 	// Initializing libogg and vorbisfile
 	int eof=0;
@@ -597,6 +598,7 @@ static int lua_openogg_old(lua_State *L)
 	
 		// Deallocate OGG decoder resources and close file if not streaming
 		ov_clear(vf);
+		sdmcExit();
 		
 	}else{
 		wav_file->sourceFile = (u32)vf;
@@ -1149,6 +1151,7 @@ static int lua_openogg(lua_State *L)
 	char myFile[512];
 	strcpy(myFile,"sdmc:");
 	strcat(myFile,file_tbo);
+	sdmcInit();
 	
 	// Init libogg and vorbisfile
 	int eof=0;
@@ -1259,6 +1262,7 @@ static int lua_openogg(lua_State *L)
 	
 		// Deallocate OGG decoder resources and close file if not streaming
 		ov_clear(vf);
+		sdmcExit();
 		
 	}else songFile->sourceFile = (u32)vf;
 	

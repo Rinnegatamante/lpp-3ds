@@ -35,7 +35,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <3ds.h>
-#include "audio.h"
+#include "include/luaAudio.h"
 
 bool audioChannels[32];
 
