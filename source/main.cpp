@@ -28,6 +28,9 @@
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
+#- fincs for citro3D ---------------------------------------------------------------------------------------------------#
+#- Myria for libkhax ---------------------------------------------------------------------------------------------------#
+#- Everyone involved in libSu creation ---------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
@@ -38,6 +41,7 @@
 #include "include/graphics/Graphics.h"
 #include "include/ftp/ftp.h"
 #include "include/khax/khax.h"
+#include "include/khax/libSu.h"
 #include "include/audio.h"
 
 const char *errMsg;
@@ -48,7 +52,7 @@ bool CIA_MODE;
 bool ftp_state;
 bool isTopLCDOn;
 bool isBottomLCDOn;
-bool isNinjhax2;
+bool isNinjhax2 = false;
 bool csndAccess;
 extern bool audioChannels[32];
 
@@ -75,14 +79,26 @@ int main(int argc, char **argv)
 	u32 bytesRead;
 	int restore;
 	
-	// Check user build and enables kernel access
-	if (nsInit()==0){
+	// Kernel Privilege Escalation (memchunkhax)
+	Handle testHandle;
+	srvGetServiceHandleDirect(&testHandle, "am:u");
+	if (testHandle){
 		CIA_MODE = true;
-		nsExit();
-	}else CIA_MODE = false;
-	isNinjhax2 = false;
-	if (!hbInit()) khaxInit();
-	else isNinjhax2 = true;
+		svcCloseHandle(testHandle);
+	}else{
+		CIA_MODE = false;
+		if (!hbInit()) khaxInit();
+		else{
+			isNinjhax2 = true;
+			#ifdef USE_MEMCHUNKHAX2
+				u32 fw_id = osGetKernelVersion();
+				u32 major = GET_VERSION_MAJOR(fw_id);
+				u32 minor = GET_VERSION_MINOR(fw_id);
+				u32 rev = GET_VERSION_REVISION(fw_id);
+				if (major <= 2 && minor <= 50 && rev < 11) suInit();
+			#endif
+		}
+	}
 	
 	// Select Audio System (csnd:SND preferred)
 	if (csndInit() == 0){
