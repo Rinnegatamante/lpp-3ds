@@ -93,5 +93,6 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * Sean Barrett for stb_truetype
 * Jean-loup Gailly and Mark Adler for zlib
 * Everyone involved in Brahma developing
+* Everyone involved in libSu developing
 * Misledz for the Lua Player Plus 3DS logo
 * Special thanks to Aurelio and ihaveamac for testing interpreter features
