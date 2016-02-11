@@ -375,6 +375,19 @@ static int lua_setlightc(lua_State *L){
 	light_a = colour->a;
 	return 0;
 }
+
+static int lua_convert(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	u32 color = luaL_checkinteger(L, 1);
+	color* res = (color*)malloc(sizeof(color));
+	int2float(color, res->r, res->g, res->b, res->a);
+	res->magic = 0xC0C0C0C0;
+	lua_pushinteger(L,(u32)res);
+	return 1;
+}
 	
 //Register our Render Functions
 static const luaL_Reg Render_functions[] = {
@@ -388,6 +401,7 @@ static const luaL_Reg Render_functions[] = {
 	{"setLightColor", 	lua_setlightc},
 	{"setLightSource", 	lua_lightdir},
 	{"createColor", 	lua_newcolor},
+	{"convertColorFrom",lua_convert},
 	{"term", 			lua_term},
 	{0, 0}
 };
