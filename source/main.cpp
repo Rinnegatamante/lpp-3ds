@@ -70,7 +70,6 @@ int main(int argc, char **argv)
 	aptOpenSession();
 	Result ret=APT_SetAppCpuTimeLimit(30);
 	aptCloseSession();
-	fsInit();
 	ftp_state = false;
 	isTopLCDOn = true;
 	isBottomLCDOn = true;
@@ -130,26 +129,51 @@ int main(int argc, char **argv)
 		strcat(path,"index.lua");
 	}else{
 		strcpy(start_dir,"/");
-		strcpy(cur_dir,"/"); // Set current dir for GW Mode
-		strcpy(path,"/index.lua");
+		strcpy(cur_dir,"/"); // Set current dir for CFW Mode
 	}
 	
 	while(aptMainLoop())
 	{
 		restore=0;		
 		char error[2048];		
+		unsigned char* buffer = NULL;
 		
 		// Load main script
-		FS_Path filePath=fsMakePath(PATH_ASCII, path);
-		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-		Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
-		if (!ret){
-			FSFILE_GetSize(fileHandle, &size);
-			buffer = (unsigned char*)(malloc((size+1) * sizeof (char)));
-			FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
+		if (CIA_MODE){
+		
+			// CIA romFs script loader
+			romfsInit();
+			FILE* script = fopen("romfs:/index.lua","r");
+			fseek(script, 0, SEEK_END);
+			int size = ftell(script);
+			fseek(script, 0, SEEK_SET);
+			buffer = (unsigned char*)malloc(size+1);
+			fread(buffer, size, 1, script);
+			fclose(script);
 			buffer[size]=0;
-			FSFILE_Close(fileHandle);
-			svcCloseHandle(fileHandle);
+			romfsExit();
+			fsInit();
+			
+		}else{
+			
+			// Regular 3DSX script loader
+			fsInit();
+			FS_Path filePath=fsMakePath(PATH_ASCII, path);
+			FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+			Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
+			if (!ret){
+				FSFILE_GetSize(fileHandle, &size);
+				buffer = (unsigned char*)malloc(size+1);
+				FSFILE_Read(fileHandle, &bytesRead, 0x0, buffer, size);
+				buffer[size]=0;
+				FSFILE_Close(fileHandle);
+				svcCloseHandle(fileHandle);
+			}
+		
+		}
+		
+		// Start interpreter
+		if (buffer != NULL){
 			errMsg = runScript((const char*)buffer, true);
 			free(buffer);
 		}else errMsg = "index.lua file not found.";
