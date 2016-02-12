@@ -81,6 +81,7 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [Bird Whisperer](http://gbatemp.net/threads/release-bird-whisperer-a-notification-creater.404669/)
 * [Dice 3DS](https://gbatemp.net/threads/release-dice-3ds-roll-some-dice-pretty-straightforward.400086/)
 * [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
+* [LiveScore 3DS](http://gbatemp.net/threads/release-livescore-3ds.414693/)
 
 # Compiling the source
 
