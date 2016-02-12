@@ -381,9 +381,9 @@ static int lua_convert(lua_State *L){
     #ifndef SKIP_ERROR_HANDLING
 		if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
-	u32 color = luaL_checkinteger(L, 1);
+	u32 colour = luaL_checkinteger(L, 1);
 	color* res = (color*)malloc(sizeof(color));
-	int2float(color, res->r, res->g, res->b, res->a);
+	int2float(colour, &res->r, &res->g, &res->b, &res->a);
 	res->magic = 0xC0C0C0C0;
 	lua_pushinteger(L,(u32)res);
 	return 1;

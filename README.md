@@ -82,6 +82,10 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [Dice 3DS](https://gbatemp.net/threads/release-dice-3ds-roll-some-dice-pretty-straightforward.400086/)
 * [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
 
+# Compiling the source
+
+The repository will provide you a full set of all needed library. Take in mind that a lot of them are modified versions of the original ones so if you want to update them, take a look at [this repository](https://github.com/Rinnegatamante/lpp-3ds_libraries) where you can find sourcecodes of every pre-builded library used in this repository. Also take in mind that **libkhax** includes also **libSu** sourcecode.
+
 # Credits
 
 * Everyone involved in ctrulib creation

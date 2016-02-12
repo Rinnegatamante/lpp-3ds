@@ -6,7 +6,6 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-LPP_CTRULIB ?= $(CURDIR)/libctru
 LPP_LIBS ?= $(CURDIR)/source
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
@@ -31,11 +30,11 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source/include/lua	source source/include source/include/graphics \
-				source/include/ftp source/include/sf2d source/include/ogg \
+				source/include/ftp source/include/sf2d \
 				source/include/lodepng/	source/include/unrar/	source/include/libjpeg \
 				source/include/ttf source/include/brahma source/include/khax
 DATA		:=	data
-INCLUDES	:=	include
+INCLUDES	:=	source/include
 
 APP_TITLE	:=	Lua Player Plus 3DS
 APP_AUTHOR	:=	Rinnegatamante
@@ -56,13 +55,13 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive  -Wno-
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lctru -lm -lz -lcitro3d
+LIBS	:= -lbrahma -lkhax -lsf2d -lctru -lm -lz -logg -lcitro3d -llua -ljpeg
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(LPP_CTRULIB) $(LPP_LIBS)
+LIBDIRS	:= $(LPP_LIBS)
 
 
 #---------------------------------------------------------------------------------
