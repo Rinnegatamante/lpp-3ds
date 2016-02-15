@@ -197,12 +197,18 @@ static int lua_loadimg(lua_State *L)
 	if (strncmp("romfs:/",text,7) == 0){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(text,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
 		fileHandle.isRomfs = false;
 		FS_Path filePath = fsMakePath(PATH_ASCII, text);
 		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-		FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
 	}
 	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
 	Bitmap* bitmap;

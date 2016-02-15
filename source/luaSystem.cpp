@@ -77,6 +77,9 @@ static int lua_dofile (lua_State *L) {
 	unsigned char *buffer;
 	if (strncmp("romfs:/",fname,7) == 0){	
 		FILE* script = fopen(fname,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (script == NULL) return luaL_error(L, "script doesn't exist.");
+		#endif
 		fseek(script, 0, SEEK_END);
 		int size = ftell(script);
 		fseek(script, 0, SEEK_SET);
@@ -127,6 +130,9 @@ static int lua_openfile(lua_State *L)
 	fileStream* result;
 	if (strncmp("romfs:/",file_tbo,7) == 0){	
 		FILE* Handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (Handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		result = (fileStream*)malloc(sizeof(fileStream));
 		result->handle = (u32)Handle;
 		result->isRomfs = true;
@@ -154,6 +160,9 @@ static int lua_openfile(lua_State *L)
 				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, fsMakePath(PATH_ASCII, file_tbo), FS_OPEN_WRITE, 0);
 				break;
 		}
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
 		result = (fileStream*)malloc(sizeof(fileStream));
 		result->handle = (u32)fileHandle;
 		result->isRomfs = false;
@@ -171,6 +180,9 @@ static int lua_openfile(lua_State *L)
 				ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 				break;
 		}
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
 		result = (fileStream*)malloc(sizeof(fileStream));
 		result->handle = (u32)fileHandle;
 		result->isRomfs = false;
@@ -780,6 +792,9 @@ static int lua_readsmdh(lua_State *L){
 	if (strncmp("romfs:/",file,7) == 0){
 		tmp.isRomfs = true;
 		FILE* handle = fopen(file,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		tmp.handle = (u32)handle;
 	}else{
 		tmp.isRomfs = false;
@@ -1103,6 +1118,9 @@ static int lua_installCia(lua_State *L){
 	if (strncmp("romfs:/",path,7) == 0){
 		tmp.isRomfs = true;
 		FILE* handle = fopen(path,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		tmp.handle = (u32)handle;
 	}else{
 		tmp.isRomfs = false;
@@ -1336,7 +1354,9 @@ static int lua_ZipExtract(lua_State *L) {
 		strcat(tmpFile2,(char*)FileToExtract);
 	}
 	Zip *handle = ZipOpen(tmpFile2);
-	if (handle == NULL) luaL_error(L, "error opening ZIP file.");
+	#ifndef SKIP_ERROR_HANDLING
+		if (handle == NULL) luaL_error(L, "error opening ZIP file.");
+	#endif
 	int result = ZipExtract(handle, Password);
 	ZipClose(handle);
 	sdmcExit();
@@ -1361,7 +1381,9 @@ static int lua_getfilefromzip(lua_State *L){
 		strcat(tmpFile2,(char*)FileToExtract);
 	}
 	Zip *handle = ZipOpen(tmpFile2);
-	if (handle == NULL) luaL_error(L, "error opening ZIP file.");
+	#ifndef SKIP_ERROR_HANDLING
+		if (handle == NULL) luaL_error(L, "error opening ZIP file.");
+	#endif
 	ZipFile* file = ZipFileRead(handle, FileToExtract2, Password);
 	if (file == NULL) lua_pushboolean(L, false);
 	else{
@@ -1630,11 +1652,17 @@ static int lua_addnews(lua_State *L){
 			if (strncmp("romfs:/",filename,7) == 0){
 				tmp.isRomfs = true;
 				FILE* handle = fopen(filename,"r");
+				#ifndef SKIP_ERROR_HANDLING
+					if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+				#endif
 			}else{
 				tmp.isRomfs = false;
 				FS_Path filePath=fsMakePath(PATH_ASCII, filename);
 				FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-				FSUSER_OpenFileDirectly( &tmp.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+				Result ret = FSUSER_OpenFileDirectly( &tmp.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+				#ifndef SKIP_ERROR_HANDLING
+					if (ret) return luaL_error(L, "file doesn't exist.");
+				#endif
 			}
 			u16 magic;
 			u64 long_magic;

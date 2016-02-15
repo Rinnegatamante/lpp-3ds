@@ -619,6 +619,9 @@ static int lua_openwav_old(lua_State *L)
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"rb");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
@@ -913,6 +916,9 @@ static int lua_openaiff_old(lua_State *L)
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
 		fileHandle->isRomfs = false;
@@ -1302,6 +1308,9 @@ static int lua_openwav(lua_State *L)
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
 		fileHandle->isRomfs = false;
@@ -1445,6 +1454,9 @@ static int lua_openaiff(lua_State *L)
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
 		fileHandle->isRomfs = false;

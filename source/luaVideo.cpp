@@ -339,6 +339,9 @@ static int lua_loadJPGV(lua_State *L)
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
 		fileHandle->isRomfs = false;
@@ -346,7 +349,7 @@ static int lua_loadJPGV(lua_State *L)
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if(ret) return luaL_error(L, "error opening file");
+			if(ret) return luaL_error(L, "file doesn't exist.");
 		#endif
 	}
 	u32 magic,bytesRead;
