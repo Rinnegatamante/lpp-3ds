@@ -78,13 +78,12 @@ typedef struct{
 	float b;
 	float a;
 } color;
-
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static int uLoc_lightVec, uLoc_lightHalfVec, uLoc_lightClr, uLoc_material;
 static C3D_Mtx projection;
-static C3D_RenderTarget* target;
+static C3D_RenderTarget* targets[3];
 
 void int2float(u32 color, float* r, float* g, float* b, float* a){
 	u32 b1 = color & 0xFF;
@@ -118,21 +117,24 @@ static int lua_newVertex(lua_State *L){
 static int lua_init(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 w = luaL_checkinteger(L, 1);
 	u32 h = luaL_checkinteger(L, 2);
-	u32 screen = luaL_checkinteger(L, 3);
-	u32 side = 0;
-	if (argc == 4) side = luaL_checkinteger(L, 4);
 	
 	// Initialize graphics
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 
-	// Initialize the render target
-	target = C3D_RenderTargetCreate(h, w, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-	C3D_RenderTargetSetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
-	C3D_RenderTargetSetOutput(target, (gfxScreen_t)screen, (gfx3dSide_t)side, DISPLAY_TRANSFER_FLAGS);
+	// Initialize the render targets
+	targets[0] = C3D_RenderTargetCreate(h, w, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+	C3D_RenderTargetSetClear(targets[0], C3D_CLEAR_ALL, CLEAR_COLOR, 0);
+	C3D_RenderTargetSetOutput(targets[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+	targets[1] = C3D_RenderTargetCreate(h, w, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+	C3D_RenderTargetSetClear(targets[1], C3D_CLEAR_ALL, CLEAR_COLOR, 0);
+	C3D_RenderTargetSetOutput(targets[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+	targets[2] = C3D_RenderTargetCreate(h, w, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+	C3D_RenderTargetSetClear(targets[2], C3D_CLEAR_ALL, CLEAR_COLOR, 0);
+	C3D_RenderTargetSetOutput(targets[2], GFX_BOTTOM, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 	
 	// Load the vertex shader, create a shader program and bind it
 	vshader_dvlb = DVLB_ParseFile((u32*)vshader_v_pica_o, vshader_v_pica_o_size);
@@ -223,10 +225,16 @@ static int lua_loadModel(lua_State *L){
 static int lua_initblend(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2 && argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
+	u32 screen = luaL_checkinteger(L, 1);
+	u32 side = 0;
+	if (argc == 2) side = luaL_checkinteger(L, 2);
+	u8 target_idx = 0;
+	if (screen == 1) target_idx = 2;
+	else if (screen == 0 && side == 1) target_idx = 1;
 	C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-	C3D_FrameDrawOn(target);
+	C3D_FrameDrawOn(targets[target_idx]);
 	
 	// Update the uniforms
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
