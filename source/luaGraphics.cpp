@@ -32,8 +32,10 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 #include <3ds.h>
+#include <string.h>
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
+#include "include/utils.h"
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
@@ -188,27 +190,31 @@ static int lua_loadimg(lua_State *L)
 		if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	char* text = (char*)(luaL_checkstring(L, 1));
-	Handle fileHandle;
+	fileStream fileHandle;
 	u32 bytesRead;
 	u16 magic;
 	u64 long_magic;
-	FS_Path filePath = fsMakePath(PATH_ASCII, text);
-	FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
-	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 2);
+	if (strncmp("romfs:/",text,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(text,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, text);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+	}
+	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
 	Bitmap* bitmap;
 	if (magic == 0x5089){
-		FSFILE_Read(fileHandle, &bytesRead, 0, &long_magic, 8);
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Read(&fileHandle, &bytesRead, 0, &long_magic, 8);
+		FS_Close(&fileHandle);
 		if (long_magic == 0x0A1A0A0D474E5089) bitmap = decodePNGfile(text);
 	}else if (magic == 0x4D42){
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		bitmap = decodeBMPfile(text);
 	}else if (magic == 0xD8FF){
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		bitmap = decodeJPGfile(text);
 	}
 	#ifndef SKIP_ERROR_HANDLING

@@ -23,7 +23,7 @@ Font::Font(const std::vector<unsigned char>& buffer)
 
 unsigned char* Font::loadFromFile(const std::string& filename)
 {
-	FILE* fp = fopen(filename.c_str(), "rb");
+	FILE* fp = fopen(filename.c_str(), "r");
 	if (!fp)
 		return false;
 	fseek(fp, 0, SEEK_END);

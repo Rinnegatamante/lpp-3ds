@@ -44,6 +44,7 @@
 #include "include/ogg/ogg.h"
 #include "include/ogg/codec.h"
 #include "include/ogg/vorbisfile.h"
+#include "include/utils.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
@@ -57,7 +58,7 @@ extern bool csndAccess;
 
 struct JPGV{
 	u32 magic;
-	Handle sourceFile;
+	fileStream* sourceFile;
 	u32 currentFrame;
 	u32 tot_frame;
 	u16 framerate;
@@ -124,16 +125,16 @@ static void streamWAV(void* arg){
 			if ((src->moltiplier % 2) == 1){
 			//Update and flush first half-buffer
 			if (src->audiobuf2 == NULL){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
+				FS_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
 				if (bytesRead != ((src->mem_size)/2)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, (src->mem_size)/2);
+				FS_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
 				}
 				src->moltiplier = src->moltiplier + 1;
 			}else{
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
+				FS_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 				if (bytesRead != ((src->mem_size)/2)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24, tmp_buf, (src->mem_size)/2);
+				FS_Read(src->sourceFile, &bytesRead, 24, tmp_buf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
 				}
 				src->moltiplier = src->moltiplier + 1;
@@ -156,10 +157,10 @@ static void streamWAV(void* arg){
 			u32 bytesRead;
 			//Update and flush second half-buffer
 			if (src->audiobuf2 == NULL){
-					FSFILE_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
+					FS_Read(src->sourceFile, &bytesRead, 24+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
 					src->moltiplier = src->moltiplier + 1;
 			}else{
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
+				FS_Read(src->sourceFile, &bytesRead, 24+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 				src->moltiplier = src->moltiplier + 1;
 				u32 size_tbp = (src->mem_size)/2;
 				u32 off=0;
@@ -334,35 +335,45 @@ static int lua_loadJPGV(lua_State *L)
        if (argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
-	Handle fileHandle;
-	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-	#ifndef SKIP_ERROR_HANDLING
-		if(ret) return luaL_error(L, "error opening file");
-	#endif
+	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle->isRomfs = true;
+		FILE* handle = fopen(file_tbo,"r");
+		fileHandle->handle = (u32)handle;
+	}else{
+		fileHandle->isRomfs = false;
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret) return luaL_error(L, "error opening file");
+		#endif
+	}
 	u32 magic,bytesRead;
-	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	FS_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x5647504A){
 	JPGV* JPGV_file = (JPGV*)malloc(sizeof(JPGV));
-	FSFILE_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 6, &(JPGV_file->is3D), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 10,&(JPGV_file->bytepersample), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 12,&(JPGV_file->samplerate), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 14,&(JPGV_file->audiocodec), 2);
-	FSFILE_Read(fileHandle, &bytesRead, 16,&(JPGV_file->tot_frame), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 20,&(JPGV_file->audio_size), 4);
+	FS_Read(fileHandle, &bytesRead, 4, &(JPGV_file->framerate), 2);
+	FS_Read(fileHandle, &bytesRead, 6, &(JPGV_file->is3D), 2);
+	FS_Read(fileHandle, &bytesRead, 8,&(JPGV_file->audiotype), 2);
+	FS_Read(fileHandle, &bytesRead, 10,&(JPGV_file->bytepersample), 2);
+	FS_Read(fileHandle, &bytesRead, 12,&(JPGV_file->samplerate), 2);
+	FS_Read(fileHandle, &bytesRead, 14,&(JPGV_file->audiocodec), 2);
+	FS_Read(fileHandle, &bytesRead, 16,&(JPGV_file->tot_frame), 4);
+	FS_Read(fileHandle, &bytesRead, 20,&(JPGV_file->audio_size), 4);
 	JPGV_file->isPlaying = false;
 	JPGV_file->currentFrame = 0;
 	JPGV_file->package_size = 0;
 	JPGV_file->total_packages_size = 0;
 	if (JPGV_file->audiocodec != 0){ // Vorbis audiocodec
 		char myFile[512];
-		strcpy(myFile,"sdmc:");
-		strcat(myFile,file_tbo);
+		if (fileHandle->isRomfs) strcpy(myFile, file_tbo);
+		else{
+			strcpy(myFile,"sdmc:");
+			strcat(myFile,file_tbo);
+		}
 		sdmcInit();
-		JPGV_file->stdio_handle = (u32)fopen(myFile,"rb");
+		JPGV_file->stdio_handle = (u32)fopen(myFile,"r");
 	}
 	JPGV_file->sourceFile = fileHandle;
 	JPGV_file->tick = 0;
@@ -434,9 +445,10 @@ static int lua_startJPGV(lua_State *L){
 		src->samplerate = my_info->rate;
 		src->real_audio_size = ov_time_total(vf,-1) * 2 * my_info->rate;
 		src->bytepersample = 2;
+		
 		// Decoding OGG buffer
-	int i=0;
-	if (my_info->channels == 1){ //Mono buffer
+		int i=0;
+		if (my_info->channels == 1){ //Mono buffer
 			src->audiotype = 1;
 			src->moltiplier = 1;
 			src->mem_size = src->audio_size / 2;
@@ -444,32 +456,32 @@ static int lua_startJPGV(lua_State *L){
 				src->mem_size = src->mem_size / 2;
 			}
 			src->audiobuf = (u8*)linearAlloc(src->mem_size);
-		src->audiobuf2 = NULL;
-		while(!eof){
-			long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
-			if (ret == 0) {
+			src->audiobuf2 = NULL;
+			while(!eof){
+				long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
+				if (ret == 0) {
 			
-				// EOF
-				eof=1;
+					// EOF
+					eof=1;
 				
-			} else if (ret < 0) {
+				} else if (ret < 0) {
 			
-				// Error handling
-				#ifndef SKIP_ERROR_HANDLING
-					if(ret==OV_EBADLINK){
-						return luaL_error(L, "corrupt bitstream section.");
-					}
-				#endif
+					// Error handling
+					#ifndef SKIP_ERROR_HANDLING
+						if(ret==OV_EBADLINK){
+							return luaL_error(L, "corrupt bitstream section.");
+						}
+					#endif
 				
-			} else {
+				} else {
 			
-				// Copying decoded block to PCM16 audiobuffer
-				memcpy(&src->audiobuf[i],pcmout,ret);
-				i = i + ret;
-				if (i >= src->mem_size) break;
+					// Copying decoded block to PCM16 audiobuffer
+					memcpy(&src->audiobuf[i],pcmout,ret);
+					i = i + ret;
+					if (i >= src->mem_size) break;
+				}
 			}
-		}
-	}else{ //Stereo buffer
+		}else{ //Stereo buffer
 			src->audiotype = 2;
 			tmp_buf;
 			u32 size_tbp;
@@ -486,45 +498,45 @@ static int lua_startJPGV(lua_State *L){
 			src->audiobuf = (u8*)linearAlloc(src->mem_size / 2);
 			src->audiobuf2 = (u8*)linearAlloc(src->mem_size / 2);
 		
-		while(!eof){
-			long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
-			if (ret == 0) {
+			while(!eof){
+				long ret=ov_read(vf,pcmout,sizeof(pcmout),0,2,1,&current_section);
+				if (ret == 0) {
 			
-				// EOF
-				eof=1;
+					// EOF
+					eof=1;
 				
-			} else if (ret < 0) {
+				} else if (ret < 0) {
 			
-				// Error handling
-				#ifndef SKIP_ERROR_HANDLING
-					if(ret==OV_EBADLINK){
-						return luaL_error(L, "corrupt bitstream section.");
-					}
-				#endif
+					// Error handling
+					#ifndef SKIP_ERROR_HANDLING
+						if(ret==OV_EBADLINK){
+							return luaL_error(L, "corrupt bitstream section.");
+						}
+					#endif
 				
-			} else {
+				} else {
 			
-				// Copying decoded block to PCM16 audiobuffer
-				memcpy(&tmp_buf[i],pcmout,ret);
-				i = i + ret;
-				if (i >= src->mem_size) break;	
+					// Copying decoded block to PCM16 audiobuffer
+					memcpy(&tmp_buf[i],pcmout,ret);
+					i = i + ret;
+					if (i >= src->mem_size) break;	
+				}
 			}
+		
+		
+			// Separating left and right channels
+			int z;
+			int j=0;
+			for (z=0; z < size_tbp; z=z+4){
+				src->audiobuf[j] = tmp_buf[z];
+				src->audiobuf[j+1] = tmp_buf[z+1];
+				src->audiobuf2[j] = tmp_buf[z+2];
+				src->audiobuf2[j+1] = tmp_buf[z+3];
+				j=j+2;
+			}
+		
 		}
-		
-		
-		// Separating left and right channels
-		int z;
-		int j=0;
-		for (z=0; z < size_tbp; z=z+4){
-			src->audiobuf[j] = tmp_buf[z];
-			src->audiobuf[j+1] = tmp_buf[z+1];
-			src->audiobuf2[j] = tmp_buf[z+2];
-			src->audiobuf2[j+1] = tmp_buf[z+3];
-			j=j+2;
-		}
-		
-	}
-	src->stdio_handle = (u32)vf;
+		src->stdio_handle = (u32)vf;
 	}
 	src->currentFrame = 0;
 	u32 bytesRead;
@@ -538,12 +550,12 @@ static int lua_startJPGV(lua_State *L){
 			}
 		}
 		if (src->audiotype == 1){			
-			if (src->audiocodec == 0) FSFILE_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
+			if (src->audiocodec == 0) FS_Read(src->sourceFile, &bytesRead, 24, src->audiobuf, src->mem_size);
 			My_CSND_playsound(src->ch1, SOUND_LINEAR_INTERP | SOUND_FORMAT_16BIT | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)src->audiobuf, src->mem_size, 1.0, 2.0);
 		}else{
 			if (src->audiocodec == 0){
 				u8* audiobuf = (u8*)linearAlloc(src->mem_size);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24, audiobuf, src->mem_size);
+				FS_Read(src->sourceFile, &bytesRead, 24, audiobuf, src->mem_size);
 				src->audiobuf = (u8*)linearAlloc(src->mem_size/2);
 				src->audiobuf2 = (u8*)linearAlloc(src->mem_size/2);
 				u32 off=0;
@@ -570,10 +582,7 @@ static int lua_startJPGV(lua_State *L){
 	src->tick = osGetTime();
 	src->moltiplier = 1;
 	svcCreateEvent(&updateStream,0);
-	u32 *threadStack = (u32*)memalign(32, 8192);
-	src->thread = threadStack;
-	svcSignalEvent(updateStream);
-	Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);			
+	threadCreate(streamFunction, src, 8192, 0x18, 1, true);	
 	}else src->tick = osGetTime();
 	return 0;
 }
@@ -601,22 +610,22 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 				u64 offset_left;
 				u64 size_left;
 				u64 size_right;
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
 				u64 offset_right = size_left;
 				size_left = size_left - offset_left;
 				unsigned char* frame_left = (unsigned char*)malloc(size_left);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
+				FS_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
 				src->framebuf = decodeJpg(frame_left, size_left);
 				free(frame_left);
 				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
 				free(src->framebuf->pixels);
 				free(src->framebuf);
 				if (use3D){
-					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
+					FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
 					size_right = size_right - offset_right;
 					unsigned char* frame_right = (unsigned char*)malloc(size_right);
-					FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
+					FS_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
 					src->framebuf = decodeJpg(frame_right, size_right);
 					free(frame_right);
 					if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,1);
@@ -633,17 +642,17 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 			u64 size_right;
 			u64 offset_right;
 			if (src->currentFrame < (src->tot_frame-10)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
 				if (use3D){
-					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
+					FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
 					size_right = size_right - size;
 					offset_right = size;
 				}
 			}
 			size = size - offset;
 			unsigned char* frame = (unsigned char*)malloc(size);
-			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+			FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
 			src->framebuf = decodeJpg(frame, size);
 			free(frame);
 			if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
@@ -651,7 +660,7 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 			free(src->framebuf);
 			if (use3D){
 				unsigned char* frame2 = (unsigned char*)malloc(size_right);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
+				FS_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
 				src->framebuf = decodeJpg(frame2, size_right);
 				free(frame2);
 				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,1);
@@ -686,19 +695,19 @@ void draw3DJPGVfast(JPGV* src, u8* framebuf, bool use3D){
 				u64 offset_left;
 				u64 size_left;
 				u64 size_right;
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset_left, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+1)*8), &size_left, 8);
 				u64 offset_right = size_left;
 				size_left = size_left - offset_left;
 				unsigned char* frame_left = (unsigned char*)malloc(size_left);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
+				FS_Read(src->sourceFile, &bytesRead, offset_left + (src->tot_frame * 16), frame_left, size_left);
 				printJpg(frame_left, size_left, framebuf);
 				free(frame_left);
 				if (use3D){
-					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
+					FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(((src->currentFrame*2)+2)*8), &size_right, 8);
 					size_right = size_right - offset_right;
 					unsigned char* frame_right = (unsigned char*)malloc(size_right);
-					FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
+					FS_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame_right, size_right);
 					printJpg(frame_right, size_right, TopRFB);
 					free(frame_right);
 				}
@@ -712,22 +721,22 @@ void draw3DJPGVfast(JPGV* src, u8* framebuf, bool use3D){
 			u64 size_right;
 			u64 offset_right;
 			if (src->currentFrame < (src->tot_frame-10)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2)*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+1)*8), &size, 8);
 				if (use3D){
-					FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
+					FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame*2+2)*8), &size_right, 8);
 					size_right = size_right - size;
 					offset_right = size;
 				}
 			}
 			size = size - offset;
 			unsigned char* frame = (unsigned char*)malloc(size);
-			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+			FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
 			printJpg(frame, size, framebuf);
 			free(frame);
 			if (use3D){
 				unsigned char* frame2 = (unsigned char*)malloc(size_right);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
+				FS_Read(src->sourceFile, &bytesRead, offset_right + (src->tot_frame * 16), frame2, size_right);
 				printJpg(frame2, size_right, TopRFB);
 				free(frame2);
 			}
@@ -776,11 +785,11 @@ static int lua_drawJPGVfast(lua_State *L){
 				u32 bytesRead;
 				u64 offset;
 				u64 size;
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
 				size = size - offset;
 				unsigned char* frame = (unsigned char*)malloc(size);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+				FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 				printJpg(frame, size, framebuf);
 				free(frame);
 			}
@@ -791,15 +800,15 @@ static int lua_drawJPGVfast(lua_State *L){
 			u64 offset;
 			u64 size;
 			if (src->currentFrame >= (src->tot_frame-5)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
 			}else{
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
 			}
 			size = size - offset;
 			unsigned char* frame = (unsigned char*)malloc(size);
-			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+			FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 			printJpg(frame, size, framebuf);
 			free(frame);
 		}
@@ -849,11 +858,11 @@ static int lua_drawJPGV(lua_State *L){
 				u32 bytesRead;
 				u64 offset;
 				u64 size;
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
 				size = size - offset;
 				unsigned char* frame = (unsigned char*)malloc(size);
-				FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+				FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 				src->framebuf = decodeJpg(frame, size);
 				free(frame);
 				#ifndef SKIP_ERROR_HANDLING
@@ -873,15 +882,15 @@ static int lua_drawJPGV(lua_State *L){
 			u64 offset;
 			u64 size;
 			if (src->currentFrame >= (src->tot_frame-5)){
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-5) *8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->tot_frame-4) *8), &size, 8);
 			}else{
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
-				FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(src->currentFrame*8), &offset, 8);
+				FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((src->currentFrame+1)*8), &size, 8);
 			}
 			size = size - offset;
 			unsigned char* frame = (unsigned char*)malloc(size);
-			FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+			FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 			src->framebuf = decodeJpg(frame, size);
 			free(frame);
 			#ifndef SKIP_ERROR_HANDLING
@@ -903,16 +912,16 @@ void draw3DJPGVFrame(u16 x,u16 y,JPGV* src,u32 frame_index,u8 screen,bool is3D){
 	u64 size;
 	u64 offset2;
 	u64 size2;
-	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2)*8), &offset, 8);
-	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+1)*8), &size, 8);
+	FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2)*8), &offset, 8);
+	FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+1)*8), &size, 8);
 	if (is3D){
-		FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+2)*8), &size2, 8);
+		FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index*2+2)*8), &size2, 8);
 		offset2 = size;
 		size2 = size2 - offset2;
 	}
 	size = size - offset;
 	unsigned char* frame = (unsigned char*)malloc(size);
-	FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
+	FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 16), frame, size);
 	Bitmap* tmp_framebuf = decodeJpg(frame, size);
 	free(frame);
 	RAW2FB(x,y,tmp_framebuf,screen,0);
@@ -920,7 +929,7 @@ void draw3DJPGVFrame(u16 x,u16 y,JPGV* src,u32 frame_index,u8 screen,bool is3D){
 	free(tmp_framebuf);
 	if (is3D){
 		unsigned char* frame2 = (unsigned char*)malloc(size2);
-		FSFILE_Read(src->sourceFile, &bytesRead, offset2 + (src->tot_frame * 16), frame2, size2);
+		FS_Read(src->sourceFile, &bytesRead, offset2 + (src->tot_frame * 16), frame2, size2);
 		Bitmap* tmp_framebuf = decodeJpg(frame2, size2);
 		free(frame2);
 		RAW2FB(x,y,tmp_framebuf,screen,1);
@@ -955,11 +964,11 @@ int argc = lua_gettop(L);
 	u32 bytesRead;
 	u64 offset;
 	u64 size;
-	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(frame_index*8), &offset, 8);
-	FSFILE_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index+1)*8), &size, 8);
+	FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+(frame_index*8), &offset, 8);
+	FS_Read(src->sourceFile, &bytesRead, 24+src->audio_size+((frame_index+1)*8), &size, 8);
 	size = size - offset;
 	unsigned char* frame = (unsigned char*)malloc(size);
-	FSFILE_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
+	FS_Read(src->sourceFile, &bytesRead, offset + (src->tot_frame * 8), frame, size);
 	Bitmap* tmp_framebuf = decodeJpg(frame, size);
 	free(frame);
 	#ifndef SKIP_ERROR_HANDLING
@@ -1054,8 +1063,6 @@ static int lua_unloadJPGV(lua_State *L){
 		closeStream = true;
 		svcSignalEvent(updateStream);
 		while (closeStream){} // Wait for thread exiting...
-		svcCloseHandle(updateStream);
-		svcCloseHandle(streamThread);
 		free(src->thread);
 		sdmcExit();
 	}
@@ -1065,8 +1072,8 @@ static int lua_unloadJPGV(lua_State *L){
 			linearFree(src->audiobuf2);
 		}
 	}
-	FSFILE_Close(src->sourceFile);
-	svcCloseHandle(src->sourceFile);
+	FS_Close(src->sourceFile);
+	free(src->sourceFile);
 	linearFree(tmp_buf);
 	free(src);
 	return 0;

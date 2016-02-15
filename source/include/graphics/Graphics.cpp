@@ -41,6 +41,7 @@
 #include "font.h"
 #include "../lodepng/lodepng.h"
 #include "../libjpeg/jpeglib.h"
+#include "../utils.h"
 #include <setjmp.h>
 
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
@@ -78,28 +79,33 @@ void DrawRGB565Screen(u8* dst, u16* pic){
 }
 
 Bitmap* LoadBitmap(char* fname){
-	Handle fileHandle;
+	fileStream tmp;
 	u64 size;
 	u32 bytesRead;
-	FS_Path filePath=fsMakePath(PATH_ASCII, fname);
-	FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
-	FSFILE_GetSize(fileHandle, &size);
+	if (strncmp("romfs:/",fname,7) == 0){
+		tmp.isRomfs = true;
+		FILE* handle = fopen(fname,"r");
+		tmp.handle = (u32)handle;
+	}else{
+		tmp.isRomfs = false;
+		FS_Path filePath=fsMakePath(PATH_ASCII, fname);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FSUSER_OpenFileDirectly( &tmp.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+	}
+	FS_GetSize(&tmp, &size);
 	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
 	
 	if(!result) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&tmp);
 		return 0;
 	}
 	
 	result->pixels = (u8*)malloc(size-0x36);
-	FSFILE_Read(fileHandle, &bytesRead, 0x36, result->pixels, size-0x36);
-	FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result->width), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result->height), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&tmp, &bytesRead, 0x36, result->pixels, size-0x36);
+	FS_Read(&tmp, &bytesRead, 0x12, &(result->width), 4);
+	FS_Read(&tmp, &bytesRead, 0x16, &(result->height), 4);
+	FS_Read(&tmp, &bytesRead, 0x1C, &(result->bitperpixel), 2);
+	FS_Close(&tmp);
 	
 	return result;
 }
@@ -1232,7 +1238,7 @@ void DrawGpuLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 
 Bitmap* loadPng(const char* filename)
 {
-	Handle fileHandle;
+	fileStream fileHandle;
 	Bitmap* result;
 	u64 size;
 	u32 bytesRead;
@@ -1240,23 +1246,28 @@ Bitmap* loadPng(const char* filename)
 	unsigned char* in;
 	unsigned int w, h;
 	
-	FS_Path filePath = fsMakePath(PATH_ASCII, filename);
-	FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, 0x00000000);
+	if (strncmp("romfs:/",filename,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(filename,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, filename);
+		FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, archive, filePath, FS_OPEN_READ, 0x00000000);
+	}
 	
-	FSFILE_GetSize(fileHandle, &size);
+	FS_GetSize(&fileHandle, &size);
 	
 	in = (unsigned char*)malloc(size);
 	
 	if(!in) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		return 0;
 	}
 	
-	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&fileHandle, &bytesRead, 0x00, in, size);
+	FS_Close(&fileHandle);
 		
 		if(lodepng_decode32(&out, &w, &h, in, size) != 0) {
 			free(in);
@@ -1292,7 +1303,7 @@ Bitmap* loadPng(const char* filename)
 
 Bitmap* decodePNGfile(const char* filename)
 {
-	Handle fileHandle;
+	fileStream fileHandle;
 	Bitmap* result;
 	u64 size;
 	u32 bytesRead;
@@ -1300,23 +1311,27 @@ Bitmap* decodePNGfile(const char* filename)
 	unsigned char* in;
 	unsigned int w, h;
 	
-	FS_Path filePath = fsMakePath(PATH_ASCII, filename);
-	FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, 0x00000000);
-	
-	FSFILE_GetSize(fileHandle, &size);
+	if (strncmp("romfs:/",filename,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(filename,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, filename);
+		FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, archive, filePath, FS_OPEN_READ, 0x00000000);
+	}
+	FS_GetSize(&fileHandle, &size);
 	
 	in = (unsigned char*)malloc(size);
 	
 	if(!in) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		return 0;
 	}
 	
-	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&fileHandle, &bytesRead, 0x00, in, size);
+	FS_Close(&fileHandle);
 		
 		if(lodepng_decode32(&out, &w, &h, in, size) != 0) {
 			free(in);
@@ -1376,25 +1391,30 @@ Bitmap* OpenJPG(const char* filename)
 	if (result == NULL) return 0;
 	u64 size;
 	u32 bytesRead;
-	Handle fileHandle;
+	fileStream fileHandle;
     struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
 	cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     jpeg_create_decompress(&cinfo);
-	FS_Path filePath = fsMakePath(PATH_ASCII, filename);
-	FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, 0x00000000);	
-	FSFILE_GetSize(fileHandle, &size);
+	if (strncmp("romfs:/",filename,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(filename,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, filename);
+		FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, archive, filePath, FS_OPEN_READ, 0x00000000);	
+	}
+	FS_GetSize(&fileHandle, &size);
 	unsigned char* in = (unsigned char*)malloc(size);
 	if(!in) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		return 0;
 	}
-	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&fileHandle, &bytesRead, 0x00, in, size);
+	FS_Close(&fileHandle);
     jpeg_mem_src(&cinfo, in, size);
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
@@ -1427,25 +1447,30 @@ Bitmap* decodeJPGfile(const char* filename)
 	if (result == NULL) return 0;
 	u64 size;
 	u32 bytesRead;
-	Handle fileHandle;
+	fileStream fileHandle;
     struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
 	cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     jpeg_create_decompress(&cinfo);
-	FS_Path filePath = fsMakePath(PATH_ASCII, filename);
-	FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
-	FSUSER_OpenFileDirectly( &fileHandle, archive, filePath, FS_OPEN_READ, 0x00000000);	
-	FSFILE_GetSize(fileHandle, &size);
+	if (strncmp("romfs:/",filename,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(filename,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, filename);
+		FS_Archive archive = (FS_Archive) { ARCHIVE_SDMC, (FS_Path) { PATH_EMPTY, 1, (u8*)"" }};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, archive, filePath, FS_OPEN_READ, 0x00000000);	
+	}
+	FS_GetSize(&fileHandle, &size);
 	unsigned char* in = (unsigned char*)malloc(size);
 	if(!in) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		return 0;
 	}
-	FSFILE_Read(fileHandle, &bytesRead, 0x00, in, size);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&fileHandle, &bytesRead, 0x00, in, size);
+	FS_Close(&fileHandle);
     jpeg_mem_src(&cinfo, in, size);
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
@@ -1476,28 +1501,33 @@ Bitmap* decodeJPGfile(const char* filename)
 }
 
 Bitmap* decodeBMPfile(const char* fname){
-	Handle fileHandle;
+	fileStream fileHandle;
 	u64 size;
 	u32 bytesRead;
-	FS_Path filePath=fsMakePath(PATH_ASCII, fname);
-	FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenFileDirectly( &fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
-	FSFILE_GetSize(fileHandle, &size);
+	if (strncmp("romfs:/",fname,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(fname,"r");
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath=fsMakePath(PATH_ASCII, fname);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+	}
+	FS_GetSize(&fileHandle, &size);
 	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
 	
 	if(!result) {
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(&fileHandle);
 		return 0;
 	}
 	
 	result->pixels = (u8*)malloc(size-0x36);
-	FSFILE_Read(fileHandle, &bytesRead, 0x36, result->pixels, size-0x36);
-	FSFILE_Read(fileHandle, &bytesRead, 0x12, &(result->width), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 0x16, &(result->height), 4);
-	FSFILE_Read(fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+	FS_Read(&fileHandle, &bytesRead, 0x36, result->pixels, size-0x36);
+	FS_Read(&fileHandle, &bytesRead, 0x12, &(result->width), 4);
+	FS_Read(&fileHandle, &bytesRead, 0x16, &(result->height), 4);
+	FS_Read(&fileHandle, &bytesRead, 0x1C, &(result->bitperpixel), 2);
+	FS_Close(&fileHandle);
 	u8* flipped = (u8*)malloc(result->width*result->height*result->bitperpixel);
 	flipped = flipBitmap(flipped, result);
 	free(result->pixels);

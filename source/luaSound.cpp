@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include <3ds.h>
+#include "include/utils.h"
 #include "include/luaplayer.h"
 #include "include/graphics/Graphics.h"
 #include "include/audio.h"
@@ -56,14 +57,6 @@ Handle updateStream;
 Handle streamThread;
 char pcmout[2048];
 extern u8* tmp_buf;
-
-static u32 Endian_UInt32_Conversion(u32 value){
-   return ((value >> 24) & 0x000000FF) | ((value >> 8) & 0x0000FF00) | ((value << 8) & 0x00FF0000) | ((value << 24) & 0xFF000000);
-}
-
-static u16 Endian_UInt16_Conversion(u16 value){
-   return (u16)(((value >> 8) & 0x00FF) | ((value << 8) & 0xFF00));
-}
 
 void streamOGG_CSND(void* arg){
 	wav* src = (wav*)arg;
@@ -238,7 +231,7 @@ void streamWAV_CSND(void* arg){
 					CSND_UpdateInfo(0);
 				}
 				if (src->audiobuf2 == NULL){
-					FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, src->audiobuf, src->mem_size);
+					FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, src->audiobuf, src->mem_size);
 					u64 i = 0;
 					if (src->big_endian){
 						while (i < (src->mem_size)){
@@ -249,7 +242,7 @@ void streamWAV_CSND(void* arg){
 						}
 					}
 				}else{
-					FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, tmp_buf, src->mem_size);
+					FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, src->mem_size);
 					u32 size_tbp = src->mem_size;
 					u32 off=0;
 					u32 i=0;
@@ -285,7 +278,7 @@ void streamWAV_CSND(void* arg){
 						if (src->encoding == CSND_ENCODING_ADPCM){ //ADPCM Decoding TODO
 							u32 buffer_headers_num = ((src->mem_size)/2) / src->bytepersample;
 							u8* tmp_audiobuf = tmp_buf;
-							FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
 							int z=0,i=0;
 							while (i < (src->mem_size/2)){
 								src->audiobuf[z] = tmp_audiobuf[i];
@@ -294,10 +287,10 @@ void streamWAV_CSND(void* arg){
 								if ((i % src->bytepersample) == 0) i=i+4;
 							}
 						}else{ //PCM-16 Decoding
-							FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf, (src->mem_size)/2);
 							u64 i = 0;
 							if (bytesRead != ((src->mem_size)/2)){
-								FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, src->audiobuf, (src->mem_size)/2);
+								FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, src->audiobuf, (src->mem_size)/2);
 								src->moltiplier = src->moltiplier + 1;
 							}
 							if (src->big_endian){
@@ -311,9 +304,9 @@ void streamWAV_CSND(void* arg){
 						}
 						src->moltiplier = src->moltiplier + 1;
 					}else{
-						FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 						if (bytesRead != ((src->mem_size)/2)){
-							FSFILE_Read(src->sourceFile, &bytesRead, src->startRead, tmp_buf, (src->mem_size)/2);
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, (src->mem_size)/2);
 							src->moltiplier = src->moltiplier + 1;
 						}
 						src->moltiplier = src->moltiplier + 1;
@@ -352,7 +345,7 @@ void streamWAV_CSND(void* arg){
 						if (src->encoding == CSND_ENCODING_ADPCM){ // ADPCM Decoding TODO
 							u32 buffer_headers_num = ((src->mem_size)/2) / src->bytepersample;
 							u8* tmp_audiobuf = tmp_buf;
-							FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), tmp_audiobuf, (src->mem_size)/2);
 							int z=0,i=0;
 							while (i < (src->mem_size/2)){
 								src->audiobuf[z+(src->mem_size/2)] = tmp_audiobuf[i];
@@ -361,7 +354,7 @@ void streamWAV_CSND(void* arg){
 								if ((i % src->bytepersample) == 0) i=i+4;
 							}
 						}else{ // PCM-16 Decoding
-							FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
 							if (src->big_endian){
 								u64 i = 0;
 								while (i < ((src->mem_size)/2)){
@@ -374,7 +367,7 @@ void streamWAV_CSND(void* arg){
 						}
 						src->moltiplier = src->moltiplier + 1;
 					}else{
-						FSFILE_Read(src->sourceFile, &bytesRead, src->startRead+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(src->mem_size/2)*(src->moltiplier + 1), tmp_buf, (src->mem_size)/2);
 						src->moltiplier = src->moltiplier + 1;
 						u32 size_tbp = (src->mem_size)/2;
 						u32 off=0;
@@ -424,8 +417,11 @@ static int lua_openogg_old(lua_State *L)
 	
 	// Using stdio instead of FS
 	char myFile[512];
-	strcpy(myFile,"sdmc:");
-	strcat(myFile,file_tbo);
+	if (strncmp("romfs:/",file_tbo,7) == 0) strcpy(myFile,file_tbo);
+	else{
+		strcpy(myFile,"sdmc:");
+		strcat(myFile,file_tbo);
+	}
 	sdmcInit();
 	
 	// Initializing libogg and vorbisfile
@@ -434,7 +430,7 @@ static int lua_openogg_old(lua_State *L)
 	static int current_section;
 	
 	// Opening a valid OGG music file
-	FILE* fp = fopen(myFile,"rb");
+	FILE* fp = fopen(myFile,"r");
 	if(ov_open(fp, vf, NULL, 0) != 0)
 	{
 		fclose(fp);
@@ -619,16 +615,22 @@ static int lua_openwav_old(lua_State *L)
 	const char *file_tbo = luaL_checkstring(L, 1);
 	bool mem_size = false;
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
-	Handle fileHandle;
-	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-	#ifndef SKIP_ERROR_HANDLING
-		if(ret) return luaL_error(L, "error opening file");
-	#endif
+	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle->isRomfs = true;
+		FILE* handle = fopen(file_tbo,"rb");
+		fileHandle->handle = (u32)handle;
+	}else{
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly(&fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret) return luaL_error(L, "error opening file");
+		#endif
+	}
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
 	u16 audiotype;
-	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	FS_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x46464952){
 		wav *wav_file = (wav*)malloc(sizeof(wav));
 		wav_file->ch = 0xDEADBEEF;
@@ -638,9 +640,9 @@ static int lua_openwav_old(lua_State *L)
 		wav_file->big_endian = false;
 		u32 pos = 16;	
 		while (chunk != 0x61746164){
-			FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
+			FS_Read(fileHandle, &bytesRead, pos, &jump, 4);
 			pos=pos+4+jump;
-			FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
+			FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
 			pos=pos+4;
 	
 			//Chunk LIST detection
@@ -649,45 +651,45 @@ static int lua_openwav_old(lua_State *L)
 				u32 subchunk;
 				u32 subchunk_size;
 				u32 sub_pos = pos+4;
-				FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+				FS_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
 				if (subchunk == 0x4F464E49){
 					sub_pos = sub_pos+4;
-					FSFILE_Read(fileHandle, &bytesRead, pos, &chunk_size, 4);
+					FS_Read(fileHandle, &bytesRead, pos, &chunk_size, 4);
 					while (sub_pos < (chunk_size + pos + 4)){
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos+4, &subchunk_size, 4);
+						FS_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+						FS_Read(fileHandle, &bytesRead, sub_pos+4, &subchunk_size, 4);
 						if (subchunk == 0x54524149){
 							char* author = (char*)malloc(subchunk_size * sizeof(char));
-							FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, author, subchunk_size);
+							FS_Read(fileHandle, &bytesRead, sub_pos+8, author, subchunk_size);
 							strcpy(wav_file->author,author);
 							wav_file->author[subchunk_size+1] = 0;
 							free(author);
 						}else if (subchunk == 0x4D414E49){
 							char* title = (char*)malloc(subchunk_size * sizeof(char));
-							FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, title, subchunk_size);
+							FS_Read(fileHandle, &bytesRead, sub_pos+8, title, subchunk_size);
 							strcpy(wav_file->title,title);
 							wav_file->title[subchunk_size+1] = 0;
 							free(title);
 						}
 						sub_pos = sub_pos + 8 + subchunk_size;
 						u8 checksum;
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos, &checksum, 1); //Prevent errors switching subchunks
+						FS_Read(fileHandle, &bytesRead, sub_pos, &checksum, 1); //Prevent errors switching subchunks
 						if (checksum == 0) sub_pos++;
 					}
 				}
 			}
 	
 		}
-		FSFILE_GetSize(fileHandle, &size);
-		FSFILE_Read(fileHandle, &bytesRead, 22, &audiotype, 2);
-		FSFILE_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
+		FS_GetSize(fileHandle, &size);
+		FS_Read(fileHandle, &bytesRead, 22, &audiotype, 2);
+		FS_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
 		u16 raw_enc;
-		FSFILE_Read(fileHandle, &bytesRead, 20, &raw_enc, 2);
-		FSFILE_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
+		FS_Read(fileHandle, &bytesRead, 20, &raw_enc, 2);
+		FS_Read(fileHandle, &bytesRead, 32, &(wav_file->bytepersample), 2);
 		if (raw_enc == 0x01) wav_file->encoding = CSND_ENCODING_PCM16;
 		else if (raw_enc == 0x11) wav_file->encoding = CSND_ENCODING_ADPCM;
 		wav_file->samplerate = samplerate;
-		wav_file->sourceFile = fileHandle;
+		wav_file->sourceFile = (u32)fileHandle;
 		if (audiotype == 1){
 			if (mem_size){
 				wav_file->moltiplier = 1;
@@ -700,7 +702,7 @@ static int lua_openwav_old(lua_State *L)
 				if (raw_enc == 0x11){ // ADPCM Decoding
 					u32 buffer_headers_num = (wav_file->mem_size) / wav_file->bytepersample;
 					u8* tmp_audiobuf = (u8*)linearAlloc(wav_file->mem_size);
-					FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, wav_file->mem_size);
+					FS_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, wav_file->mem_size);
 					wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size-buffer_headers_num*4);
 					int z=0,i=0;
 					while (i < wav_file->mem_size){
@@ -712,7 +714,7 @@ static int lua_openwav_old(lua_State *L)
 					tmp_buf = tmp_audiobuf;
 				}else{ // PCM-16 Decoding
 					wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
-					FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, wav_file->mem_size);
+					FS_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, wav_file->mem_size);
 				}
 				wav_file->audiobuf2 = NULL;
 				wav_file->size = size;
@@ -720,7 +722,7 @@ static int lua_openwav_old(lua_State *L)
 				if (raw_enc == 0x11){ // ADPCM Decoding
 					u32 headers_num = (size-(pos+4)) / wav_file->bytepersample;
 					u8* tmp_audiobuf = (u8*)linearAlloc(size-(pos+4));
-					FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, size-(pos+4));
+					FS_Read(fileHandle, &bytesRead, pos+4, tmp_audiobuf, size-(pos+4));
 					wav_file->audiobuf = (u8*)linearAlloc(size-(pos+4)-headers_num*4);
 					int z=0,i=0;
 					while (i < size){
@@ -733,7 +735,7 @@ static int lua_openwav_old(lua_State *L)
 					size = size-(pos+4) - headers_num * 4;
 				}else{ // PCM-16 Decoding
 					wav_file->audiobuf = (u8*)linearAlloc(size-(pos+4));
-					FSFILE_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
+					FS_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
 					size = size-(pos+4);
 				}
 				wav_file->audiobuf2 = NULL;
@@ -755,14 +757,14 @@ static int lua_openwav_old(lua_State *L)
 				tmp_buf = (u8*)linearAlloc(wav_file->mem_size);
 				wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size/2);
 				wav_file->audiobuf2 = (u8*)linearAlloc(wav_file->mem_size/2);
-				FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, tmp_buf, wav_file->mem_size);
+				FS_Read(fileHandle, &bytesRead, wav_file->startRead, tmp_buf, wav_file->mem_size);
 				size_tbp = wav_file->mem_size;
 			}else{
 				tmp_buf = (u8*)linearAlloc((size-(pos+4)));
 				size_tbp = size-(pos+4);
 				wav_file->startRead = 0;
 				wav_file->size = (size_tbp)/2;
-				FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_buf, size-(pos+4));
+				FS_Read(fileHandle, &bytesRead, pos+4, tmp_buf, size-(pos+4));
 				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
 				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
 			}
@@ -803,8 +805,7 @@ static int lua_openwav_old(lua_State *L)
 		lua_pushinteger(L,(u32)wav_file);
 	}
 	if (!mem_size){
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(fileHandle);
 	}
 	return 1;
 }
@@ -908,146 +909,153 @@ static int lua_openaiff_old(lua_State *L)
 	const char *file_tbo = luaL_checkstring(L, 1);
 	bool mem_size = false;
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
-	Handle fileHandle;
-	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-	#ifndef SKIP_ERROR_HANDLING
-		if (ret) return luaL_error(L, "error opening file.");
-	#endif
+	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle->isRomfs = true;
+		FILE* handle = fopen(file_tbo,"r");
+		fileHandle->handle = (u32)handle;
+	}else{
+		fileHandle->isRomfs = false;
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly(&fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "error opening file.");
+		#endif
+	}
 	u32 magic,bytesRead,jump,chunk=0x00000000;
 	u16 samplerate;
 	u16 audiotype;
-	FSFILE_Read(fileHandle, &bytesRead, 8, &magic, 4);
+	FS_Read(fileHandle, &bytesRead, 8, &magic, 4);
 	if (magic == 0x46464941){
-	wav *wav_file = (wav*)malloc(sizeof(wav));
-	wav_file->ch = 0xDEADBEEF;
-	strcpy(wav_file->author,"");
-	strcpy(wav_file->title,"");
-	wav_file->encoding = CSND_ENCODING_PCM16;
-	u64 size;
-	wav_file->big_endian = true;
-	u32 pos = 12;	
-	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
-	while (chunk != 0x444E5353){
+		wav *wav_file = (wav*)malloc(sizeof(wav));
+		wav_file->ch = 0xDEADBEEF;
+		strcpy(wav_file->author,"");
+		strcpy(wav_file->title,"");
+		wav_file->encoding = CSND_ENCODING_PCM16;
+		u64 size;
+		wav_file->big_endian = true;
+		u32 pos = 12;	
+		FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+		while (chunk != 0x444E5353){
 	
-	//Chunks detection
-	if (chunk == 0x454D414E){ //NAME Chunk
-		u32 chunk_size;
-		FSFILE_Read(fileHandle, &bytesRead, pos+4, &chunk_size, 4);
-		chunk_size = Endian_UInt32_Conversion(chunk_size);
-		char* title = (char*)malloc(chunk_size * sizeof(char));
-		FSFILE_Read(fileHandle, &bytesRead, pos+8, title, chunk_size);
-		strcpy(wav_file->title,title);
-		wav_file->title[chunk_size+1] = 0;
-		free(title);
-	}else if (chunk == 0x4D4D4F43){ //COMM Chunk
-		FSFILE_Read(fileHandle, &bytesRead, pos+8, &audiotype, 2);
-		audiotype = audiotype / 256;
-		FSFILE_Read(fileHandle, &bytesRead, pos+14, &(wav_file->bytepersample), 2);
-		wav_file->bytepersample = (wav_file->bytepersample / 2048) * audiotype;
-		FSFILE_Read(fileHandle, &bytesRead, pos+18, &samplerate, 2);
-		samplerate = Endian_UInt16_Conversion(samplerate);
-	}
+			//Chunks detection
+			if (chunk == 0x454D414E){ //NAME Chunk
+				u32 chunk_size;
+				FS_Read(fileHandle, &bytesRead, pos+4, &chunk_size, 4);
+				chunk_size = Endian_UInt32_Conversion(chunk_size);
+				char* title = (char*)malloc(chunk_size * sizeof(char));
+				FS_Read(fileHandle, &bytesRead, pos+8, title, chunk_size);
+				strcpy(wav_file->title,title);
+				wav_file->title[chunk_size+1] = 0;
+				free(title);
+			}else if (chunk == 0x4D4D4F43){ //COMM Chunk
+				FS_Read(fileHandle, &bytesRead, pos+8, &audiotype, 2);
+				audiotype = audiotype / 256;
+				FS_Read(fileHandle, &bytesRead, pos+14, &(wav_file->bytepersample), 2);
+				wav_file->bytepersample = (wav_file->bytepersample / 2048) * audiotype;
+				FS_Read(fileHandle, &bytesRead, pos+18, &samplerate, 2);
+				samplerate = Endian_UInt16_Conversion(samplerate);
+			}
 	
-	pos=pos+4;
-	FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
-	pos=pos+4+Endian_UInt32_Conversion(jump);
-	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
-	}
-	pos=pos+4;
-	FSFILE_GetSize(fileHandle, &size);
-	wav_file->mem_size = mem_size;
-	wav_file->samplerate = samplerate;
-	if (audiotype == 1){
-	if (mem_size){
-	wav_file->moltiplier = 1;
-	wav_file->isPlaying = false;
-	wav_file->mem_size = (size-(pos+4));
-	while (wav_file->mem_size > STREAM_MAX_ALLOC * 2){
-		wav_file->mem_size = wav_file->mem_size / 2;
-	}
-	wav_file->sourceFile = fileHandle;
-	wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
-	wav_file->startRead = (pos+4);
-	FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, wav_file->mem_size);
+			pos=pos+4;
+			FS_Read(fileHandle, &bytesRead, pos, &jump, 4);
+			pos=pos+4+Endian_UInt32_Conversion(jump);
+			FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
+		}
+		pos=pos+4;
+		FS_GetSize(fileHandle, &size);
+		wav_file->mem_size = mem_size;
+		wav_file->samplerate = samplerate;
+		if (audiotype == 1){
+			if (mem_size){
+				wav_file->moltiplier = 1;
+				wav_file->isPlaying = false;
+				wav_file->mem_size = (size-(pos+4));
+				while (wav_file->mem_size > STREAM_MAX_ALLOC * 2){
+					wav_file->mem_size = wav_file->mem_size / 2;
+				}
+				wav_file->sourceFile = (u32)fileHandle;
+				wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+				wav_file->startRead = (pos+4);
+				FS_Read(fileHandle, &bytesRead, wav_file->startRead, wav_file->audiobuf, wav_file->mem_size);
 	
-	// Changing endianess
-	u64 i = 0;
-	while (i < wav_file->mem_size){
-		u8 tmp = wav_file->audiobuf[i];
-		wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
-		wav_file->audiobuf[i+1] = tmp;
-		i=i+2;
-	}
+				// Changing endianess
+				u64 i = 0;
+				while (i < wav_file->mem_size){
+					u8 tmp = wav_file->audiobuf[i];
+					wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
+					wav_file->audiobuf[i+1] = tmp;
+					i=i+2;
+				}
 	
-	wav_file->audiobuf2 = NULL;
-	wav_file->size = size;
-	}else{
-	wav_file->audiobuf = (u8*)linearAlloc(size-(pos+4));
-	FSFILE_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
+				wav_file->audiobuf2 = NULL;
+				wav_file->size = size;
+			}else{
+				wav_file->audiobuf = (u8*)linearAlloc(size-(pos+4));
+				FS_Read(fileHandle, &bytesRead, pos+4, wav_file->audiobuf, size-(pos+4));
 	
-	// Changing endianess
-	u64 i = 0;
-	while (i < (size-(pos+4))){
-		u8 tmp = wav_file->audiobuf[i];
-		wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
-		wav_file->audiobuf[i+1] = tmp;
-		i=i+2;
-	}
+				// Changing endianess
+				u64 i = 0;
+				while (i < (size-(pos+4))){
+					u8 tmp = wav_file->audiobuf[i];
+					wav_file->audiobuf[i] = wav_file->audiobuf[i+1];
+					wav_file->audiobuf[i+1] = tmp;
+					i=i+2;
+				}
 	
-	wav_file->audiobuf2 = NULL;
-	wav_file->size = size-(pos+4);
-	wav_file->startRead = 0;
-	wav_file->isPlaying = false;
-	}
-	}else{
-	// I must reordinate my buffer in order to play stereo sound and change endianess
-	u32 size_tbp;
-	if (mem_size){
-	wav_file->moltiplier = 1;
-	wav_file->sourceFile = fileHandle;
-	wav_file->isPlaying = false;
-	wav_file->startRead = (pos+4);
-	wav_file->size = size;
-	wav_file->mem_size = (size-(pos+4));
-	while (wav_file->mem_size > STREAM_MAX_ALLOC * 10){
-		wav_file->mem_size = wav_file->mem_size / 2;
-	}
-	tmp_buf = (u8*)linearAlloc(wav_file->mem_size);
-	wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size/2);
-	wav_file->audiobuf2 = (u8*)linearAlloc(wav_file->mem_size/2);
-	FSFILE_Read(fileHandle, &bytesRead, wav_file->startRead, tmp_buf, wav_file->mem_size);
-	size_tbp = wav_file->mem_size;
-	}else{
-	tmp_buf = (u8*)linearAlloc((size-(pos+4)));
-	wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
-	wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
-	wav_file->startRead = 0;
-	size_tbp = size-(pos+4);
-	wav_file->size = (size_tbp)/2;
-	FSFILE_Read(fileHandle, &bytesRead, pos+4, tmp_buf, size-(pos+4));
-	}
-	u32 off=0;
-	u32 i=0;
-	u16 z;
-	while (i < size_tbp){
-	z=0;
-	while (z < (wav_file->bytepersample/2)){
-	wav_file->audiobuf[off+z] = tmp_buf[i+(wav_file->bytepersample/2)-z-1];
-	wav_file->audiobuf2[off+z] = tmp_buf[i+(wav_file->bytepersample)-z-1];
-	z++;
-	}
-	i=i+wav_file->bytepersample;
-	off=off+(wav_file->bytepersample/2);
-	}
-	}
-	wav_file->magic = 0x4C534E44;
-	lua_pushinteger(L,(u32)wav_file);
+				wav_file->audiobuf2 = NULL;
+				wav_file->size = size-(pos+4);
+				wav_file->startRead = 0;
+				wav_file->isPlaying = false;
+			}
+		}else{
+			// I must reordinate my buffer in order to play stereo sound and change endianess
+			u32 size_tbp;
+			if (mem_size){
+				wav_file->moltiplier = 1;
+				wav_file->sourceFile = (u32)fileHandle;
+				wav_file->isPlaying = false;
+				wav_file->startRead = (pos+4);
+				wav_file->size = size;
+				wav_file->mem_size = (size-(pos+4));
+				while (wav_file->mem_size > STREAM_MAX_ALLOC * 10){
+					wav_file->mem_size = wav_file->mem_size / 2;
+				}
+				tmp_buf = (u8*)linearAlloc(wav_file->mem_size);
+				wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size/2);
+				wav_file->audiobuf2 = (u8*)linearAlloc(wav_file->mem_size/2);
+				FS_Read(fileHandle, &bytesRead, wav_file->startRead, tmp_buf, wav_file->mem_size);
+				size_tbp = wav_file->mem_size;
+			}else{
+				tmp_buf = (u8*)linearAlloc((size-(pos+4)));
+				wav_file->audiobuf = (u8*)linearAlloc((size-(pos+4))/2);
+				wav_file->audiobuf2 = (u8*)linearAlloc((size-(pos+4))/2);
+				wav_file->startRead = 0;
+				size_tbp = size-(pos+4);
+				wav_file->size = (size_tbp)/2;
+				FS_Read(fileHandle, &bytesRead, pos+4, tmp_buf, size-(pos+4));
+			}
+			u32 off=0;
+			u32 i=0;
+			u16 z;
+			while (i < size_tbp){
+				z=0;
+				while (z < (wav_file->bytepersample/2)){
+					wav_file->audiobuf[off+z] = tmp_buf[i+(wav_file->bytepersample/2)-z-1];
+					wav_file->audiobuf2[off+z] = tmp_buf[i+(wav_file->bytepersample)-z-1];
+					z++;
+				}
+				i=i+wav_file->bytepersample;
+				off=off+(wav_file->bytepersample/2);
+			}
+		}
+		wav_file->magic = 0x4C534E44;
+		lua_pushinteger(L,(u32)wav_file);
 	}
 	if (!mem_size){
-	FSFILE_Close(fileHandle);
-	svcCloseHandle(fileHandle);
+		FS_Close(fileHandle);
+		free(fileHandle);
 	}
 	return 1;
 }
@@ -1100,7 +1108,7 @@ void streamWAV_DSP(void* arg){
 				createDspBlock(src->wavebuf2, src->bytepersample, src->mem_size, false, (u32*)src->audiobuf);
 				populatePurgeTable(src, src->wavebuf2);
 				ndspChnWaveBufAdd(src->ch, src->wavebuf2);
-				FSFILE_Read(src->sourceFile, &bytesRead, src->audio_pointer, src->audiobuf, src->mem_size);
+				FS_Read((fileStream*)src->sourceFile, &bytesRead, src->audio_pointer, src->audiobuf, src->mem_size);
 				src->audio_pointer = src->audio_pointer + src->mem_size;
 
 				// Changing endianess if Big Endian
@@ -1149,8 +1157,11 @@ static int lua_openogg(lua_State *L)
 	
 	// Init stdio
 	char myFile[512];
-	strcpy(myFile,"sdmc:");
-	strcat(myFile,file_tbo);
+	if (strncmp("romfs:/",file_tbo,7) == 0) strcpy(myFile,file_tbo);
+	else{
+		strcpy(myFile,"sdmc:");
+		strcat(myFile,file_tbo);
+	}
 	sdmcInit();
 	
 	// Init libogg and vorbisfile
@@ -1159,7 +1170,7 @@ static int lua_openogg(lua_State *L)
 	static int current_section;
 	
 	// Opening a valid OGG music file
-	FILE* fp = fopen(myFile,"rb");
+	FILE* fp = fopen(myFile,"r");
 	if(ov_open(fp, vf, NULL, 0) != 0)
 	{
 		fclose(fp);
@@ -1287,18 +1298,25 @@ static int lua_openwav(lua_State *L)
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
 	
 	// Open file
-	Handle fileHandle;
-	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-	#ifndef SKIP_ERROR_HANDLING
-		if (ret) return luaL_error(L, "error opening file.");
-	#endif
+	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle->isRomfs = true;
+		FILE* handle = fopen(file_tbo,"r");
+		fileHandle->handle = (u32)handle;
+	}else{
+		fileHandle->isRomfs = false;
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "error opening file.");
+		#endif
+	}
 	
 	// Check for magic
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
 	u16 audiotype;
-	FSFILE_Read(fileHandle, &bytesRead, 0, &magic, 4);
+	FS_Read(fileHandle, &bytesRead, 0, &magic, 4);
 	if (magic == 0x46464952){
 	
 		// Init wav struct
@@ -1312,9 +1330,9 @@ static int lua_openwav(lua_State *L)
 		// Metadatas extraction
 		u32 pos = 16;	
 		while (chunk != 0x61746164){
-			FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
+			FS_Read(fileHandle, &bytesRead, pos, &jump, 4);
 			pos=pos+4+jump;
-			FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
+			FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
 			pos=pos+4;
 	
 			//Chunk LIST detection
@@ -1323,29 +1341,29 @@ static int lua_openwav(lua_State *L)
 				u32 subchunk;
 				u32 subchunk_size;
 				u32 sub_pos = pos+4;
-				FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+				FS_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
 				if (subchunk == 0x4F464E49){
 					sub_pos = sub_pos+4;
-					FSFILE_Read(fileHandle, &bytesRead, pos, &chunk_size, 4);
+					FS_Read(fileHandle, &bytesRead, pos, &chunk_size, 4);
 					while (sub_pos < (chunk_size + pos + 4)){
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos+4, &subchunk_size, 4);
+						FS_Read(fileHandle, &bytesRead, sub_pos, &subchunk, 4);
+						FS_Read(fileHandle, &bytesRead, sub_pos+4, &subchunk_size, 4);
 						if (subchunk == 0x54524149){
 							char* author = (char*)malloc(subchunk_size * sizeof(char));
-							FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, author, subchunk_size);
+							FS_Read(fileHandle, &bytesRead, sub_pos+8, author, subchunk_size);
 							strcpy(songFile->author,author);
 							songFile->author[subchunk_size+1] = 0;
 							free(author);
 						}else if (subchunk == 0x4D414E49){
 							char* title = (char*)malloc(subchunk_size * sizeof(char));
-							FSFILE_Read(fileHandle, &bytesRead, sub_pos+8, title, subchunk_size);
+							FS_Read(fileHandle, &bytesRead, sub_pos+8, title, subchunk_size);
 							strcpy(songFile->title,title);
 							songFile->title[subchunk_size+1] = 0;
 							free(title);
 						}
 						sub_pos = sub_pos + 8 + subchunk_size;
 						u8 checksum;
-						FSFILE_Read(fileHandle, &bytesRead, sub_pos, &checksum, 1); //Prevent errors switching subchunks
+						FS_Read(fileHandle, &bytesRead, sub_pos, &checksum, 1); //Prevent errors switching subchunks
 						if (checksum == 0) sub_pos++;
 					}
 				}
@@ -1354,12 +1372,12 @@ static int lua_openwav(lua_State *L)
 		}
 		
 		// Music info extraction
-		FSFILE_GetSize(fileHandle, &size);
-		FSFILE_Read(fileHandle, &bytesRead, 22, &audiotype, 2);
-		FSFILE_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
+		FS_GetSize(fileHandle, &size);
+		FS_Read(fileHandle, &bytesRead, 22, &audiotype, 2);
+		FS_Read(fileHandle, &bytesRead, 24, &samplerate, 4);
 		u16 raw_enc;
-		FSFILE_Read(fileHandle, &bytesRead, 20, &raw_enc, 2);
-		FSFILE_Read(fileHandle, &bytesRead, 32, &(songFile->bytepersample), 2);
+		FS_Read(fileHandle, &bytesRead, 20, &raw_enc, 2);
+		FS_Read(fileHandle, &bytesRead, 32, &(songFile->bytepersample), 2);
 		if (raw_enc == 0x01) songFile->encoding = CSND_ENCODING_PCM16;
 		else if (raw_enc == 0x11) songFile->encoding = CSND_ENCODING_ADPCM;
 		songFile->samplerate = samplerate;
@@ -1369,7 +1387,7 @@ static int lua_openwav(lua_State *L)
 		
 		// Audiobuffer extraction
 		songFile->isPlaying = false;
-		songFile->sourceFile = fileHandle;
+		songFile->sourceFile = (u32)fileHandle;
 		if (mem_size){
 			songFile->mem_size = size-(pos+4);
 			while (songFile->mem_size > STREAM_MAX_ALLOC){
@@ -1380,12 +1398,12 @@ static int lua_openwav(lua_State *L)
 			songFile->startRead = pos+4;
 			songFile->audiobuf = (u8*)linearAlloc(songFile->mem_size);
 			songFile->audiobuf2 = (u8*)linearAlloc(songFile->mem_size);
-			FSFILE_Read(fileHandle, &bytesRead, songFile->startRead, songFile->audiobuf, songFile->mem_size);
+			FS_Read(fileHandle, &bytesRead, songFile->startRead, songFile->audiobuf, songFile->mem_size);
 			songFile->audio_pointer = songFile->startRead + songFile->mem_size;
 			songFile->size = size;
 		}else{
 			songFile->audiobuf = (u8*)linearAlloc(size-(pos+4));
-			FSFILE_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, size-(pos+4));
+			FS_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, size-(pos+4));
 			size = size-(pos+4);
 			songFile->size = size;
 			songFile->startRead = 0;
@@ -1401,8 +1419,8 @@ static int lua_openwav(lua_State *L)
 	
 	// Closing file if no streaming feature usage
 	if (!mem_size){
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(fileHandle);
+		free(fileHandle);
 	}
 	
 	return 1;
@@ -1423,16 +1441,23 @@ static int lua_openaiff(lua_State *L)
 	if (argc == 2) mem_size = lua_toboolean(L, 2);
 	
 	// Opening file
-	Handle fileHandle;
-	FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
-	Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-
+	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle->isRomfs = true;
+		FILE* handle = fopen(file_tbo,"r");
+		fileHandle->handle = (u32)handle;
+	}else{
+		fileHandle->isRomfs = false;
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+	}
+	
 	// Init wav struct
 	u32 magic,bytesRead,jump,chunk=0x00000000;
 	u16 samplerate;
 	u16 audiotype;
-	FSFILE_Read(fileHandle, &bytesRead, 8, &magic, 4);
+	FS_Read(fileHandle, &bytesRead, 8, &magic, 4);
 	if (magic != 0x46464941) return luaL_error(L, "corrupt AIFF file");
 	Music* songFile = (Music*)malloc(sizeof(Music));
 	songFile->ch = 0xDEADBEEF;
@@ -1442,7 +1467,7 @@ static int lua_openaiff(lua_State *L)
 	u64 size;
 	songFile->big_endian = true;
 	u32 pos = 12;	
-	FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);
+	FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);
 	
 	//Extracting Metadatas
 	while (chunk != 0x444E5353){
@@ -1450,31 +1475,31 @@ static int lua_openaiff(lua_State *L)
 		//Chunks detection
 		if (chunk == 0x454D414E){ //NAME Chunk
 			u32 chunk_size;
-			FSFILE_Read(fileHandle, &bytesRead, pos+4, &chunk_size, 4);
+			FS_Read(fileHandle, &bytesRead, pos+4, &chunk_size, 4);
 			chunk_size = Endian_UInt32_Conversion(chunk_size);
 			char* title = (char*)malloc(chunk_size * sizeof(char));
-			FSFILE_Read(fileHandle, &bytesRead, pos+8, title, chunk_size);
+			FS_Read(fileHandle, &bytesRead, pos+8, title, chunk_size);
 			strcpy(songFile->title,title);
 			songFile->title[chunk_size+1] = 0;
 			free(title);
 		}else if (chunk == 0x4D4D4F43){ //COMM Chunk
-			FSFILE_Read(fileHandle, &bytesRead, pos+8, &audiotype, 2);
+			FS_Read(fileHandle, &bytesRead, pos+8, &audiotype, 2);
 			audiotype = audiotype / 256;
-			FSFILE_Read(fileHandle, &bytesRead, pos+14, &(songFile->bytepersample), 2);
+			FS_Read(fileHandle, &bytesRead, pos+14, &(songFile->bytepersample), 2);
 			songFile->bytepersample = (songFile->bytepersample / 2048) * audiotype;
-			FSFILE_Read(fileHandle, &bytesRead, pos+18, &samplerate, 2);
+			FS_Read(fileHandle, &bytesRead, pos+18, &samplerate, 2);
 			samplerate = Endian_UInt16_Conversion(samplerate);
 		}	
 	
 		pos=pos+4;
-		FSFILE_Read(fileHandle, &bytesRead, pos, &jump, 4);
+		FS_Read(fileHandle, &bytesRead, pos, &jump, 4);
 		pos=pos+4+Endian_UInt32_Conversion(jump);
-		FSFILE_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
+		FS_Read(fileHandle, &bytesRead, pos, &chunk, 4);	
 	}
 	
 	//Extracting music info
 	pos=pos+4;
-	FSFILE_GetSize(fileHandle, &size);
+	FS_GetSize(fileHandle, &size);
 	songFile->mem_size = 0;
 	songFile->samplerate = samplerate;
 	songFile->audiotype = audiotype;
@@ -1494,17 +1519,17 @@ static int lua_openaiff(lua_State *L)
 			songFile->mem_size = songFile->mem_size / 2;
 		}
 		if ((songFile->mem_size % 2) == 1) songFile->mem_size++;
-		songFile->sourceFile = fileHandle;
+		songFile->sourceFile = (u32)fileHandle;
 		songFile->audiobuf = (u8*)linearAlloc(songFile->mem_size);
 		songFile->audiobuf2 = (u8*)linearAlloc(songFile->mem_size);
 		songFile->startRead = (pos+4);
-		FSFILE_Read(fileHandle, &bytesRead, songFile->startRead, songFile->audiobuf, songFile->mem_size);	
+		FS_Read(fileHandle, &bytesRead, songFile->startRead, songFile->audiobuf, songFile->mem_size);	
 		songFile->audio_pointer = songFile->startRead + songFile->mem_size;
 		stbp = songFile->mem_size;
 	}else{
 		songFile->audiobuf = (u8*)linearAlloc(songFile->size);
 		songFile->audiobuf2 = NULL;
-		FSFILE_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, songFile->size);	
+		FS_Read(fileHandle, &bytesRead, pos+4, songFile->audiobuf, songFile->size);	
 		stbp = songFile->size;
 	}
 	
@@ -1523,8 +1548,8 @@ static int lua_openaiff(lua_State *L)
 	
 	// Closing file if streaming feature used
 	if (!mem_size){
-		FSFILE_Close(fileHandle);
-		svcCloseHandle(fileHandle);
+		FS_Close(fileHandle);
+		free(fileHandle);
 	}
 	
 	return 1;
@@ -1611,7 +1636,7 @@ static int lua_play(lua_State *L)
 		u32 *threadStack = (u32*)memalign(32, 8192);
 		src->thread = threadStack;
 		svcSignalEvent(updateStream);
-		Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 0);
+		threadCreate(streamFunction, src, 8192, 0x18, 0, true);
 	}
 	
 	return 0;
@@ -1676,7 +1701,7 @@ static int lua_play_old(lua_State *L)
 			u32 *threadStack = (u32*)memalign(32, 8192);
 			src->thread = threadStack;
 			svcSignalEvent(updateStream);
-			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
+			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
 			if (interp != 0xDEADBEEF) My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
 			else My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
 		}else{
@@ -1695,7 +1720,7 @@ static int lua_play_old(lua_State *L)
 			u32 *threadStack = (u32*)memalign(32, 8192);
 			src->thread = threadStack;
 			svcSignalEvent(updateStream);
-			Result ret = svcCreateThread(&streamThread, streamFunction, (u32)src, &threadStack[2048], 0x18, 1);
+			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
 			if (interp != 0xDEADBEEF){
 				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), (src->mem_size)/2, 1.0, -1.0);
 				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), (src->mem_size)/2, 1.0, 1.0);
@@ -1744,15 +1769,12 @@ static int lua_closesong(lua_State *L)
 		closeStream = true;
 		svcSignalEvent(updateStream);
 		while (closeStream){} // Wait for thread exiting...
-		svcCloseHandle(updateStream);
-		svcCloseHandle(streamThread);
-		free(src->thread);
 		if (src->encoding == CSND_ENCODING_VORBIS){
 			ov_clear((OggVorbis_File*)src->sourceFile);
 			sdmcExit();
 		}else{
-			FSFILE_Close(src->sourceFile);
-			svcCloseHandle(src->sourceFile);
+			FS_Close((fileStream*)src->sourceFile);
+			free((fileStream*)src->sourceFile);
 		}
 	}
 	
@@ -1784,15 +1806,12 @@ static int lua_close_old(lua_State *L)
 		closeStream = true;
 		svcSignalEvent(updateStream);
 		while (closeStream){} // Wait for thread exiting...
-		svcCloseHandle(updateStream);
-		svcCloseHandle(streamThread);
-		free(src->thread);
 		if (src->encoding == CSND_ENCODING_VORBIS){
 			ov_clear((OggVorbis_File*)src->sourceFile);
 			sdmcExit();
 		}else{
-			FSFILE_Close(src->sourceFile);
-			svcCloseHandle(src->sourceFile);
+			FS_Close((fileStream*)src->sourceFile);
+			free((fileStream*)src->sourceFile);
 		}
 	}
 	linearFree(src->audiobuf);

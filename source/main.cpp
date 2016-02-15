@@ -66,6 +66,8 @@ int main(int argc, char **argv)
 	httpcInit();
 	ptmuInit();
 	hidInit();
+	fsInit();
+	romfsInit();
 	irrstInit();
 	aptOpenSession();
 	Result ret=APT_SetAppCpuTimeLimit(30);
@@ -142,7 +144,6 @@ int main(int argc, char **argv)
 		if (CIA_MODE){
 		
 			// CIA romFs script loader
-			romfsInit();
 			FILE* script = fopen("romfs:/index.lua","r");
 			fseek(script, 0, SEEK_END);
 			int size = ftell(script);
@@ -151,13 +152,10 @@ int main(int argc, char **argv)
 			fread(buffer, size, 1, script);
 			fclose(script);
 			buffer[size]=0;
-			romfsExit();
-			fsInit();
 			
 		}else{
 			
 			// Regular 3DSX script loader
-			fsInit();
 			FS_Path filePath=fsMakePath(PATH_ASCII, path);
 			FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 			Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
