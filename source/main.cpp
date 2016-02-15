@@ -132,6 +132,7 @@ int main(int argc, char **argv)
 	}else{
 		strcpy(start_dir,"/");
 		strcpy(cur_dir,"/"); // Set current dir for CFW Mode
+		strcat(path,"/index.lua"); // Citra3DS compatibility
 	}
 	
 	while(aptMainLoop())
@@ -140,22 +141,9 @@ int main(int argc, char **argv)
 		char error[2048];		
 		unsigned char* buffer = NULL;
 		
-		// Load main script
-		if (CIA_MODE){
-		
-			// CIA romFs script loader
-			FILE* script = fopen("romfs:/index.lua","r");
-			fseek(script, 0, SEEK_END);
-			int size = ftell(script);
-			fseek(script, 0, SEEK_SET);
-			buffer = (unsigned char*)malloc(size+1);
-			fread(buffer, size, 1, script);
-			fclose(script);
-			buffer[size]=0;
-			
-		}else{
-			
-			// Regular 3DSX script loader
+		// Load main script (romFs preferred)
+		FILE* script = fopen("romfs:/index.lua","r");
+		if (script == NULL){
 			FS_Path filePath=fsMakePath(PATH_ASCII, path);
 			FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 			Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
@@ -167,7 +155,14 @@ int main(int argc, char **argv)
 				FSFILE_Close(fileHandle);
 				svcCloseHandle(fileHandle);
 			}
-		
+		}else{
+			fseek(script, 0, SEEK_END);
+			int size = ftell(script);
+			fseek(script, 0, SEEK_SET);
+			buffer = (unsigned char*)malloc(size+1);
+			fread(buffer, size, 1, script);
+			fclose(script);
+			buffer[size]=0;
 		}
 		
 		// Start interpreter
