@@ -104,7 +104,7 @@ static int lua_init(lua_State *L){
 	#endif
 	u32 w = luaL_checkinteger(L, 1);
 	u32 h = luaL_checkinteger(L, 2);
-	CLEAR_COLOR = luaL_checkinteger(L, 3);
+	u32 CLEAR_COLOR = ARGB2RGBA(luaL_checkinteger(L, 3));
 	
 	// Initialize graphics
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -187,9 +187,9 @@ static int lua_loadModel(lua_State *L){
 	C3D_Mtx* material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
 	*material = {
 		{
-		{ { ambient->r, ambient->g, ambient->b, ambient->a } }, // Ambient
-		{ { diffuse->r, diffuse->g, diffuse->b, diffuse->a } }, // Diffuse
-		{ { specular->r, specular->g, specular->b, specular->a } }, // Specular
+		{ { 0.0f, ambient->r, ambient->g, ambient->b } }, // Ambient
+		{ { 0.0f, diffuse->r, diffuse->g, diffuse->b } }, // Diffuse
+		{ { 0.0f, specular->r, specular->g, specular->b } }, // Specular
 		{ { emission, 0.0f, 0.0f, 0.0f } }, // Emission
 		}
 	};

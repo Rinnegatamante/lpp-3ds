@@ -104,3 +104,11 @@ void float2int(color* base, u32* result){
 	u32 a = int(base->a * 255.0f);
 	*result = b | (g << 8) | (r << 16) | (a << 24);
 }
+
+u32 ARGB2RGBA(u32 color){
+	u32 a = (color >> 24);
+	u32 r = ((color << 8) >> 24);
+	u32 g = ((color << 16) >> 24);
+	u32 b = ((color << 24) >> 24);
+	return a | (b << 8) | (g << 16) | (r << 24);
+}

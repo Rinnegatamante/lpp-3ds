@@ -44,3 +44,4 @@ u32 Endian_UInt32_Conversion(u32 value);
 // GPU / Normal color compatibility functions
 void int2float(u32 color, float* r, float* g, float* b, float* a);
 void float2int(color* base, u32* result);
+u32 ARGB2RGBA(u32 color);
