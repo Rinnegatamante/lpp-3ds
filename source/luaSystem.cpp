@@ -1800,6 +1800,17 @@ static int lua_getcpu(lua_State *L){
 	return 1;
 }
 
+static int lua_detectsd(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	bool isSD;
+	FSUSER_IsSdmcDetected(&isSD);
+	lua_pushboolean(L, isSD);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
 	{"exit",				lua_exit},
@@ -1849,6 +1860,7 @@ static const luaL_Reg System_functions[] = {
 	{"setCpuSpeed",			lua_setcpu},
 	{"getCpuSpeed",			lua_getcpu},
 	{"extractFromZIP",		lua_getfilefromzip},
+	{"checkSDMC",			lua_detectsd},
 // I/O Module and Dofile Patch
 	{"openFile",			lua_openfile},
 	{"getFileSize",			lua_getsize},
