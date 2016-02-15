@@ -1074,6 +1074,7 @@ static int lua_unloadJPGV(lua_State *L){
 	}
 	FS_Close(src->sourceFile);
 	free(src->sourceFile);
+	svcCloseHandle(updateStream);
 	linearFree(tmp_buf);
 	free(src);
 	return 0;

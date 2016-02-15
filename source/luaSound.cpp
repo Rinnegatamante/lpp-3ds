@@ -1776,6 +1776,7 @@ static int lua_closesong(lua_State *L)
 			FS_Close((fileStream*)src->sourceFile);
 			free((fileStream*)src->sourceFile);
 		}
+		svcCloseHandle(updateStream);
 	}
 	
 	// Purging everything
@@ -1813,6 +1814,7 @@ static int lua_close_old(lua_State *L)
 			FS_Close((fileStream*)src->sourceFile);
 			free((fileStream*)src->sourceFile);
 		}
+		svcCloseHandle(updateStream);
 	}
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
