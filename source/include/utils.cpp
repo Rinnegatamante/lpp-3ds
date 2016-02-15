@@ -85,3 +85,22 @@ u32 Endian_UInt32_Conversion(u32 value){
 u16 Endian_UInt16_Conversion(u16 value){
    return (u16)(((value >> 8) & 0x00FF) | ((value << 8) & 0xFF00));
 }
+
+void int2float(u32 color, float* r, float* g, float* b, float* a){
+	u32 b1 = color & 0xFF;
+	u32 g1 = (color >> 8) & 0xFF;
+	u32 r1 = (color >> 16) & 0xFF;
+	u32 a1 = (color >> 24) & 0xFF;
+	*r = float(r1) / 255.0f;
+	*b = float(b1) / 255.0f;
+	*g = float(g1) / 255.0f;
+	*a = float(a1) / 255.0f;
+}
+
+void float2int(color* base, u32* result){
+	u32 b = int(base->b * 255.0f);
+	u32 g = int(base->g * 255.0f);
+	u32 r = int(base->r * 255.0f);
+	u32 a = int(base->a * 255.0f);
+	*result = b | (g << 8) | (r << 16) | (a << 24);
+}

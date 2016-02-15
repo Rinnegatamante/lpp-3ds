@@ -19,6 +19,15 @@ struct fileStream{
 	bool isRomfs;
 };
 
+// GPU color struct
+typedef struct{
+	u32 magic;
+	float r;
+	float g;
+	float b;
+	float a;
+} color;
+
 // Generic FS functions with romFs support
 void FS_GetSize(fileStream* Handle, u64* size);
 void FS_Read(fileStream* Handle, u32* bytesRead, u32 init, void* buffer, u32 size);
@@ -31,3 +40,7 @@ void ascii2utf(u16* dst, char* src);
 // Endianess conversion functions
 u16 Endian_UInt16_Conversion(u16 value);
 u32 Endian_UInt32_Conversion(u32 value);
+
+// GPU / Normal color compatibility functions
+void int2float(u32 color, float* r, float* g, float* b, float* a);
+void float2int(color* base, u32* result);

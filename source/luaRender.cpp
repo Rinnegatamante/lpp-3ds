@@ -37,6 +37,7 @@
 #include "include/luaplayer.h"
 #include "vshader_shbin.h"
 #include "include/graphics/Graphics.h"
+#include "include/utils.h"
 
 u32 CLEAR_COLOR = 0x68B0D8FF;
 float light_r = 1.0f;
@@ -71,30 +72,12 @@ typedef struct{
 	C3D_Mtx* material;
 } model;
 
-typedef struct{
-	u32 magic;
-	float r;
-	float g;
-	float b;
-	float a;
-} color;
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static int uLoc_lightVec, uLoc_lightHalfVec, uLoc_lightClr, uLoc_material;
 static C3D_Mtx projection;
 static C3D_RenderTarget* targets[3];
-
-void int2float(u32 color, float* r, float* g, float* b, float* a){
-	u32 b1 = color & 0xFF;
-	u32 g1 = (color >> 8) & 0xFF;
-	u32 r1 = (color >> 16) & 0xFF;
-	u32 a1 = (color >> 24) & 0xFF;
-	*r = float(r1) / 255.0f;
-	*b = float(b1) / 255.0f;
-	*g = float(g1) / 255.0f;
-	*a = float(a1) / 255.0f;
-}
 
 static int lua_newVertex(lua_State *L){
 	int argc = lua_gettop(L);
@@ -117,10 +100,11 @@ static int lua_newVertex(lua_State *L){
 static int lua_init(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+		if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 w = luaL_checkinteger(L, 1);
 	u32 h = luaL_checkinteger(L, 2);
+	CLEAR_COLOR = luaL_checkinteger(L, 3);
 	
 	// Initialize graphics
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);

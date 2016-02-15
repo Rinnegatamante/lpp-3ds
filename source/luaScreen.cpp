@@ -615,6 +615,21 @@ static int lua_color(lua_State *L) {
     return 1;
 }
 
+static int lua_convert(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+    color* gpu_color = (color*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (gpu_color->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	u32 color;
+	float2int(gpu_color, &color);
+    lua_pushinteger(L,color);
+    return 1;
+}
+
 static int lua_getB(lua_State *L) {
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -828,6 +843,7 @@ static const luaL_Reg Color_functions[] = {
   {"getG",								lua_getG},
   {"getB",								lua_getB},
   {"getA",								lua_getA},
+  {"convertFrom",						lua_convert},
   {0, 0}
 };
 
