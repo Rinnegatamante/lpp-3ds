@@ -53,7 +53,7 @@ bool ftp_state;
 bool isTopLCDOn;
 bool isBottomLCDOn;
 bool isNinjhax2 = false;
-bool csndAccess;
+bool csndAccess = false;
 extern bool audioChannels[32];
 
 int main(int argc, char **argv)
@@ -104,10 +104,12 @@ int main(int argc, char **argv)
 	}
 	
 	// Select Audio System (csnd:SND preferred)
-	if (csndInit() == 0){
-		csndAccess = true;
-		csndExit();
-	}else csndAccess = false;
+	#ifndef FORCE_DSP
+		if (csndInit() == 0){
+			csndAccess = true;
+			csndExit();
+		}else csndAccess = false;
+	#endif
 	
 	// Init Audio-Device
 	int i = 0;
@@ -144,8 +146,10 @@ int main(int argc, char **argv)
 		unsigned char* buffer = NULL;
 		
 		// Load main script (romFs preferred)
+		#ifndef FORCE_SD
 		FILE* script = fopen("romfs:/index.lua","r");
 		if (script == NULL){
+		#endif
 			FS_Path filePath=fsMakePath(PATH_ASCII, path);
 			FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 			Result ret = FSUSER_OpenFileDirectly(&fileHandle, script, filePath, FS_OPEN_READ, 0x00000000);
@@ -157,6 +161,7 @@ int main(int argc, char **argv)
 				FSFILE_Close(fileHandle);
 				svcCloseHandle(fileHandle);
 			}
+		#ifndef FORCE_SD
 		}else{
 			fseek(script, 0, SEEK_END);
 			int size = ftell(script);
@@ -166,6 +171,7 @@ int main(int argc, char **argv)
 			fclose(script);
 			buffer[size]=0;
 		}
+		#endif
 		
 		// Start interpreter
 		if (buffer != NULL){
