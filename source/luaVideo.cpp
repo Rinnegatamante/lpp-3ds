@@ -119,7 +119,7 @@ static void streamWAV(void* arg){
 		u32 control;
 		if(closeStream){
 			closeStream = false;
-			svcExitThread();
+			threadExit(0);
 		}
 		if (((src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000)) > ((src->mem_size / 2) * src->moltiplier)) && (src->isPlaying)){
 			if ((src->moltiplier % 2) == 1){
@@ -192,7 +192,7 @@ static void streamOGG(void* arg){
 		
 			if(closeStream){
 				closeStream = false;
-				svcExitThread();
+				threadExit(0);
 			}
 			
 			// Initializing libogg and vorbisfile

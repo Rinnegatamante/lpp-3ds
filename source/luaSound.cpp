@@ -67,7 +67,7 @@ void streamOGG_CSND(void* arg){
 		
 			if(closeStream){
 				closeStream = false;
-				svcExitThread();
+				threadExit(0);
 			}
 			
 			// Initializing libogg and vorbisfile
@@ -214,7 +214,7 @@ void streamWAV_CSND(void* arg){
 		u32 control;
 			if(closeStream){
 				closeStream = false;
-				svcExitThread();
+				threadExit(0);
 			}
 			if (src->encoding == CSND_ENCODING_ADPCM) control = (src->samplerate / 2) * ((osGetTime() - src->tick) / 1000);
 			else control = src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000);
@@ -826,7 +826,7 @@ void streamOGG_DSP(void* arg){
 		// Close the thread if closeStream event received
 		if(closeStream){
 			closeStream = false;
-			svcExitThread();
+			threadExit(0);
 		}
 		
 		// Check if the current stream is paused or not
@@ -1079,7 +1079,7 @@ void streamWAV_DSP(void* arg){
 		// Close the thread if closeStream event received
 		if(closeStream){
 			closeStream = false;
-			svcExitThread();
+			threadExit(0);
 		}
 		
 		// Check if the current stream is paused or not
