@@ -67,7 +67,9 @@ int main(int argc, char **argv)
 	ptmuInit();
 	hidInit();
 	fsInit();
-	romfsInit();
+	#ifndef CITRA3DS_COMPATIBLE
+		romfsInit();
+	#endif
 	irrstInit();
 	aptOpenSession();
 	Result ret=APT_SetAppCpuTimeLimit(30);
