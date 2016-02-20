@@ -220,48 +220,48 @@ static void streamOGG(void* arg){
 				CSND_UpdateInfo(0);
 				src->moltiplier = 1;
 				ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
-				if (src->audiobuf2 == NULL){
-					
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-							eof=1;
-						} else {
-							memcpy(&src->audiobuf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= (package_max_size)) break;
-						}
-					}
-				}else{
-					char pcmout[2048];
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-							eof=1;
-						} else {
-							memcpy(&tmp_buf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;	
-						}
-					}
-		
-					// Separating left and right channels
-					int z;
-					int j=0;
-					for (z=0; z < src->mem_size; z=z+4){
-						src->audiobuf[j] = tmp_buf[z];
-						src->audiobuf[j+1] = tmp_buf[z+1];
-						src->audiobuf2[j] = tmp_buf[z+2];
-						src->audiobuf2[j+1] = tmp_buf[z+3];
-						j=j+2;
-					}
-				}
 				if (!src->loop){
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
 				}else{
+					if (src->audiobuf2 == NULL){
+					
+						int i = 0;
+						while(!eof){
+							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
+							if (ret == 0) {
+								eof=1;
+							} else {
+								memcpy(&src->audiobuf[i],pcmout,ret);
+								i = i + ret;
+								if (i >= (package_max_size)) break;
+							}
+						}
+					}else{
+						char pcmout[2048];
+						int i = 0;
+						while(!eof){
+							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
+							if (ret == 0) {
+								eof=1;
+							} else {
+								memcpy(&tmp_buf[i],pcmout,ret);
+								i = i + ret;
+								if (i >= src->mem_size) break;	
+							}
+						}
+		
+						// Separating left and right channels
+						int z;
+						int j=0;
+						for (z=0; z < src->mem_size; z=z+4){
+							src->audiobuf[j] = tmp_buf[z];
+							src->audiobuf[j+1] = tmp_buf[z+1];
+							src->audiobuf2[j] = tmp_buf[z+2];
+							src->audiobuf2[j+1] = tmp_buf[z+3];
+							j=j+2;
+						}
+					}
 					src->tick = osGetTime();
 					CSND_SetPlayState(src->ch1, 1);
 					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
