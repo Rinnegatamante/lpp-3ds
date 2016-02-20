@@ -77,7 +77,6 @@ struct JPGV{
 	int loop;
 	u32 mem_size;
 	u32 moltiplier;
-	u32* thread;
 	u8 audiocodec;
 	u32 stdio_handle;
 	u32 real_audio_size;
@@ -384,7 +383,6 @@ static int lua_loadJPGV(lua_State *L)
 	JPGV_file->audiobuf2 = NULL;
 	JPGV_file->ch1 = 0xDEADBEEF;
 	JPGV_file->ch2 = 0xDEADBEEF;
-	JPGV_file->thread = NULL;
 	JPGV_file->mem_size = JPGV_file->audio_size;
 	JPGV_file->magic = 0x4C4A5056;
 	lua_pushinteger(L, (u32)JPGV_file);
@@ -1062,13 +1060,10 @@ static int lua_unloadJPGV(lua_State *L){
 	#endif
 	audioChannels[src->ch1] = false;
 	if (src->audiotype == 2) audioChannels[src->ch2] = false;
-	if (src->thread != NULL){
-		closeStream = true;
-		svcSignalEvent(updateStream);
-		while (closeStream){} // Wait for thread exiting...
-		free(src->thread);
-		sdmcExit();
-	}
+	closeStream = true;
+	svcSignalEvent(updateStream);
+	while (closeStream){} // Wait for thread exiting...
+	sdmcExit();
 	if (src->samplerate != 0 && src->audio_size != 0 && src->audiobuf != NULL){
 		linearFree(src->audiobuf);
 		if (src->audiotype == 2){
