@@ -1417,6 +1417,7 @@ Bitmap* OpenJPG(const char* filename)
 	FS_Close(&fileHandle);
     jpeg_mem_src(&cinfo, in, size);
     jpeg_read_header(&cinfo, TRUE);
+	cinfo.out_color_space = JCS_EXT_BGR;
     jpeg_start_decompress(&cinfo);
     int width = cinfo.output_width;
     int height = cinfo.output_height;
@@ -1490,12 +1491,6 @@ Bitmap* decodeJPGfile(const char* filename)
     result->height = height;
     result->pixels = bgr_buffer;
 	int i = 0;
-	while (i < (width*height*3)){
-		u8 tmp = result->pixels[i];
-		result->pixels[i] = result->pixels[i+2];
-		result->pixels[i+2] = tmp;
-		i=i+3;
-	}
 	free(in);
     return result;
 }
@@ -1553,6 +1548,7 @@ Bitmap* decodeJpg(unsigned char* in,u64 size)
     jpeg_create_decompress(&cinfo);
     jpeg_mem_src(&cinfo, in, size);
     jpeg_read_header(&cinfo, TRUE);
+	cinfo.out_color_space = JCS_EXT_BGR;
     jpeg_start_decompress(&cinfo);
     int width = cinfo.output_width;
     int height = cinfo.output_height;
@@ -1581,6 +1577,7 @@ void printJpg(unsigned char* in,u64 size, u8* framebuffer)
     jpeg_create_decompress(&cinfo);
     jpeg_mem_src(&cinfo, in, size);
     jpeg_read_header(&cinfo, TRUE);
+	cinfo.out_color_space = JCS_EXT_BGR;
     jpeg_start_decompress(&cinfo);
     int width = cinfo.output_width;
     int height = cinfo.output_height;
@@ -1606,7 +1603,7 @@ void saveJpg(char *filename, u32 *pixels, u32 width, u32 height){
 	cinfo.image_width = width;
 	cinfo.image_height = height;
 	cinfo.input_components = 3;
-	cinfo.in_color_space = JCS_RGB;
+	cinfo.in_color_space = JCS_EXT_BGR;
 	jpeg_set_defaults(&cinfo);
 	cinfo.num_components = 3;
 	cinfo.dct_method = JDCT_FLOAT;
@@ -1632,7 +1629,7 @@ u32* toJpg(u32* size, u32 *pixels, u32 width, u32 height){
 	cinfo.image_width = width;
 	cinfo.image_height = height;
 	cinfo.input_components = 3;
-	cinfo.in_color_space = JCS_RGB;
+	cinfo.in_color_space = JCS_EXT_BGR;
 	jpeg_set_defaults(&cinfo);
 	cinfo.num_components = 3;
 	cinfo.dct_method = JDCT_FLOAT;
