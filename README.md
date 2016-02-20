@@ -80,14 +80,20 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [SOON!](http://gbatemp.net/threads/soon-super-cool-installer-a-new-cool-legal-open-source-cia-installer.387268/)
 * [Bird Whisperer](http://gbatemp.net/threads/release-bird-whisperer-a-notification-creater.404669/)
 * [Dice 3DS](https://gbatemp.net/threads/release-dice-3ds-roll-some-dice-pretty-straightforward.400086/)
-* [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
 * [LiveScore 3DS](http://gbatemp.net/threads/release-livescore-3ds.414693/)
+* [Tinker](http://gbatemp.net/threads/tinker-shuffle-menuhax-theme-manager.407445/)
+* [MCIT](http://gbatemp.net/threads/release-miiverse-custom-image-tool.415505/)
+* [Video Channels Creator](http://gbatemp.net/threads/release-video-channels-creator-custom-cia-videos-for-everyone.415708/)
+
+##### Engines & Interpreters
+* [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
+* [RayCast3D Engine](https://gbatemp.net/threads/w-i-p-lua-raycast3d-3d-game-engine-for-lpp-3ds.407381/)
 * [Crimson Scripter](http://gbatemp.net/threads/crimson-scripter.415152/)
 
 # Compiling the source
 
-The repository will provide you a full set of all needed library. Take in mind that a lot of them are modified versions of the original ones so if you want to update them, take a look at [this repository](https://github.com/Rinnegatamante/lpp-3ds_libraries) where you can find sourcecodes of every pre-builded library used in this repository. Also take in mind that **libkhax** includes also **libSu** sourcecode.<br><br>
-Lua Player Plus 3DS supports different macro to enables some features:<br>
+The repository will provide you a full set of all needed library. Take in mind that a lot of them are modified versions of the original ones so if you want to update them, take a look at [this repository](https://github.com/Rinnegatamante/lpp-3ds_libraries) where you can find sourcecodes of every pre-builded library used in this repository. Also take in mind that **libkhax** includes also **libSu** sourcecode. Last but not least, please note that **libjpeg.a** file is a standard compilation of libjpeg-turbo.<br><br>
+Lua Player Plus 3DS supports different flags to enables some features:<br>
 **-DUSE_MEMCHUNKHAX2** enables memchunkhax2 usage at startup for firmware between 9.3 and 10.3.<br>
 **-DCITRA3DS_COMPATIBLE** removes romFs support causing Citra3DS emulator crash.<br>
 **-DSKIP_ERROR_HANDLING** disables error handling for faster code execution (this is used for Unsafe version).<br>
