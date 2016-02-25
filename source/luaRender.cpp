@@ -72,6 +72,11 @@ typedef struct{
 	C3D_Mtx* material;
 } model;
 
+struct vertexList{
+	vertex* vert;
+	vertexList* next;
+};
+
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
@@ -94,6 +99,253 @@ static int lua_newVertex(lua_State *L){
 	res->n2 = luaL_checknumber(L, 7);
 	res->n3 = luaL_checknumber(L, 8);
 	lua_pushinteger(L,(u32)res);
+	return 1;
+}
+
+static int lua_loadobj(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 6) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *file_tbo = luaL_checkstring(L, 1); //Filename
+	gpu_text* tex = (gpu_text*)luaL_checkinteger(L, 2);
+	color* ambient = (color*)luaL_checkinteger(L, 3);
+	color* diffuse = (color*)luaL_checkinteger(L, 4);
+	color* specular = (color*)luaL_checkinteger(L, 5);
+	float emission = luaL_checknumber(L, 6);
+	
+	// Opening file
+	fileStream fileHandle;
+	if (strncmp("romfs:/",file_tbo,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(file_tbo,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
+		fileHandle.handle = (u32)handle;
+	}else{
+		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+		Result ret=FSUSER_OpenFileDirectly(&fileHandle.handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret) return luaL_error(L, "error opening file");
+		#endif
+	}
+	
+	// Loading file on RAM
+	u64 size;
+	u32 bytesRead;
+	FS_GetSize(&fileHandle, &size);
+	char* content = (char*)malloc(size+1);
+	FS_Read(&fileHandle, &bytesRead, 0, content, size);
+	content[size] = 0;
+	
+	// Closing file
+	FS_Close(&fileHandle);
+	
+	// Creating temp vertexList
+	vertexList* vl = (vertexList*)malloc(sizeof(vertexList));
+	vertexList* init = vl;
+	
+	// Parsing vertices
+	char* str = content;
+	char* ptr = strstr(str,"v ");
+	int idx;
+	char float_val[16];
+	char* init_val;
+	char magics[3][3] = {"v ","vt","vn"};
+	int magics_idx = 0;
+	vertex* res;
+	int v_idx = 0;
+	
+	// Vertices extraction
+	for(;;){
+		
+		// Check if a magic change is needed
+		if (ptr == NULL){
+			if (magics_idx < 2){
+				res = NULL;
+				magics_idx++;
+				ptr = strstr(str,magics[magics_idx]);
+			}else break;
+		}
+		
+		// Extract vertex
+		if (magics_idx == 0) idx = 0;
+		else if (magics_idx == 1) idx = 3;
+		else idx = 5;
+		if (magics_idx == 0) init_val = ptr + 2;
+		else init_val = ptr + 3;
+		char* end_vert = strstr(init_val,"\n");
+		if (magics_idx == 0) res = (vertex*)malloc(sizeof(vertex));
+		else if (res == NULL){
+			res = init->vert;
+			vl = init;
+		}
+		char* end_val = strstr(init_val," ");
+		float* vert_args = (float*)res; // Hacky way to iterate in vertex struct		
+		while (init_val < end_vert){
+			if (end_val > end_vert) end_val = end_vert;
+			strncpy(float_val, init_val, end_val - init_val);
+			float_val[end_val - init_val] = 0;
+			vert_args[idx] = atof(float_val);
+			idx++;
+			init_val = end_val + 1;
+			end_val = strstr(init_val," ");
+		}
+		
+		// Put vertex in vertexList struct
+		if (magics_idx == 0){
+			vl->vert = res;
+			vl->next = (vertexList*)malloc(sizeof(vertexList));
+		}
+		vertexList* old_vl = vl;
+		vl = vl->next;
+		if (magics_idx == 0) vl->next = NULL;
+		else{
+			if (vl == NULL){
+				old_vl->next = (vertexList*)malloc(sizeof(vertexList));
+				vl = old_vl->next;
+				vl->vert = (vertex*)malloc(sizeof(vertex));
+				vl->next = NULL;
+			}
+			res = vl->vert;
+		}
+		
+		// Searching for next vertex
+		str = ptr + 1;
+		ptr = strstr(str,magics[magics_idx]);
+		
+	}
+	
+	// Creating real vertexList
+	ptr = strstr(str, "f");
+	vertexList* faces = (vertexList*)malloc(sizeof(vertexList));
+	vertexList* initFaces = faces;
+	faces->vert = NULL;
+	faces->next = NULL;
+	int len = 0;
+	char val[8];
+	
+	// Faces extraction
+	while (ptr != NULL){
+		
+		// Skipping padding
+		ptr+=2;		
+		
+		// Extracting face info
+		int f_idx = 0;
+		while (f_idx < 3){
+		
+			// Allocating new vertex
+			faces->vert = (vertex*)malloc(sizeof(vertex));
+		
+			// Extracting x,y,z
+			char* ptr2 = strstr(ptr,"/");
+			strncpy(val,ptr,ptr2-ptr);
+			val[ptr2-ptr] = 0;
+			int v_idx = atoi(val);
+			int t_idx = 1;
+			vertexList* tmp = init;
+			while (t_idx < v_idx){
+				tmp = tmp->next;
+				t_idx++;
+			}
+			faces->vert->x = tmp->vert->x;
+			faces->vert->y = tmp->vert->y;
+			faces->vert->z = tmp->vert->z;
+		
+			// Extracting texture info
+			ptr = ptr2+1;
+			ptr2 = strstr(ptr,"/");
+			strncpy(val,ptr,ptr2-ptr);
+			val[ptr2-ptr] = 0;
+			v_idx = atoi(val);
+			t_idx = 1;
+			tmp = init;
+			while (t_idx < v_idx){
+				tmp = tmp->next;
+				t_idx++;
+			}
+			faces->vert->t1 = tmp->vert->t1;
+			faces->vert->t2 = tmp->vert->t2;
+		
+			// Extracting normals info
+			ptr = ptr2+1;
+			if (f_idx < 2) ptr2 = strstr(ptr," ");
+			else ptr2 = strstr(ptr,"\n");
+			strncpy(val,ptr,ptr2-ptr);
+			val[ptr2-ptr] = 0;
+			v_idx = atoi(val);
+			t_idx = 1;
+			tmp = init;
+			while (t_idx < v_idx){
+				tmp = tmp->next;
+				t_idx++;
+			}
+			faces->vert->n1 = tmp->vert->n1;
+			faces->vert->n2 = tmp->vert->n2;
+			faces->vert->n3 = tmp->vert->n3;
+			
+			// Setting values for next vertex
+			ptr = ptr2;
+			faces->next = (vertexList*)malloc(sizeof(vertexList));
+			faces = faces->next;
+			faces->next = NULL;
+			faces->vert = NULL;
+			len++;
+			f_idx++;
+		}
+		
+		ptr = strstr(ptr,"f");
+		
+	}
+	
+	// Freeing temp vertexList
+	vertexList* tmp_init;
+	while (init != NULL){
+		tmp_init = init;
+		free(init->vert);
+		init = init->next;
+		free(tmp_init);
+	}
+	
+	// Create the VBO (vertex buffer object)
+	u32 vertex_size = len*8*sizeof(float);
+	u8* vbo_data = (u8*)linearAlloc(vertex_size);
+	for(int i = 0; i < len; i++) {
+		tmp_init = initFaces;
+		memcpy(&vbo_data[i*sizeof(vertex)], initFaces->vert, sizeof(vertex));
+		initFaces = initFaces->next;
+		free(tmp_init->vert);
+		free(tmp_init);
+	}
+	
+	// Load the texture
+	C3D_Tex* texture = (C3D_Tex*)linearAlloc(sizeof(C3D_Tex));
+	C3D_TexInit(texture , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
+	C3D_TexUpload(texture, tex->tex->data);
+	C3D_TexSetFilter(texture, GPU_LINEAR, GPU_NEAREST);
+	
+	// Set object material attributes
+	C3D_Mtx* material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
+	*material = {
+		{
+		{ { 0.0f, ambient->r, ambient->g, ambient->b } }, // Ambient
+		{ { 0.0f, diffuse->r, diffuse->g, diffuse->b } }, // Diffuse
+		{ { 0.0f, specular->r, specular->g, specular->b } }, // Specular
+		{ { emission, 0.0f, 0.0f, 0.0f } }, // Emission
+		}
+	};
+	
+	// Create a model object and push it into Lua stack
+	model* res_m = (model*)malloc(sizeof(model));
+	res_m->vertex_count = len;
+	res_m->vbo_data = vbo_data;
+	res_m->magic = 0xC00FFEEE;
+	res_m->texture = texture;
+	res_m->material = material;
+	lua_pushinteger(L, (u32)res_m);
 	return 1;
 }
 
@@ -385,6 +637,7 @@ static int lua_convert(lua_State *L){
 static const luaL_Reg Render_functions[] = {
 	{"createVertex", 	lua_newVertex},
 	{"loadModel", 		lua_loadModel},
+	{"loadObject", 		lua_loadobj},
 	{"unloadModel", 	lua_unloadModel},
 	{"init", 			lua_init},
 	{"drawModel", 		lua_blend},
