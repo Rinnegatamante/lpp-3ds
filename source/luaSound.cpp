@@ -1645,8 +1645,6 @@ static int lua_play(lua_State *L)
 		if (loop == 0) src->streamLoop = false;
 		else src->streamLoop = true;
 		svcCreateEvent(&updateStream,0);
-		u32 *threadStack = (u32*)memalign(32, 8192);
-		src->thread = threadStack;
 		svcSignalEvent(updateStream);
 		threadCreate(streamFunction, src, 8192, 0x18, 0, true);
 	}
@@ -1710,8 +1708,6 @@ static int lua_play_old(lua_State *L)
 			if (loop == 0) src->streamLoop = false;
 			else src->streamLoop = true;
 			svcCreateEvent(&updateStream,0);
-			u32 *threadStack = (u32*)memalign(32, 8192);
-			src->thread = threadStack;
 			svcSignalEvent(updateStream);
 			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
 			if (interp != 0xDEADBEEF) My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
@@ -1729,8 +1725,6 @@ static int lua_play_old(lua_State *L)
 			if (loop == 0) src->streamLoop = false;
 			else src->streamLoop = true;
 			svcCreateEvent(&updateStream,0);
-			u32 *threadStack = (u32*)memalign(32, 8192);
-			src->thread = threadStack;
 			svcSignalEvent(updateStream);
 			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
 			if (interp != 0xDEADBEEF){

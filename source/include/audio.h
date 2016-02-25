@@ -66,7 +66,6 @@ struct Music{
 	bool big_endian;
 	u8 encoding;
 	PurgeTable* blocks;
-	u32* thread;
 	u32 audio_pointer;
 };
 
