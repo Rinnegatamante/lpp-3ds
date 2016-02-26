@@ -157,18 +157,23 @@ static int lua_loadobj(lua_State *L){
 	int magics_idx = 0;
 	vertex* res;
 	int v_idx = 0;
+	bool skip = false;
 	
 	// Vertices extraction
 	for(;;){
 		
 		// Check if a magic change is needed
-		if (ptr == NULL){
+		while (ptr == NULL){
 			if (magics_idx < 2){
 				res = NULL;
 				magics_idx++;
 				ptr = strstr(str,magics[magics_idx]);
-			}else break;
+			}else{
+				skip = true;
+				break;
+			}
 		}
+		if (skip) break;
 		
 		// Extract vertex
 		if (magics_idx == 0) idx = 0;
@@ -176,6 +181,7 @@ static int lua_loadobj(lua_State *L){
 		else idx = 5;
 		if (magics_idx == 0) init_val = ptr + 2;
 		else init_val = ptr + 3;
+		while (init_val[0] == ' ') init_val++;
 		char* end_vert = strstr(init_val,"\n");
 		if (magics_idx == 0) res = (vertex*)malloc(sizeof(vertex));
 		else if (res == NULL){
@@ -191,6 +197,7 @@ static int lua_loadobj(lua_State *L){
 			vert_args[idx] = atof(float_val);
 			idx++;
 			init_val = end_val + 1;
+			while (init_val[0] == ' ') init_val++;
 			end_val = strstr(init_val," ");
 		}
 		
@@ -258,22 +265,30 @@ static int lua_loadobj(lua_State *L){
 			// Extracting texture info
 			ptr = ptr2+1;
 			ptr2 = strstr(ptr,"/");
-			strncpy(val,ptr,ptr2-ptr);
-			val[ptr2-ptr] = 0;
-			v_idx = atoi(val);
-			t_idx = 1;
-			tmp = init;
-			while (t_idx < v_idx){
-				tmp = tmp->next;
-				t_idx++;
+			if (ptr2 != ptr){
+				strncpy(val,ptr,ptr2-ptr);
+				val[ptr2-ptr] = 0;
+				v_idx = atoi(val);
+				t_idx = 1;
+				tmp = init;
+				while (t_idx < v_idx){
+					tmp = tmp->next;
+					t_idx++;
+				}
+				faces->vert->t1 = tmp->vert->t1;
+				faces->vert->t2 = tmp->vert->t2;
+			}else{
+				faces->vert->t1 = 0.0f;
+				faces->vert->t2 = 0.0f;
 			}
-			faces->vert->t1 = tmp->vert->t1;
-			faces->vert->t2 = tmp->vert->t2;
 		
 			// Extracting normals info
 			ptr = ptr2+1;
 			if (f_idx < 2) ptr2 = strstr(ptr," ");
-			else ptr2 = strstr(ptr,"\n");
+			else{
+				ptr2 = strstr(ptr,"\n");
+				if (ptr2 == NULL) ptr2 = content + size;
+			}
 			strncpy(val,ptr,ptr2-ptr);
 			val[ptr2-ptr] = 0;
 			v_idx = atoi(val);
