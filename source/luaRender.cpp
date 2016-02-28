@@ -124,6 +124,7 @@ static int lua_loadobj(lua_State *L){
 		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
+		fileHandle.isRomfs = false;
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly(&fileHandle.handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
@@ -209,8 +210,10 @@ static int lua_loadobj(lua_State *L){
 		}
 		old_vl = vl;
 		vl = vl->next;
-		if (magics_idx == 0) vl->next = NULL;
-		else{
+		if (magics_idx == 0){
+			vl->vert = NULL;
+			vl->next = NULL;
+		}else{
 			if (vl == NULL){
 				old_vl->next = (vertexList*)malloc(sizeof(vertexList));
 				vl = old_vl->next;
@@ -227,7 +230,7 @@ static int lua_loadobj(lua_State *L){
 	}
 
 	// Creating real vertexList
-	ptr = strstr(str, "f");
+	ptr = strstr(str, "f ");
 	vertexList* faces = (vertexList*)malloc(sizeof(vertexList));
 	vertexList* initFaces = faces;
 	faces->vert = NULL;
@@ -255,7 +258,6 @@ static int lua_loadobj(lua_State *L){
 			// Extracting x,y,z
 			ptr2 = strstr(ptr,"/");
 			strncpy(val,ptr,ptr2-ptr);
-			if (ptr2 == ptr) luaL_error(L,"wtf");
 			val[ptr2-ptr] = 0;
 			v_idx = atoi(val);
 			t_idx = 1;
@@ -280,7 +282,7 @@ static int lua_loadobj(lua_State *L){
 				while (t_idx < v_idx){
 					tmp = tmp->next;
 					t_idx++;
-				}	
+				}
 				faces->vert->t1 = tmp->vert->t1;
 				faces->vert->t2 = tmp->vert->t2;
 			}else{
@@ -318,7 +320,7 @@ static int lua_loadobj(lua_State *L){
 			f_idx++;
 		}
 		
-		ptr = strstr(ptr,"f");
+		ptr = strstr(ptr,"f ");
 		
 	}
 	
