@@ -147,7 +147,7 @@ static int lua_loadobj(lua_State *L){
 	vertexList* vl = (vertexList*)malloc(sizeof(vertexList));
 	vertexList* init = vl;
 	
-	// Parsing vertices
+	// Init variables
 	char* str = content;
 	char* ptr = strstr(str,"v ");
 	int idx;
@@ -158,6 +158,10 @@ static int lua_loadobj(lua_State *L){
 	vertex* res;
 	int v_idx = 0;
 	bool skip = false;
+	char* end_vert;
+	char* end_val;
+	float* vert_args;
+	vertexList* old_vl;
 	
 	// Vertices extraction
 	for(;;){
@@ -165,7 +169,8 @@ static int lua_loadobj(lua_State *L){
 		// Check if a magic change is needed
 		while (ptr == NULL){
 			if (magics_idx < 2){
-				res = NULL;
+				res = init->vert;
+				vl = init;
 				magics_idx++;
 				ptr = strstr(str,magics[magics_idx]);
 			}else{
@@ -182,14 +187,10 @@ static int lua_loadobj(lua_State *L){
 		if (magics_idx == 0) init_val = ptr + 2;
 		else init_val = ptr + 3;
 		while (init_val[0] == ' ') init_val++;
-		char* end_vert = strstr(init_val,"\n");
+		end_vert = strstr(init_val,"\n");
 		if (magics_idx == 0) res = (vertex*)malloc(sizeof(vertex));
-		else if (res == NULL){
-			res = init->vert;
-			vl = init;
-		}
-		char* end_val = strstr(init_val," ");
-		float* vert_args = (float*)res; // Hacky way to iterate in vertex struct		
+		end_val = strstr(init_val," ");
+		vert_args = (float*)res; // Hacky way to iterate in vertex struct		
 		while (init_val < end_vert){
 			if (end_val > end_vert) end_val = end_vert;
 			strncpy(float_val, init_val, end_val - init_val);
@@ -201,12 +202,12 @@ static int lua_loadobj(lua_State *L){
 			end_val = strstr(init_val," ");
 		}
 		
-		// Put vertex in vertexList struct
+		// Update vertexList struct
 		if (magics_idx == 0){
 			vl->vert = res;
 			vl->next = (vertexList*)malloc(sizeof(vertexList));
 		}
-		vertexList* old_vl = vl;
+		old_vl = vl;
 		vl = vl->next;
 		if (magics_idx == 0) vl->next = NULL;
 		else{
@@ -215,7 +216,7 @@ static int lua_loadobj(lua_State *L){
 				vl = old_vl->next;
 				vl->vert = (vertex*)malloc(sizeof(vertex));
 				vl->next = NULL;
-			}
+			}else if(vl->vert == NULL) vl->vert = (vertex*)malloc(sizeof(vertex));
 			res = vl->vert;
 		}
 		
@@ -224,7 +225,7 @@ static int lua_loadobj(lua_State *L){
 		ptr = strstr(str,magics[magics_idx]);
 		
 	}
-	
+
 	// Creating real vertexList
 	ptr = strstr(str, "f");
 	vertexList* faces = (vertexList*)malloc(sizeof(vertexList));
@@ -233,6 +234,10 @@ static int lua_loadobj(lua_State *L){
 	faces->next = NULL;
 	int len = 0;
 	char val[8];
+	int f_idx;
+	char* ptr2;
+	int t_idx;
+	vertexList* tmp;
 	
 	// Faces extraction
 	while (ptr != NULL){
@@ -241,19 +246,20 @@ static int lua_loadobj(lua_State *L){
 		ptr+=2;		
 		
 		// Extracting face info
-		int f_idx = 0;
+		f_idx = 0;
 		while (f_idx < 3){
 		
 			// Allocating new vertex
 			faces->vert = (vertex*)malloc(sizeof(vertex));
 		
 			// Extracting x,y,z
-			char* ptr2 = strstr(ptr,"/");
+			ptr2 = strstr(ptr,"/");
 			strncpy(val,ptr,ptr2-ptr);
+			if (ptr2 == ptr) luaL_error(L,"wtf");
 			val[ptr2-ptr] = 0;
-			int v_idx = atoi(val);
-			int t_idx = 1;
-			vertexList* tmp = init;
+			v_idx = atoi(val);
+			t_idx = 1;
+			tmp = init;
 			while (t_idx < v_idx){
 				tmp = tmp->next;
 				t_idx++;
@@ -261,7 +267,7 @@ static int lua_loadobj(lua_State *L){
 			faces->vert->x = tmp->vert->x;
 			faces->vert->y = tmp->vert->y;
 			faces->vert->z = tmp->vert->z;
-		
+			
 			// Extracting texture info
 			ptr = ptr2+1;
 			ptr2 = strstr(ptr,"/");
@@ -274,14 +280,14 @@ static int lua_loadobj(lua_State *L){
 				while (t_idx < v_idx){
 					tmp = tmp->next;
 					t_idx++;
-				}
+				}	
 				faces->vert->t1 = tmp->vert->t1;
 				faces->vert->t2 = tmp->vert->t2;
 			}else{
 				faces->vert->t1 = 0.0f;
 				faces->vert->t2 = 0.0f;
 			}
-		
+			
 			// Extracting normals info
 			ptr = ptr2+1;
 			if (f_idx < 2) ptr2 = strstr(ptr," ");
@@ -301,7 +307,7 @@ static int lua_loadobj(lua_State *L){
 			faces->vert->n1 = tmp->vert->n1;
 			faces->vert->n2 = tmp->vert->n2;
 			faces->vert->n3 = tmp->vert->n3;
-			
+
 			// Setting values for next vertex
 			ptr = ptr2;
 			faces->next = (vertexList*)malloc(sizeof(vertexList));
