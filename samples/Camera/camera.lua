@@ -2,7 +2,7 @@
 is3D = false
 
 -- Initialize Camera
-Camera.init(TOP_SCREEN, OUTER_CAM, is3D)
+Camera.init(TOP_SCREEN, OUTER_CAM, PHOTO_MODE_NORMAL, is3D)
 scene = OUTER_CAM
 
 -- Main Loop
@@ -35,7 +35,7 @@ while true do
 				Screen.enable3D()
 			end
 			is3D = not is3D
-			Camera.init(TOP_SCREEN, scene, is3D)
+			Camera.init(TOP_SCREEN, scene, PHOTO_MODE_NORMAL, is3D)
 		end
 		
 	end
@@ -58,7 +58,7 @@ while true do
 		else
 			scene = OUTER_CAM
 		end
-		Camera.init(TOP_SCREEN, scene, false)
+		Camera.init(TOP_SCREEN, scene, PHOTO_MODE_NORMAL, false)
 		
 	-- Exit sample
 	elseif Controls.check(pad, KEY_START) then

@@ -90,6 +90,7 @@ while true do
 		Screen.flip()
 		Screen.waitVblankStart()
 		if Controls.check(Controls.read(), KEY_START) then
+			Console.destroy(cns)
 			System.exit()
 		end
 		

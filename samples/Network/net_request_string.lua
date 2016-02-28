@@ -38,7 +38,7 @@ while true do
 	Screen.clear(TOP_SCREEN)
 	
 	-- Writing request result on the screen
-	Screen.debugPrint(0,0,last_version,0xFFFFFF,TOP_SCREEN)
+	Screen.debugPrint(0,0,last_version,Color.new(255, 255, 255),TOP_SCREEN)
 	
 	-- Exit sample
 	if Controls.check(Controls.read(),KEY_A) then
