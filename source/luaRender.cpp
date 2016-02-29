@@ -324,7 +324,8 @@ static int lua_loadobj(lua_State *L){
 		
 	}
 	
-	// Freeing temp vertexList
+	// Freeing temp vertexList and allocated file
+	free(content);
 	vertexList* tmp_init;
 	while (init != NULL){
 		tmp_init = init;
