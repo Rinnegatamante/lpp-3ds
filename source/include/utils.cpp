@@ -112,3 +112,21 @@ u32 ARGB2RGBA(u32 color){
 	u32 b = ((color << 24) >> 24);
 	return a | (b << 8) | (g << 16) | (r << 24);
 }
+
+// Grabbed from Citra Emulator (citra/src/video_core/utils.h)
+u32 morton_interleave(u32 x, u32 y)
+{
+	u32 i = (x & 7) | ((y & 7) << 8); // ---- -210
+	i = (i ^ (i << 2)) & 0x1313;      // ---2 --10
+	i = (i ^ (i << 1)) & 0x1515;      // ---2 -1-0
+	i = (i | (i >> 7)) & 0x3F;
+	return i;
+}
+
+//Grabbed from Citra Emulator (citra/src/video_core/utils.h)
+u32 get_morton_offset(u32 x, u32 y, u32 bytes_per_pixel)
+{
+    u32 i = morton_interleave(x, y);
+    unsigned int offset = (x & ~7) * 8;
+    return (i + offset) * bytes_per_pixel;
+}

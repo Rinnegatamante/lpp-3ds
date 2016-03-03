@@ -107,15 +107,96 @@ static int lua_loadobj(lua_State *L){
     #ifndef SKIP_ERROR_HANDLING
 		if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
-	const char *file_tbo = luaL_checkstring(L, 1); //Filename
-	gpu_text* tex = (gpu_text*)luaL_checkinteger(L, 2);
+	const char *file_tbo = luaL_checkstring(L, 1); //Model filename
+	const char* text = luaL_checkstring(L, 2); // Texture filename
 	color* ambient = (color*)luaL_checkinteger(L, 3);
 	color* diffuse = (color*)luaL_checkinteger(L, 4);
 	color* specular = (color*)luaL_checkinteger(L, 5);
+	#ifndef SKIP_ERROR_HANDLING
+		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
 	float emission = luaL_checknumber(L, 6);
 	
-	// Opening file
+	// Opening texture file
 	fileStream fileHandle;
+	u32 bytesRead;
+	u16 magic;
+	u64 long_magic;
+	if (strncmp("romfs:/",text,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(text,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, text);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
+	}
+	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
+	Bitmap* bitmap;
+	if (magic == 0x5089){
+		FS_Read(&fileHandle, &bytesRead, 0, &long_magic, 8);
+		FS_Close(&fileHandle);
+		if (long_magic == 0x0A1A0A0D474E5089) bitmap = decodePNGfile(text);
+	}else if (magic == 0x4D42){
+		FS_Close(&fileHandle);
+		bitmap = decodeBMPfile(text);
+	}else if (magic == 0xD8FF){
+		FS_Close(&fileHandle);
+		bitmap = decodeJPGfile(text);
+	}
+	#ifndef SKIP_ERROR_HANDLING
+		if(!bitmap) return luaL_error(L, "Error loading image");
+	#endif
+	
+	// Flipping texture
+	u8* flipped = (u8*)malloc(bitmap->width*bitmap->height*(bitmap->bitperpixel >> 3));
+	flipped = flipBitmap(flipped, bitmap);
+	free(bitmap->pixels);
+	bitmap->pixels = flipped;
+	
+	// Converting 24bpp texture to a 32bpp ones
+	if (bitmap->bitperpixel == 24){
+		int length = bitmap->width * bitmap->height * 4;
+		u8* real_pixels = (u8*)malloc(length);
+		int i = 0;
+		int z = 0;
+		while (i < length){
+			real_pixels[i] = bitmap->pixels[z];
+			real_pixels[i+1] = bitmap->pixels[z+1];
+			real_pixels[i+2] = bitmap->pixels[z+2];
+			real_pixels[i+3] = 0xFF;
+			i = i + 4;
+			z = z + 3;
+		}
+		free(bitmap->pixels);
+		bitmap->pixels = real_pixels;
+	}
+	
+	// Converting texture to a tiled ones
+	u8 *tmp2 = (u8*)linearAlloc(bitmap->width * bitmap->height * 4);
+	int i, j;
+	for (j = 0; j < bitmap->height; j++) {
+		for (i = 0; i < bitmap->width; i++) {
+
+			u32 coarse_y = j & ~7;
+			u32 dst_offset = get_morton_offset(i, j, 4) + coarse_y * bitmap->width * 4;
+
+			u32 v = ((u32 *)bitmap->pixels)[i + (bitmap->height - 1 - j)*bitmap->width];
+			*(u32 *)(tmp2 + dst_offset) = __builtin_bswap32(v); /* RGBA8 -> ABGR8 */
+		}
+	}
+	memcpy(bitmap->pixels, tmp2, bitmap->width*bitmap->height*4);
+	
+	// Opening model file
 	if (strncmp("romfs:/",file_tbo,7) == 0){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
@@ -135,7 +216,6 @@ static int lua_loadobj(lua_State *L){
 	
 	// Loading file on RAM
 	u64 size;
-	u32 bytesRead;
 	FS_GetSize(&fileHandle, &size);
 	char* content = (char*)malloc(size+1);
 	FS_Read(&fileHandle, &bytesRead, 0, content, size);
@@ -345,11 +425,14 @@ static int lua_loadobj(lua_State *L){
 		free(tmp_init);
 	}
 	
-	// Load the texture
+	// Setting texture
 	C3D_Tex* texture = (C3D_Tex*)linearAlloc(sizeof(C3D_Tex));
-	C3D_TexInit(texture , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
-	C3D_TexUpload(texture, tex->tex->data);
+	C3D_TexInit(texture , bitmap->width, bitmap->height, GPU_RGBA8);
+	C3D_TexUpload(texture, bitmap->pixels);
 	C3D_TexSetFilter(texture, GPU_LINEAR, GPU_NEAREST);
+	free(bitmap->pixels);
+	free(bitmap);
+	linearFree(tmp2);
 	
 	// Set object material attributes
 	C3D_Mtx* material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
@@ -430,17 +513,93 @@ static int lua_loadModel(lua_State *L){
 	#endif
 	luaL_checktype(L, 1, LUA_TTABLE);
 	int len = lua_rawlen(L, 1);
-	gpu_text* tex = (gpu_text*)luaL_checkinteger(L, 2);
+	char* text = luaL_checkstring(L, 2);
 	color* ambient = (color*)luaL_checkinteger(L, 3);
 	color* diffuse = (color*)luaL_checkinteger(L, 4);
 	color* specular = (color*)luaL_checkinteger(L, 5);
 	float emission = luaL_checknumber(L, 6);
 	#ifndef SKIP_ERROR_HANDLING
-		if (tex->magic != 0x4C545854) return luaL_error(L, "attempt to access wrong memory block type");
 		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
+	
+	// Opening texture file
+	fileStream fileHandle;
+	u32 bytesRead;
+	u16 magic;
+	u64 long_magic;
+	if (strncmp("romfs:/",text,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(text,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, text);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
+	}
+	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
+	Bitmap* bitmap;
+	if (magic == 0x5089){
+		FS_Read(&fileHandle, &bytesRead, 0, &long_magic, 8);
+		FS_Close(&fileHandle);
+		if (long_magic == 0x0A1A0A0D474E5089) bitmap = decodePNGfile(text);
+	}else if (magic == 0x4D42){
+		FS_Close(&fileHandle);
+		bitmap = decodeBMPfile(text);
+	}else if (magic == 0xD8FF){
+		FS_Close(&fileHandle);
+		bitmap = decodeJPGfile(text);
+	}
+	#ifndef SKIP_ERROR_HANDLING
+		if(!bitmap) return luaL_error(L, "Error loading image");
+	#endif
+	
+	// Flipping texture
+	u8* flipped = (u8*)malloc(bitmap->width*bitmap->height*(bitmap->bitperpixel >> 3));
+	flipped = flipBitmap(flipped, bitmap);
+	free(bitmap->pixels);
+	bitmap->pixels = flipped;
+	
+	// Converting 24bpp texture to a 32bpp ones
+	if (bitmap->bitperpixel == 24){
+		int length = bitmap->width * bitmap->height * 4;
+		u8* real_pixels = (u8*)malloc(length);
+		int i = 0;
+		int z = 0;
+		while (i < length){
+			real_pixels[i] = bitmap->pixels[z];
+			real_pixels[i+1] = bitmap->pixels[z+1];
+			real_pixels[i+2] = bitmap->pixels[z+2];
+			real_pixels[i+3] = 0xFF;
+			i = i + 4;
+			z = z + 3;
+		}
+		free(bitmap->pixels);
+		bitmap->pixels = real_pixels;
+	}
+	
+	// Converting texture to a tiled ones
+	u8 *tmp2 = (u8*)linearAlloc(bitmap->width * bitmap->height * 4);
+	int i, j;
+	for (j = 0; j < bitmap->height; j++) {
+		for (i = 0; i < bitmap->width; i++) {
+
+			u32 coarse_y = j & ~7;
+			u32 dst_offset = get_morton_offset(i, j, 4) + coarse_y * bitmap->width * 4;
+
+			u32 v = ((u32 *)bitmap->pixels)[i + (bitmap->height - 1 - j)*bitmap->width];
+			*(u32 *)(tmp2 + dst_offset) = __builtin_bswap32(v); /* RGBA8 -> ABGR8 */
+		}
+	}
+	memcpy(bitmap->pixels, tmp2, bitmap->width*bitmap->height*4);
 	
 	// Create the VBO (vertex buffer object)
 	u32 vertex_size = len*8*sizeof(float);
@@ -453,11 +612,14 @@ static int lua_loadModel(lua_State *L){
 		lua_pop(L, 1);
 	}
 	
-	// Load the texture
+	// Setting texture
 	C3D_Tex* texture = (C3D_Tex*)linearAlloc(sizeof(C3D_Tex));
-	C3D_TexInit(texture , tex->tex->pow2_w, tex->tex->pow2_h, GPU_RGBA8);
-	C3D_TexUpload(texture, tex->tex->data);
+	C3D_TexInit(texture , bitmap->width, bitmap->height, GPU_RGBA8);
+	C3D_TexUpload(texture, bitmap->pixels);
 	C3D_TexSetFilter(texture, GPU_LINEAR, GPU_NEAREST);
+	free(bitmap->pixels);
+	free(bitmap);
+	linearFree(tmp2);
 	
 	// Set object material attributes
 	C3D_Mtx* material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
