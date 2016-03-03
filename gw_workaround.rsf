@@ -54,6 +54,12 @@ AccessControlInfo:
   ReleaseKernelMinor            : "33" 
   MemoryType                    : Application
   HandleTableSize: 512
+  
+  SystemModeExt                 : Legacy # Legacy(Default)/124MB/178MB  Legacy:Use Old3DS SystemMode
+  CpuSpeed                      : 804MHz # 268MHz(Default)/804MHz
+  EnableL2Cache                 : true # false(default)/true
+  CanAccessCore2                : true
+  
   IORegisterMapping: 
    - 1ff50000-1ff57fff
    - 1ff70000-1ff77fff
