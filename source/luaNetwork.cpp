@@ -206,7 +206,7 @@ static int lua_sendmail(lua_State *L){ //BETA func
 	int req_size = 70;
 	int nss = SpaceCounter(subj);
 	int nsm = SpaceCounter(mex);
-	req_size = req_size + nss * 2 + nsm * 2 + strlen(subj) + strlen(mex) + strlen(to);
+	req_size = req_size + (nss<<1) + (nsm<<1) + strlen(subj) + strlen(mex) + strlen(to);
 	char* url = (char*)malloc(req_size);
 	strcpy(url,"http://rinnegatamante.netsons.org/tmp_mail_lpp_beta.php?t=");
 	strcat(url,to);

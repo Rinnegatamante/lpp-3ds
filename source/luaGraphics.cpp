@@ -227,7 +227,7 @@ static int lua_loadimg(lua_State *L)
 		if(!bitmap) return luaL_error(L, "Error loading image");
 	#endif
 	if (bitmap->bitperpixel == 24){
-		int length = bitmap->width * bitmap->height * 4;
+		int length = (bitmap->width * bitmap->height) << 2;
 		u8* real_pixels = (u8*)malloc(length);
 		int i = 0;
 		int z = 0;
@@ -265,9 +265,9 @@ static int lua_convert(lua_State *L)
 		if (bitmap->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	u8* real_pixels;
-	u8* flipped = (u8*)malloc(bitmap->width * bitmap->height * (bitmap->bitperpixel / 8));
+	u8* flipped = (u8*)malloc(bitmap->width * bitmap->height * (bitmap->bitperpixel >> 3));
 	flipped = flipBitmap(flipped, bitmap);
-	int length = bitmap->width * bitmap->height * 4;
+	int length = (bitmap->width * bitmap->height) << 2;
 	if (bitmap->bitperpixel == 24){		
 		real_pixels = (u8*)malloc(length);
 		int i = 0;

@@ -127,6 +127,6 @@ u32 morton_interleave(u32 x, u32 y)
 u32 get_morton_offset(u32 x, u32 y, u32 bytes_per_pixel)
 {
     u32 i = morton_interleave(x, y);
-    unsigned int offset = (x & ~7) * 8;
+    unsigned int offset = (x & ~7) << 3;
     return (i + offset) * bytes_per_pixel;
 }

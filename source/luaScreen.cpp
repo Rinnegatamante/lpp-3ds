@@ -288,7 +288,7 @@ static int lua_saveimg(lua_State *L){
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
 		if(ret) return luaL_error(L, "error opening file");
 		u32 bytesWritten;
-		u8 moltiplier = src->bitperpixel / 8;
+		u8 moltiplier = src->bitperpixel >> 3;
 		u8* tempbuf = (u8*)malloc(0x36+(src->width)*(src->height)*moltiplier);
 		memset(tempbuf, 0, 0x36+(src->width)*(src->height)*moltiplier);
 		tempbuf[0x36+(src->width)*(src->height)*moltiplier]=0;
@@ -312,15 +312,16 @@ static int lua_saveimg(lua_State *L){
 		svcCloseHandle(fileHandle);
 		free(tempbuf);
 	}else{ // JPG Format
-		u8 moltiplier = src->bitperpixel / 8;
-		u8* flip_pixels = (u8*)malloc((src->width)*(src->height)*moltiplier);
+		u8 moltiplier = src->bitperpixel >> 3;
+		int size_val = (src->width)*(src->height)*moltiplier;
+		u8* flip_pixels = (u8*)malloc(size_val);
 		flip_pixels = flipBitmap(flip_pixels, src);
 		if (moltiplier == 4){ // 32bpp image - Need to delete alpha channel
 			u8* tmp = flip_pixels;
 			flip_pixels = (u8*)malloc((src->width)*(src->height)*3);
 			u32 i = 0;
 			u32 j = 0;
-			while ((i+1) < ((src->width)*(src->height)*(moltiplier))){
+			while ((i+1) < size_val){
 				flip_pixels[j++] = tmp[i];
 				flip_pixels[j++] = tmp[i+1];
 				flip_pixels[j++] = tmp[i+2];
@@ -351,9 +352,9 @@ static int lua_newBitmap(lua_State *L){
 	bitmap->width = width_new;
 	bitmap->magic = 0x4C494D47;
 	bitmap->height = height_new;
-	u8* pixels_new = (u8*)malloc(width_new*height_new*4);
+	u8* pixels_new = (u8*)malloc((width_new*height_new)<<2);
 	int i=0;
-	memset(pixels_new,color,width_new*height_new*4);
+	memset(pixels_new,color,(width_new*height_new)<<2);
 	bitmap->pixels = pixels_new;
 	bitmap->bitperpixel = 32;
 	lua_pushinteger(L, (u32)(bitmap));

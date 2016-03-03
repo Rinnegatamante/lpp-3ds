@@ -164,8 +164,8 @@ static int lua_loadobj(lua_State *L){
 	bitmap->pixels = flipped;
 	
 	// Converting 24bpp texture to a 32bpp ones
+	int length = (bitmap->width * bitmap->height)<<2;
 	if (bitmap->bitperpixel == 24){
-		int length = bitmap->width * bitmap->height * 4;
 		u8* real_pixels = (u8*)malloc(length);
 		int i = 0;
 		int z = 0;
@@ -182,19 +182,19 @@ static int lua_loadobj(lua_State *L){
 	}
 	
 	// Converting texture to a tiled ones
-	u8 *tmp2 = (u8*)linearAlloc(bitmap->width * bitmap->height * 4);
+	u8 *tmp2 = (u8*)linearAlloc(length);
 	int i, j;
 	for (j = 0; j < bitmap->height; j++) {
 		for (i = 0; i < bitmap->width; i++) {
 
 			u32 coarse_y = j & ~7;
-			u32 dst_offset = get_morton_offset(i, j, 4) + coarse_y * bitmap->width * 4;
+			u32 dst_offset = get_morton_offset(i, j, 4) + ((coarse_y * bitmap->width) << 2);
 
 			u32 v = ((u32 *)bitmap->pixels)[i + (bitmap->height - 1 - j)*bitmap->width];
 			*(u32 *)(tmp2 + dst_offset) = __builtin_bswap32(v); /* RGBA8 -> ABGR8 */
 		}
 	}
-	memcpy(bitmap->pixels, tmp2, bitmap->width*bitmap->height*4);
+	memcpy(bitmap->pixels, tmp2, length);
 	
 	// Opening model file
 	if (strncmp("romfs:/",file_tbo,7) == 0){
@@ -415,7 +415,7 @@ static int lua_loadobj(lua_State *L){
 	}
 	
 	// Create the VBO (vertex buffer object)
-	u32 vertex_size = len*8*sizeof(float);
+	u32 vertex_size = (len<<3)*sizeof(float);
 	u8* vbo_data = (u8*)linearAlloc(vertex_size);
 	for(int i = 0; i < len; i++) {
 		tmp_init = initFaces;
@@ -569,8 +569,8 @@ static int lua_loadModel(lua_State *L){
 	bitmap->pixels = flipped;
 	
 	// Converting 24bpp texture to a 32bpp ones
+	int length = (bitmap->width * bitmap->height) << 2;
 	if (bitmap->bitperpixel == 24){
-		int length = bitmap->width * bitmap->height * 4;
 		u8* real_pixels = (u8*)malloc(length);
 		int i = 0;
 		int z = 0;
@@ -587,19 +587,19 @@ static int lua_loadModel(lua_State *L){
 	}
 	
 	// Converting texture to a tiled ones
-	u8 *tmp2 = (u8*)linearAlloc(bitmap->width * bitmap->height * 4);
+	u8 *tmp2 = (u8*)linearAlloc(length);
 	int i, j;
 	for (j = 0; j < bitmap->height; j++) {
 		for (i = 0; i < bitmap->width; i++) {
 
 			u32 coarse_y = j & ~7;
-			u32 dst_offset = get_morton_offset(i, j, 4) + coarse_y * bitmap->width * 4;
+			u32 dst_offset = get_morton_offset(i, j, 4) + (coarse_y * bitmap->width) << 2;
 
 			u32 v = ((u32 *)bitmap->pixels)[i + (bitmap->height - 1 - j)*bitmap->width];
 			*(u32 *)(tmp2 + dst_offset) = __builtin_bswap32(v); /* RGBA8 -> ABGR8 */
 		}
 	}
-	memcpy(bitmap->pixels, tmp2, bitmap->width*bitmap->height*4);
+	memcpy(bitmap->pixels, tmp2, length);
 	
 	// Create the VBO (vertex buffer object)
 	u32 vertex_size = len*8*sizeof(float);

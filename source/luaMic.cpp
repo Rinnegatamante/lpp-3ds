@@ -116,7 +116,7 @@ static int lua_stoprec_CSND(lua_State *L)
 		MICU_StopSampling();
 	}else offset = micsize;
 	u32 samplerate = sampleSize(srate);
-	u32 mute_size = samplerate * 2;
+	u32 mute_size = samplerate<<1;
 	u8* bytebuf = (u8*)linearAlloc(offset);
 	memcpy(bytebuf, (u8*)micbuf, offset);
 	micExit();
@@ -153,7 +153,7 @@ static int lua_stoprec_DSP(lua_State *L)
 		MICU_StopSampling();
 	}else offset = micsize;
 	u32 samplerate = sampleSize(srate);
-	u32 mute_size = samplerate * 2;
+	u32 mute_size = samplerate<<1;
 	u8* bytebuf = (u8*)linearAlloc(offset);
 	memcpy(bytebuf, (u8*)micbuf, offset);
 	micExit();

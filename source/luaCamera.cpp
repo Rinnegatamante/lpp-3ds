@@ -125,8 +125,8 @@ static int lua_caminit(lua_State *L)
 		res = SIZE_QVGA;
 	}
 	initCam(res, is3D, true);
-	SCREEN_SIZE = width * height * 2;
-	if (is3D) cam_buf = (u8*)malloc(SCREEN_SIZE * 2);
+	SCREEN_SIZE = (width * height) << 1;
+	if (is3D) cam_buf = (u8*)malloc(SCREEN_SIZE << 1);
 	else cam_buf = (u8*)malloc(SCREEN_SIZE);
 	return 0;
 }
@@ -167,7 +167,7 @@ static int lua_camimage(lua_State *L)
 	result->height = 240;
 	result->magic = 0x4C494D47;
 	result->bitperpixel = 24;
-	u32 bytes_to_process = SCREEN_SIZE / 2;
+	u32 bytes_to_process = SCREEN_SIZE >> 1;
 	result->pixels = (u8*)malloc(bytes_to_process * 3);
 	u16* frame_buf = (u16*)cam_buf;
 	u32 i = 0;
@@ -232,10 +232,11 @@ static int lua_camshot(lua_State *L)
 	camInit();
 	initCam(res, false, true);
 	u32 BUFFER_SIZE = width*height*3;
-	u8* framebuf = (u8*)malloc(width*height*2);
+	u32 framebuf_size = (width*height)<<1;
+	u8* framebuf = (u8*)malloc(framebuf_size);
 	u16* frame_buf = (u16*)framebuf;
 	Handle camReceiveEvent = 0;
-	CAMU_SetReceiving(&camReceiveEvent, framebuf, PORT_CAM1, width*height*2, (s16)bufSize);
+	CAMU_SetReceiving(&camReceiveEvent, framebuf, PORT_CAM1, framebuf_size, (s16)bufSize);
 	svcWaitSynchronization(camReceiveEvent, WAIT_TIMEOUT);
 	CAMU_PlayShutterSound(SHUTTER_SOUND_TYPE_NORMAL);
 	Handle fileHandle;

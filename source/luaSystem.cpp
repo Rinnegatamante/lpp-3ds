@@ -104,8 +104,7 @@ static int lua_dofile (lua_State *L) {
 		svcCloseHandle(fileHandle);
 	}
 	lua_settop(L, 1);
-	if (luaL_loadbuffer(L, (const char*)buffer, strlen((const char*)buffer), NULL) != LUA_OK)
-		return lua_error(L);
+	if (luaL_loadbuffer(L, (const char*)buffer, strlen((const char*)buffer), NULL) != LUA_OK) return lua_error(L);
 	lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
 	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
 	return (int)dofilecont;
@@ -465,7 +464,7 @@ static int lua_getUsername(lua_State *L)
 	char username[0x0E];
 	CFGU_GetConfigInfoBlk2(0x1C, 0xA0000, (u8*)&username_tmp);
 	for (int i = 0; i < 0x0E; i++){
-		username[i] = username_tmp[i * 2];
+		username[i] = username_tmp[i<<1];
 	}
 	lua_pushstring(L,username);
 	return 1;
@@ -813,16 +812,16 @@ static int lua_readsmdh(lua_State *L){
 	FS_Read(&tmp, &bytesRead, 8, buffer, 128);
 	int i = 0;
 	while (i < 129){
-	if (buffer[i*2] == 0) break;
-	else name[i] = buffer[i*2];
+	if (buffer[i<<1] == 0) break;
+	else name[i] = buffer[i<<1];
 	i++;
 	}
 	name[i] = 0;
 	FS_Read(&tmp, &bytesRead, 392, buffer, 128);
 	i = 0;
 	while (i < 129){
-	if (buffer[i*2] == 0) break;
-	else author[i] = buffer[i*2];
+	if (buffer[i<<1] == 0) break;
+	else author[i] = buffer[i<<1];
 	i++;
 	}
 	author[i] = 0;
@@ -832,8 +831,8 @@ static int lua_readsmdh(lua_State *L){
 	FS_Read(&tmp, &bytesRead, 136, buffer, 256);
 	i = 0;
 	while (i < 257){
-	if (buffer[i*2] == 0) break;
-	else desc[i] = buffer[i*2];
+	if (buffer[i<<1] == 0) break;
+	else desc[i] = buffer[i<<1];
 	i++;
 	}
 	desc[i] = 0;
@@ -858,10 +857,10 @@ static int lua_readsmdh(lua_State *L){
 	int tile_y[16] = {0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3};
 	while (tile_number < 37){
 		while (i < (tile_size)){
-			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)*64)] + extra_x, tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i]);
-			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)*64)] + extra_x, tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+16]);
-			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)*64)] + extra_x, 4+tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+32]);
-			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)*64)] + extra_x, 4+tile_y[i-((tile_number-1)*64)] + extra_y, icon_buffer[i+48]);
+			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)<<6)] + extra_x, tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i]);
+			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)<<6)] + extra_x, tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+16]);
+			putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)<<6)] + extra_x, 4+tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+32]);
+			putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)<<6)] + extra_x, 4+tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+48]);
 			i++;
 		}
 		if (tile_number % 6 == 0){
@@ -925,8 +924,8 @@ static int lua_launch(lua_State *L){
 	else{
 		static u32 argbuffer_nh1[0x200];
 		argbuffer_nh1[0]=1;
-		snprintf((char*)&argbuffer_nh1[1], 0x200*4, "sdmc:%s", file);
-		setArgs(argbuffer_nh1, 0x200*4);
+		snprintf((char*)&argbuffer_nh1[1], 0x800, "sdmc:%s", file);
+		setArgs(argbuffer_nh1, 0x800);
 		__system_retAddr = launchFile;
 	}
 	char string[20];
@@ -1701,15 +1700,16 @@ static int lua_addnews(lua_State *L){
 			#endif
 		}
 		if (!processed){
-			u8 moltiplier = file->bitperpixel / 8;
-			u8* flip_pixels = (u8*)malloc((file->width)*(file->height)*moltiplier);
+			u8 moltiplier = file->bitperpixel >> 3;
+			u32 size_val = file->width * file->height * moltiplier;
+			u8* flip_pixels = (u8*)malloc(size_val);
 			flip_pixels = flipBitmap(flip_pixels, file);
 			if (moltiplier == 4){ // 32bpp image - Need to delete alpha channel
 				u8* tmp = flip_pixels;
 				flip_pixels = (u8*)malloc((file->width)*(file->height)*3);
 				u32 i = 0;
 				u32 j = 0;
-				while ((i+1) < ((file->width)*(file->height)*(moltiplier))){
+				while ((i+1) < size_val){
 					flip_pixels[j++] = tmp[i];
 					flip_pixels[j++] = tmp[i+1];
 					flip_pixels[j++] = tmp[i+2];
@@ -1749,7 +1749,7 @@ static int lua_getnews(lua_State *L){
 	#endif
 	u32 id = luaL_checkinteger(L, 1);
 	u16 message[0x1780];
-	char result[0x1780 * 2];
+	char result[0x1780<<1];
 	newsInit();
 	NEWS_GetNotificationMessage(id, message);
 	utf2ascii(result, message);
@@ -1764,8 +1764,6 @@ static int lua_erasenews(lua_State *L){
 		if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 id = luaL_checkinteger(L, 1);
-	u16 message[0x1780];
-	char result[0x1780 * 2];
 	NotificationHeader header = { 0 };
 	newsInit();
 	NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
