@@ -1,3 +1,6 @@
+#include "ttf/Font.hpp"
+#include <citro3d.h>
+
 // Old FS_dirent struct
 typedef struct{
 	u16 name[0x106];		 ///< UTF-16 encoded name
@@ -19,6 +22,21 @@ struct fileStream{
 	bool isRomfs;
 };
 
+// Timer struct
+struct Timer{
+	u32 magic;
+	bool isPlaying;
+	u64 tick;
+};
+
+// Font struct
+struct ttf{
+	u32 magic;
+	Font f;
+	unsigned char* buffer;
+	u32 bufsize;
+};
+
 // GPU color struct
 typedef struct{
 	u32 magic;
@@ -27,6 +45,33 @@ typedef struct{
 	float b;
 	float a;
 } color;
+
+// Vertex struct
+typedef struct{
+	float x;
+	float y;
+	float z;
+	float t1;
+	float t2;
+	float n1;
+	float n2;
+	float n3;
+} vertex;
+
+// 3D Model struct
+typedef struct{
+	u32 magic;
+	u8* vbo_data;
+	u32 vertex_count;
+	C3D_Tex* texture;
+	C3D_Mtx* material;
+} model;
+
+// Vertex List struct
+struct vertexList{
+	vertex* vert;
+	vertexList* next;
+};
 
 // Generic FS functions with romFs support
 void FS_GetSize(fileStream* Handle, u64* size);

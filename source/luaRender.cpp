@@ -32,7 +32,6 @@
 #- fincs for citro3D ---------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 #include <3ds.h>
-#include <citro3d.h>
 #include <string.h>
 #include "include/luaplayer.h"
 #include "vshader_shbin.h"
@@ -52,30 +51,6 @@ float light_z = -1.0f;
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
 	GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
 	GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
-	
-typedef struct{
-	float x;
-	float y;
-	float z;
-	float t1;
-	float t2;
-	float n1;
-	float n2;
-	float n3;
-} vertex;
-
-typedef struct{
-	u32 magic;
-	u8* vbo_data;
-	u32 vertex_count;
-	C3D_Tex* texture;
-	C3D_Mtx* material;
-} model;
-
-struct vertexList{
-	vertex* vert;
-	vertexList* next;
-};
 
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s program;

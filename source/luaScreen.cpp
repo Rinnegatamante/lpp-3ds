@@ -45,12 +45,6 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
-struct ttf{
-	u32 magic;
-	Font f;
-	unsigned char* buffer;
-};
-
 static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -764,13 +758,10 @@ static int lua_loadFont(lua_State *L) {
 	}
 	Font F;
 	sdmcInit();
-    unsigned char* buffer = F.loadFromFile(tmpPath2);
+    ttf* result = (ttf*)F.loadFromFile(tmpPath2);
 	sdmcExit();
 	F.setSize(16);
-	ttf* result = (ttf*)malloc(sizeof(ttf));
-	result->buffer = buffer;
 	result->f = F;
-	result->magic = 0x4C464E54;
 	lua_pushinteger(L,(u32)result);
     return 1;
 }

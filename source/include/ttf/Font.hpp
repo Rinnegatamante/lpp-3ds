@@ -19,7 +19,7 @@ public:
 
 	Font(const std::vector<unsigned char>& buffer);
 
-	unsigned char* loadFromFile(const std::string& filename);
+	void* loadFromFile(const std::string& filename);
 
 	bool loadFromMemory(const unsigned char* buffer, unsigned int buffer_size);
 

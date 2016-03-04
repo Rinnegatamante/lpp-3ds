@@ -5,6 +5,7 @@
 #include "Font.hpp"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
+#include "../utils.h"
 
 Font::Font()
 {
@@ -21,7 +22,7 @@ Font::Font(const std::vector<unsigned char>& buffer)
 	loadFromMemory(buffer);
 }
 
-unsigned char* Font::loadFromFile(const std::string& filename)
+void* Font::loadFromFile(const std::string& filename)
 {
 	FILE* fp = fopen(filename.c_str(), "r");
 	if (!fp)
@@ -36,12 +37,16 @@ unsigned char* Font::loadFromFile(const std::string& filename)
 	rewind(fp);
 	fread(buffer, 1, buffer_size, fp);
 	fclose(fp);
-
+	
 	bool ret = loadFromMemory(buffer, buffer_size);
 
+	ttf* result = (ttf*)malloc(sizeof(ttf));
+	result->buffer = buffer;
+	result->magic = 0x4C464E54;
+	result->bufsize = buffer_size;
 	//free(buffer);
 
-	return buffer;
+	return result;
 }
 
 bool Font::loadFromMemory(const unsigned char* buffer, unsigned int buffer_size)

@@ -36,12 +36,7 @@
 #include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-
-struct Timer{
-	u32 magic;
-	bool isPlaying;
-	u64 tick;
-};
+#include "include/utils.h"
 
 static int lua_newT(lua_State *L) {
 	int argc = lua_gettop(L);

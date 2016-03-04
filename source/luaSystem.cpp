@@ -39,6 +39,7 @@
 #include "include/graphics/Graphics.h"
 #include "include/Archives.h"
 #include "include/utils.h"
+#include "include/audio.h"
 extern "C"{
 	#include "include/brahma/brahma.h"
 }
@@ -1774,7 +1775,7 @@ static int lua_erasenews(lua_State *L){
 static int lua_setcpu(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1 ) return luaL_error(L, "wrong number of arguments.");	
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");	
 	#endif
 	u16 cpu_clock = luaL_checkinteger(L,1);
 	bool isNew;
@@ -1792,7 +1793,7 @@ static int lua_setcpu(lua_State *L){
 static int lua_getcpu(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+		if(argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	lua_pushinteger(L,current_clock);
 	return 1;
@@ -1801,11 +1802,81 @@ static int lua_getcpu(lua_State *L){
 static int lua_detectsd(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 0 ) return luaL_error(L, "wrong number of arguments.");
+		if(argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	bool isSD;
 	FSUSER_IsSdmcDetected(&isSD);
 	lua_pushboolean(L, isSD);
+	return 1;
+}
+
+static int lua_dup(lua_State *L){ // TODO: Add Music and wav struct support
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L,1); // Music is just a random memory block ptr type
+	u8* res = NULL;
+	if (src->magic == 0x4C544D52){ // Timer
+		Timer* dst = (Timer*)malloc(sizeof(Timer));
+		memcpy(dst, src, sizeof(Timer));
+		res = (u8*)dst;
+	}else if(src->magic == 0x4C464E54){ // Font
+		ttf* dst = (ttf*)malloc(sizeof(ttf));
+		ttf* src2 = (ttf*)src;
+		memcpy(dst, src2, sizeof(ttf));
+		dst->buffer = (unsigned char*)malloc(src2->bufsize);
+		memcpy(dst->buffer, src2->buffer, src2->bufsize);
+		res = (u8*)dst;
+	}else if(src->magic == 0x4C494D47){ // CPU Render Image
+		Bitmap* dst = (Bitmap*)malloc(sizeof(Bitmap));
+		Bitmap* src2 = (Bitmap*)src;
+		memcpy(dst, src2, sizeof(Bitmap));
+		u32 bufsize = src2->width*src2->height*(src2->bitperpixel>>3);
+		dst->pixels = (u8*)malloc(bufsize);
+		memcpy(dst->pixels, src2->pixels, bufsize);
+		res = (u8*)dst;
+	}else if(src->magic == 0x4C545854){ // GPU Render Image
+		gpu_text* dst = (gpu_text*)malloc(sizeof(gpu_text));
+		gpu_text* src2 = (gpu_text*)src;
+		memcpy(dst, src2, sizeof(gpu_text));
+		dst->tex = (sf2d_texture*)(malloc(sizeof(sf2d_texture)));
+		memcpy(dst->tex, src2->tex, sizeof(sf2d_texture));
+		dst->tex->data = linearAlloc(src2->tex->data_size);
+		memcpy(dst->tex->data, src2->tex->data, src2->tex->data_size);
+		res = (u8*)dst;
+	}else if(src->magic == 0xC0C0C0C0){ // Render-type Color
+		color* dst = (color*)malloc(sizeof(color));
+		memcpy(dst, (color*)src, sizeof(color));
+		res = (u8*)dst;
+	}else if(src->magic == 0xC00FFEEE){ // 3D Model
+		model* dst = (model*)malloc(sizeof(model));
+		model* src2 = (model*)src;
+		memcpy(dst, src2, sizeof(model));
+		u32 vbo_size = src2->vertex_count * sizeof(vertex);
+		dst->vbo_data = (u8*)malloc(vbo_size);
+		memcpy(dst->vbo_data, src2->vbo_data, vbo_size);
+		dst->texture = (C3D_Tex*)linearAlloc(sizeof(C3D_Tex));
+		memcpy(dst->texture, src2->texture, sizeof(C3D_Tex));
+		u32 tex_size = (src2->texture->width*src2->texture->height)<<2;
+		dst->texture->data = linearAlloc(tex_size);
+		memcpy(dst->texture->data, src2->texture->data, tex_size);
+		dst->material = (C3D_Mtx*)linearAlloc(sizeof(C3D_Mtx));
+		*dst->material = {
+			{
+			{ { 0.0f, src2->material->r[0].c[1], src2->material->r[0].c[2], src2->material->r[0].c[3] } }, // Ambient
+			{ { 0.0f, src2->material->r[1].c[1], src2->material->r[1].c[2], src2->material->r[1].c[3] } }, // Diffuse
+			{ { 0.0f, src2->material->r[2].c[1], src2->material->r[2].c[2], src2->material->r[2].c[3] } }, // Specular
+			{ { src2->material->r[3].c[0], 0.0f, 0.0f, 0.0f } }, // Emission
+			}
+		};
+		res = (u8*)dst;
+	}else if(src->magic == 0x4C434E53){ // Console
+		Console* dst = (Console*)malloc(sizeof(Console));
+		memcpy(dst, (Console*)src, sizeof(Console));
+		res = (u8*)dst;
+	}else return luaL_error(L, "unsupported memory block input.");
+	lua_pushinteger(L, (u32)res);
 	return 1;
 }
 
@@ -1859,6 +1930,7 @@ static const luaL_Reg System_functions[] = {
 	{"getCpuSpeed",			lua_getcpu},
 	{"extractFromZIP",		lua_getfilefromzip},
 	{"checkSDMC",			lua_detectsd},
+	{"duplicateEntity",		lua_dup},
 // I/O Module and Dofile Patch
 	{"openFile",			lua_openfile},
 	{"getFileSize",			lua_getsize},
