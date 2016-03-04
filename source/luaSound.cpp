@@ -1200,6 +1200,7 @@ static int lua_openogg(lua_State *L)
 	strcpy(songFile->title,"");
 	songFile->wavebuf = NULL;
 	songFile->wavebuf2 = NULL;
+	songFile->blocks = NULL;
 	
 	//Extracting metadatas
 	u32 restore = ftell(fp); //Save offset for libOgg
@@ -1396,6 +1397,7 @@ static int lua_openwav(lua_State *L)
 		songFile->audiotype = audiotype;
 		songFile->wavebuf = NULL;
 		songFile->wavebuf2 = NULL;
+		songFile->blocks = NULL;
 		
 		// Audiobuffer extraction
 		songFile->isPlaying = false;
@@ -1524,6 +1526,7 @@ static int lua_openaiff(lua_State *L)
 	songFile->isPlaying = false;
 	songFile->size = size-(pos+4);
 	songFile->startRead = 0;
+	songFile->blocks = NULL;
 	
 	// Extracting audiobuffer
 	int stbp = 0;
@@ -1634,7 +1637,6 @@ static int lua_play(lua_State *L)
 	ndspWaveBuf* waveBuf = (ndspWaveBuf*)calloc(1, sizeof(ndspWaveBuf));
 	if (src->mem_size > 0) createDspBlock(waveBuf, src->bytepersample, src->mem_size, false, (u32*)src->audiobuf);
 	else createDspBlock(waveBuf, src->bytepersample, src->size, loop, (u32*)src->audiobuf);
-	src->blocks = NULL;
 	populatePurgeTable(src, waveBuf);
 	ndspChnWaveBufAdd(ch, waveBuf);
 	src->tick = osGetTime();
@@ -1774,7 +1776,7 @@ static int lua_closesong(lua_State *L)
 	#endif
 	
 	// Closing streaming if used
-	if (src->mem_size > 0){
+	if (src->mem_size > 0 && src->ch != 0xDEADBEEF){
 		closeStream = true;
 		svcSignalEvent(updateStream);
 		while (closeStream){} // Wait for thread exiting...
@@ -1789,9 +1791,11 @@ static int lua_closesong(lua_State *L)
 	}
 	
 	// Purging everything
+	if (src->ch != 0xDEADBEEF){
+		ndspChnWaveBufClear(src->ch);
+		audioChannels[src->ch] = false;
+	}
 	purgeTable(src->blocks);
-	ndspChnWaveBufClear(src->ch);
-	audioChannels[src->ch] = false;
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (tmp_buf != NULL) linearFree(tmp_buf);
@@ -1810,20 +1814,22 @@ static int lua_close_old(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	audioChannels[src->ch] = false;
-	if (src->audiobuf2 != NULL) audioChannels[src->ch2] = false;
-	if (src->mem_size > 0){
-		closeStream = true;
-		svcSignalEvent(updateStream);
-		while (closeStream){} // Wait for thread exiting...
-		if (src->encoding == CSND_ENCODING_VORBIS){
-			ov_clear((OggVorbis_File*)src->sourceFile);
-			sdmcExit();
-		}else{
-			FS_Close((fileStream*)src->sourceFile);
-			free((fileStream*)src->sourceFile);
+	if (src->ch != 0xDEADBEEF){
+		audioChannels[src->ch] = false;
+		if (src->audiobuf2 != NULL) audioChannels[src->ch2] = false;
+		if (src->mem_size > 0){
+			closeStream = true;
+			svcSignalEvent(updateStream);
+			while (closeStream){} // Wait for thread exiting...
+			if (src->encoding == CSND_ENCODING_VORBIS){
+				ov_clear((OggVorbis_File*)src->sourceFile);
+				sdmcExit();
+			}else{
+				FS_Close((fileStream*)src->sourceFile);
+				free((fileStream*)src->sourceFile);
+			}
+			svcCloseHandle(updateStream);
 		}
-		svcCloseHandle(updateStream);
 	}
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
