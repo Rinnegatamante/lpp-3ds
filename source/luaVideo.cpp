@@ -48,6 +48,7 @@
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+#define BooleanRegister(lua, value) do { lua_pushboolean(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
 #define MAX_RAM_ALLOCATION 524288
 #define MAX_RAM_ALLOCATION_44100 1048576
@@ -71,10 +72,12 @@ struct JPGV{
 	u8* audiobuf;
 	u8* audiobuf2;
 	Bitmap* framebuf;
+	Thread thread;
 	int ch1;
 	int ch2;
 	bool isPlaying;
-	int loop;
+	u32 loop_index;
+	bool loop;
 	u32 mem_size;
 	u32 moltiplier;
 	u8 audiocodec;
@@ -95,16 +98,19 @@ int jpgv_sk(void *datasource, ogg_int64_t offset, int whence){
 		u32 audiosize;
 		fread(&audiosize,4,1,(FILE*)datasource);
 		return fseek((FILE*)datasource,0x18+audiosize+offset,SEEK_SET);
-	}
-	else return fseek((FILE*)datasource,offset,whence);
+	}else return fseek((FILE*)datasource,offset,whence);
 }
+
+ int jpgv_cl(void *datasource){
+	return fclose((FILE*)datasource);
+ }
 
 long jpgv_tl(void *datasource){
 	return ftell((FILE*)datasource);
 }
 
 static volatile bool closeStream = false;
-static Handle updateStream;
+extern Handle updateStream;
 static Handle streamThread;
 
 static char pcmout[4096];
@@ -194,145 +200,148 @@ static void streamOGG(void* arg){
 		svcClearEvent(updateStream);
 		u32 bytesRead;
 		
-			if(closeStream){
-				closeStream = false;
-				threadExit(0);
-			}
+		if(closeStream){
+			closeStream = false;
+			threadExit(0);
+		}
 			
-			// Initializing libogg and vorbisfile
-			int eof=0;
-			static int current_section;
+		// Initializing libogg and vorbisfile
+		int eof=0;
+		static int current_section;
 	
-			u32 control;
-			u32 total = src->real_audio_size;
-			u32 block_size;
-			u32 package_max_size;
-			if (src->package_size == 0){
-				block_size = src->mem_size >> 3;
-				package_max_size = block_size;
-			}else{ 
-				block_size = src->total_packages_size / (src->moltiplier - 1);
-				package_max_size = src->mem_size >> 3;
-			}
-			if (src->audiobuf2 == NULL) control = (src->samplerate<<1) * ((osGetTime() - src->tick) / 1000);
-			else{
-				control = (src->samplerate<<2) * ((osGetTime() - src->tick) / 1000);
-				total = total<<1;
-			}
-			if ((control >= total) && (src->isPlaying)){
-				CSND_SetPlayState(src->ch1, 0);
-				if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-				CSND_UpdateInfo(0);
-				src->moltiplier = 1;
-				ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
-				if (!src->loop){
+		u32 control;
+		u32 total = src->real_audio_size;
+		u32 block_size;
+		u32 package_max_size;
+		if (src->package_size == 0){
+			block_size = src->mem_size >> 3;
+			package_max_size = block_size;
+		}else{ 
+			block_size = src->total_packages_size / (src->moltiplier - 1);
+			package_max_size = src->mem_size >> 3;
+		}
+		if (src->audiobuf2 == NULL) control = (src->samplerate<<1) * ((osGetTime() - src->tick) / 1000);
+		else{
+			control = (src->samplerate<<2) * ((osGetTime() - src->tick) / 1000);
+			total = total<<1;
+		}
+		if (src->isPlaying){
+			if (control >= total){
+				if (src->loop) src->loop_index = src->loop_index + 1;
+				else{
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
-				}else{
-					if (src->audiobuf2 == NULL){
-					
+					CSND_SetPlayState(src->ch1, 0);
+					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+					CSND_UpdateInfo(0);
+					ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
+					if (src->audiobuf2 == NULL){ //Mono file
 						int i = 0;
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
+							if (ret == 0) eof=1;
+							else {
+					
+								// Copying decoded block to PCM16 audiobuffer
 								memcpy(&src->audiobuf[i],pcmout,ret);
 								i = i + ret;
-								if (i >= (package_max_size)) break;
+								if (i >= src->mem_size) break;
+							
 							}
 						}
-					}else{
-						char pcmout[2048];
+					}else{ //Stereo file
 						int i = 0;
 						while(!eof){
 							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
+							if (ret == 0) eof=1;
+							else {
+		
+								// Copying decoded block to PCM16 audiobuffer
 								memcpy(&tmp_buf[i],pcmout,ret);
 								i = i + ret;
 								if (i >= src->mem_size) break;	
+								
 							}
 						}
-		
+				
 						// Separating left and right channels
 						int z;
-						int j=0;
+						int j = 0;
 						for (z=0; z < src->mem_size; z=z+4){
 							src->audiobuf[j] = tmp_buf[z];
 							src->audiobuf[j+1] = tmp_buf[z+1];
 							src->audiobuf2[j] = tmp_buf[z+2];
 							src->audiobuf2[j+1] = tmp_buf[z+3];
 							j=j+2;
+							if (j >= src->mem_size>>1) j = 0;
 						}
 					}
-					src->tick = osGetTime();
-					CSND_SetPlayState(src->ch1, 1);
-					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
-					CSND_UpdateInfo(0);
+					src->moltiplier = 1;
 				}
-			}else if ((control > (block_size * src->moltiplier)) && (src->isPlaying)){
+			}else if (control > block_size * src->moltiplier){
 				if (src->audiobuf2 == NULL){ //Mono file
-						int i = 0;
-						int j = src->audio_pointer;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-								src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
+					int i = 0;
+					int j = src->audio_pointer;
+					while(!eof){
+						long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
+						if (ret == 0){
+							if (!src->loop) eof=1;
+							else ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
+						}else {
+							memcpy(&tmp_buf[i],pcmout,ret);
+							i = i + ret;
+							src->package_size = i;
+							if (i >= (package_max_size)) break;
 						}
-						if (j + src->package_size >= src->mem_size){
-							u32 frag_size = src->mem_size - j;
-							u32 frag2_size = src->package_size-frag_size;
-							memcpy(&src->audiobuf[j],tmp_buf,frag_size);
-							memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
-							src->audio_pointer = frag2_size;
-						}else{
-							memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
-							src->audio_pointer = j + src->package_size;
-						}
-						src->total_packages_size = src->total_packages_size + src->package_size;
-					}else{ //Stereo file
-						char pcmout[2048];
-						int i = 0;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								eof=1;
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-								src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
-						}
-				
-						// Separating left and right channels
-						int z;
-						int j = src->audio_pointer;
-						for (z=0; z < src->package_size; z=z+4){
-							src->audiobuf[j] = tmp_buf[z];
-							src->audiobuf[j+1] = tmp_buf[z+1];
-							src->audiobuf2[j] = tmp_buf[z+2];
-							src->audiobuf2[j+1] = tmp_buf[z+3];
-							j=j+2;
-							if (j >= src->mem_size / 2) j = 0;
-						}
-						src->audio_pointer = j;
-						src->total_packages_size = src->total_packages_size + src->package_size;
 					}
-					src->moltiplier = src->moltiplier + 1;
+					if (j + src->package_size >= src->mem_size){
+						u32 frag_size = src->mem_size - j;
+						u32 frag2_size = src->package_size-frag_size;
+						memcpy(&src->audiobuf[j],tmp_buf,frag_size);
+						memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
+						src->audio_pointer = frag2_size;
+					}else{
+						memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
+						src->audio_pointer = j + src->package_size;
+					}
+					src->total_packages_size = src->total_packages_size + src->package_size;
+				}else{ //Stereo file
+					char pcmout[2048];
+					int i = 0;
+					while(!eof){
+						long ret=ov_read((OggVorbis_File*)src->stdio_handle,pcmout,sizeof(pcmout),0,2,1,&current_section);
+						if (ret == 0) {
+							if (!src->loop) eof=1;
+							else ov_raw_seek((OggVorbis_File*)src->stdio_handle,0);
+						}else {
+							memcpy(&tmp_buf[i],pcmout,ret);
+							i = i + ret;
+							src->package_size = i;
+							if (i >= (package_max_size)) break;
+						}
+					}
+				
+					// Separating left and right channels
+					int z;
+					int j = src->audio_pointer;
+					for (z=0; z < src->package_size; z=z+4){
+						src->audiobuf[j] = tmp_buf[z];
+						src->audiobuf[j+1] = tmp_buf[z+1];
+						src->audiobuf2[j] = tmp_buf[z+2];
+						src->audiobuf2[j+1] = tmp_buf[z+3];
+						j=j+2;
+						if (j >= src->mem_size>>1) j = 0;
+					}
+					src->audio_pointer = j;
+					src->total_packages_size = src->total_packages_size + src->package_size;
+				}
+				src->moltiplier = src->moltiplier + 1;
 			}
+		}
 	}
 }
 
-static int lua_loadJPGV(lua_State *L)
+static int lua_loadJPGV(lua_State *L) // TODO: Fix looping feature for Vorbis audiocodec (related to system hangs while exiting?)
 {
     int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
@@ -373,6 +382,7 @@ static int lua_loadJPGV(lua_State *L)
 	JPGV_file->package_size = 0;
 	JPGV_file->total_packages_size = 0;
 	if (JPGV_file->audiocodec != 0){ // Vorbis audiocodec
+		JPGV_file->loop_index = 1;
 		char myFile[512];
 		if (fileHandle->isRomfs) strcpy(myFile, file_tbo);
 		else{
@@ -404,7 +414,7 @@ static int lua_startJPGV(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	int loop = luaL_checkinteger(L, 2);
+	bool loop = lua_toboolean(L, 2);
 	
 	// Selecting free channels
 	int ch = src->ch1;
@@ -441,7 +451,7 @@ static int lua_startJPGV(lua_State *L){
 		jpgv_callbacks.read_func = jpgv_rc;
 		jpgv_callbacks.seek_func = jpgv_sk;
 		jpgv_callbacks.tell_func = jpgv_tl;
-		jpgv_callbacks.close_func = NULL;
+		jpgv_callbacks.close_func = jpgv_cl;
 		if (ov_open_callbacks((FILE*)src->stdio_handle, vf, NULL, 0, jpgv_callbacks) != 0)
 		{
 			fclose((FILE*)src->stdio_handle);
@@ -590,7 +600,7 @@ static int lua_startJPGV(lua_State *L){
 	src->tick = osGetTime();
 	src->moltiplier = 1;
 	svcCreateEvent(&updateStream,0);
-	threadCreate(streamFunction, src, 8192, 0x18, 1, true);	
+	src->thread = threadCreate(streamFunction, src, 8192, 0x18, 1, true);
 	}else src->tick = osGetTime();
 	return 0;
 }
@@ -599,7 +609,7 @@ void draw3DJPGV(int x,int y,JPGV* src,int screen,bool use3D){
 	int tb_ptr = 24+src->audio_size;
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 10)){
-			if (src->loop == 1){
+			if (src->loop){
 				src->currentFrame = 0;
 				src->moltiplier = 1;
 				src->tick = osGetTime();
@@ -685,7 +695,7 @@ void draw3DJPGVfast(JPGV* src, u8* framebuf, bool use3D){
 	int tb_ptr = 24+src->audio_size;
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 10)){
-			if (src->loop == 1){
+			if (src->loop){
 				src->currentFrame = 0;
 				src->moltiplier = 1;
 				src->tick = osGetTime();
@@ -777,7 +787,7 @@ static int lua_drawJPGVfast(lua_State *L){
 	int tb_ptr = 24+src->audio_size;
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 5)){
-			if (src->loop == 1){
+			if (src->loop){
 				src->currentFrame = 0;
 				src->moltiplier = 1;
 				src->tick = osGetTime();
@@ -851,7 +861,7 @@ static int lua_drawJPGV(lua_State *L){
 	int tb_ptr = 24+src->audio_size;
 	if (src->isPlaying){
 		if (src->currentFrame >= (src->tot_frame - 5)){
-			if (src->loop == 1){
+			if (src->loop){
 				src->currentFrame = 0;
 				src->moltiplier = 1;
 				src->tick = osGetTime();
@@ -1075,40 +1085,22 @@ static int lua_unloadJPGV(lua_State *L){
 	if (src->audiotype == 2) audioChannels[src->ch2] = false;
 	closeStream = true;
 	svcSignalEvent(updateStream);
-	while (closeStream){} // Wait for thread exiting...
+	if src->audiocodec == 0) threadJoin(src->thread, U64_MAX);
+	else{ // TODO: Fix system hanging (Vorbis) while exiting at video ends without breaking thread safety
+		threadJoin(src->thread, 1000000000); 
+		ov_clear((OggVorbis_File*)src->stdio_handle);
+	}
 	sdmcExit();
 	if (src->samplerate != 0 && src->audio_size != 0 && src->audiobuf != NULL){
 		linearFree(src->audiobuf);
-		if (src->audiotype == 2){
-			linearFree(src->audiobuf2);
-		}
+		if (src->audiotype == 2) linearFree(src->audiobuf2);
 	}
 	FS_Close(src->sourceFile);
 	free(src->sourceFile);
 	svcCloseHandle(updateStream);
 	linearFree(tmp_buf);
+	tmp_buf = NULL;
 	free(src);
-	return 0;
-}
-
-static int lua_stopJPGV(lua_State *L){
-	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	#endif
-	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
-	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
-	#endif
-	src->isPlaying = false;
-	src->currentFrame = 0;
-	if (src->samplerate != 0 && src->audio_size != 0){
-		CSND_SetPlayState(src->ch1, 0);
-		if (src->audiotype == 2){
-			CSND_SetPlayState(src->ch2, 0);
-		}
-		CSND_UpdateInfo(0);
-	}
 	return 0;
 }
 
@@ -1121,14 +1113,14 @@ static int lua_pauseJPGV(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	src->isPlaying = false;
-	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0){
-		CSND_SetPlayState(src->ch1, 0);
-		if (src->audiotype == 2){
-			CSND_SetPlayState(src->ch2, 0);
+	if (src->isPlaying){
+		src->isPlaying = false;
+		src->tick = (osGetTime() - src->tick);
+		if (src->samplerate != 0 && src->audio_size != 0){
+			CSND_SetPlayState(src->ch1, 0);
+			if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 0);
+			CSND_UpdateInfo(0);
 		}
-		CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1142,14 +1134,14 @@ static int lua_resumeJPGV(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	src->isPlaying = true;
-	src->tick = (osGetTime() - src->tick);
-	if (src->samplerate != 0 && src->audio_size != 0){
-		CSND_SetPlayState(src->ch1, 1);
-		if (src->audiotype == 2){
-			CSND_SetPlayState(src->ch2, 1);
+	if (!src->isPlaying){
+		src->isPlaying = true;
+		src->tick = (osGetTime() - src->tick);
+		if (src->samplerate != 0 && src->audio_size != 0){
+			CSND_SetPlayState(src->ch1, 1);
+			if (src->audiotype == 2) CSND_SetPlayState(src->ch2, 1);
+			CSND_UpdateInfo(0);
 		}
-		CSND_UpdateInfo(0);
 	}
 	return 0;
 }
@@ -1172,7 +1164,6 @@ static const luaL_Reg JPGV_functions[] = {
   {"getSize",			lua_getSize2},
   {"getSrate",			lua_getSrate2},
   {"isPlaying",			lua_isPlaying2},
-  {"stop",				lua_stopJPGV},
   {"resume",			lua_resumeJPGV},
   {"pause",				lua_pauseJPGV},
   {0, 0}
@@ -1190,7 +1181,6 @@ static const luaL_Reg Dummy_functions[] = {
   {"getSize",			lua_dummy},
   {"getSrate",			lua_dummy},
   {"isPlaying",			lua_dummy},
-  {"stop",				lua_dummy},
   {"resume",			lua_dummy},
   {"pause",				lua_dummy},
   {0, 0}
@@ -1201,8 +1191,8 @@ void luaVideo_init(lua_State *L) {
 	if (csndAccess) luaL_setfuncs(L, JPGV_functions, 0);
 	else luaL_setfuncs(L, Dummy_functions, 0);
 	lua_setglobal(L, "JPGV");
-	int LOOP = 1;
-	int NO_LOOP = 0;
-	VariableRegister(L,LOOP);
-	VariableRegister(L,NO_LOOP);
+	bool LOOP = true;
+	bool NO_LOOP = false;
+	BooleanRegister(L,LOOP);
+	BooleanRegister(L,NO_LOOP);
 }
