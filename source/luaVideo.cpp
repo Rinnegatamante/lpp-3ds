@@ -111,8 +111,6 @@ long jpgv_tl(void *datasource){
 
 static volatile bool closeStream = false;
 extern Handle updateStream;
-static Handle streamThread;
-
 static char pcmout[4096];
 
 static void streamWAV(void* arg){
@@ -1081,26 +1079,40 @@ static int lua_unloadJPGV(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
+	
+	// Freeing audio-device channels
 	audioChannels[src->ch1] = false;
 	if (src->audiotype == 2) audioChannels[src->ch2] = false;
+	
+	// Stopping audio playback if still playing
+	CSND_SetPlayState(src->ch1, 0);
+	if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+	CSND_UpdateInfo(0);
+	
+	// Closing audio playback thread
 	closeStream = true;
 	svcSignalEvent(updateStream);
-	if src->audiocodec == 0) threadJoin(src->thread, U64_MAX);
+	if (src->audiocodec == 0) threadJoin(src->thread, U64_MAX);
 	else{ // TODO: Fix system hanging (Vorbis) while exiting at video ends without breaking thread safety
 		threadJoin(src->thread, 1000000000); 
 		ov_clear((OggVorbis_File*)src->stdio_handle);
+		sdmcExit();
 	}
-	sdmcExit();
+	
+	// Deallocating audio buffers
 	if (src->samplerate != 0 && src->audio_size != 0 && src->audiobuf != NULL){
 		linearFree(src->audiobuf);
 		if (src->audiotype == 2) linearFree(src->audiobuf2);
 	}
+	
+	// Closing file and freeing structs
 	FS_Close(src->sourceFile);
 	free(src->sourceFile);
 	svcCloseHandle(updateStream);
 	linearFree(tmp_buf);
 	tmp_buf = NULL;
 	free(src);
+	
 	return 0;
 }
 

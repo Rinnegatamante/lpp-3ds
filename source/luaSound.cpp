@@ -94,7 +94,6 @@ void streamOGG_CSND(void* arg){
 			if ((control >= total) && (src->isPlaying) && (!src->streamLoop)){
 					src->isPlaying = false;
 					src->tick = (osGetTime()-src->tick);
-					src->moltiplier = 1;
 					CSND_SetPlayState(src->ch, 0);
 					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
 					CSND_UpdateInfo(0);
@@ -1604,7 +1603,7 @@ static int lua_play(lua_State *L)
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	closeStream = false;
-	int loop = luaL_checkinteger(L, 2);
+	bool loop = lua_toboolean(L, 2);
 	int interp = NDSP_INTERP_LINEAR;
 	if (argc == 3) interp = luaL_checkinteger(L, 3);
 	
@@ -1647,8 +1646,7 @@ static int lua_play(lua_State *L)
 	// Initializing streaming feature if used
 	if (src->mem_size > 0){
 		src->lastCheck = ndspChnGetSamplePos(ch);
-		if (loop == 0) src->streamLoop = false;
-		else src->streamLoop = true;
+		src->streamLoop = loop;
 		svcCreateEvent(&updateStream,0);
 		svcSignalEvent(updateStream);
 		threadCreate(streamFunction, src, 8192, 0x18, 0, true);
@@ -1710,8 +1708,7 @@ static int lua_play_old(lua_State *L)
 	}
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
-			if (loop == 0) src->streamLoop = false;
-			else src->streamLoop = true;
+			src->streamLoop = loop;
 			svcCreateEvent(&updateStream,0);
 			svcSignalEvent(updateStream);
 			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
@@ -1727,8 +1724,7 @@ static int lua_play_old(lua_State *L)
 		CSND_UpdateInfo(0);
 	}else{
 		if (src->mem_size > 0){
-			if (loop == 0) src->streamLoop = false;
-			else src->streamLoop = true;
+			src->streamLoop = loop;
 			svcCreateEvent(&updateStream,0);
 			svcSignalEvent(updateStream);
 			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
@@ -1775,11 +1771,15 @@ static int lua_closesong(lua_State *L)
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
-	// Closing streaming if used
+	// Checking if streaming feature is used
 	if (src->mem_size > 0 && src->ch != 0xDEADBEEF){
+		
+		// Closing stream thread
 		closeStream = true;
 		svcSignalEvent(updateStream);
 		while (closeStream){} // Wait for thread exiting...
+		
+		// Closing opened file
 		if (src->encoding == CSND_ENCODING_VORBIS){
 			ov_clear((OggVorbis_File*)src->sourceFile);
 			sdmcExit();
@@ -1788,13 +1788,16 @@ static int lua_closesong(lua_State *L)
 			free((fileStream*)src->sourceFile);
 		}
 		svcCloseHandle(updateStream);
+		
 	}
 	
-	// Purging everything
+	// Freeing DSP queue and audio-device channels
 	if (src->ch != 0xDEADBEEF){
 		ndspChnWaveBufClear(src->ch);
 		audioChannels[src->ch] = false;
 	}
+	
+	// Deallocating audio buffers and freeing structs
 	purgeTable(src->blocks);
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
@@ -1814,13 +1817,28 @@ static int lua_close_old(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
+	
+	// Checking if audio playback started at least once
 	if (src->ch != 0xDEADBEEF){
+	
+		// Freeing audio-device channels
 		audioChannels[src->ch] = false;
 		if (src->audiobuf2 != NULL) audioChannels[src->ch2] = false;
+		
+		// Stopping audio playback if still playing
+		CSND_SetPlayState(src->ch, 0);
+		if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+		CSND_UpdateInfo(0);
+		
+		// Checking if streaming feature is used
 		if (src->mem_size > 0){
+		
+			// Closing stream thread
 			closeStream = true;
 			svcSignalEvent(updateStream);
 			while (closeStream){} // Wait for thread exiting...
+			
+			// Closing opened file
 			if (src->encoding == CSND_ENCODING_VORBIS){
 				ov_clear((OggVorbis_File*)src->sourceFile);
 				sdmcExit();
@@ -1829,12 +1847,17 @@ static int lua_close_old(lua_State *L)
 				free((fileStream*)src->sourceFile);
 			}
 			svcCloseHandle(updateStream);
+			
 		}
+		
 	}
+	
+	// Deallocating audio buffers and freeing structs
 	linearFree(src->audiobuf);
 	if (src->audiobuf2 != NULL) linearFree(src->audiobuf2);
 	if (tmp_buf != NULL) linearFree(tmp_buf);
 	free(src);
+	
 	return 0;
 }
 
