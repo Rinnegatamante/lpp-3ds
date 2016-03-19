@@ -135,7 +135,7 @@ AccessControlInfo:
    - ac:u
    - boss:U
    - cam:u
-   - cecd:u
+   - ir:rst
    - cfg:u
    - dlp:FKCL
    - dlp:SRVR
