@@ -1666,7 +1666,7 @@ static int lua_play_old(lua_State *L)
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	closeStream = false;
-	int loop = luaL_checkinteger(L, 2);
+	bool loop = lua_toboolean(L, 2);
 	
 	// Selectable interpolation type
 	int interp = SOUND_LINEAR_INTERP;
