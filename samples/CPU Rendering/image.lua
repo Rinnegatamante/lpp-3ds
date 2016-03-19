@@ -39,7 +39,7 @@ while true do
 	
 	-- Save bitmap2 image and take a full screenshot
 	if (Controls.check(pad,KEY_B)) and not (Controls.check(oldpad,KEY_B)) then
-		Screen.saveBitmap(bitmap2,"/bitmap.bmp")
+		Screen.saveImage(bitmap2,"/bitmap.bmp",false)
 		System.takeScreenshot("/screenshot.bmp",false)
 	end
 	
