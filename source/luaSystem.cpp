@@ -115,16 +115,19 @@ static int lua_openfile(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
+		if ((argc != 2) && (argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	int type = luaL_checkinteger(L, 2);
 	u32 archive_id;
 	bool extdata = false;
-	if (argc == 3){
+	u32 filesize;
+	if (argc >= 3){
 		archive_id = luaL_checknumber(L,3);
 		extdata = true;
+		if (argc == 4) filesize = luaL_checkinteger(L, 4);
 	}
+	FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 	Handle fileHandle;
 	Result ret;
 	fileStream* result;
@@ -154,21 +157,28 @@ static int lua_openfile(lua_State *L)
 		#endif
 		switch(type){
 			case 0:
-				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, fsMakePath(PATH_ASCII, file_tbo), FS_OPEN_READ, 0);
+				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, filePath, FS_OPEN_READ, 0);
 				break;
 			case 1:
-				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, fsMakePath(PATH_ASCII, file_tbo), FS_OPEN_WRITE, 0);
+				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, filePath, FS_OPEN_WRITE, 0);
+				break;
+			case 2:
+				FSUSER_DeleteFile(main_extdata_archive, filePath);
+				ret = FSUSER_CreateFile(main_extdata_archive, filePath, 0, filesize);
+				#ifndef SKIP_ERROR_HANDLING
+					if (ret) return luaL_error(L, "error creating the file.");
+				#endif
+				ret = FSUSER_OpenFile( &fileHandle, main_extdata_archive, filePath, FS_OPEN_WRITE, 0);
 				break;
 		}
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "file doesn't exist.");
+			if (ret) return luaL_error(L, "error opening file.");
 		#endif
 		result = (fileStream*)malloc(sizeof(fileStream));
 		result->handle = (u32)fileHandle;
 		result->isRomfs = false;
 	}else{
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		switch(type){
 			case 0:
 				ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
@@ -541,43 +551,109 @@ static int lua_rendir(lua_State *L) {
 static int lua_createdir(lua_State *L) {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *path = luaL_checkstring(L, 1);
-	FS_Archive sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive( &sdmcArchive);
-	FS_Path filePath=fsMakePath(PATH_ASCII, path);
-	FSUSER_CreateDirectory(sdmcArchive,filePath, FS_ATTRIBUTE_DIRECTORY);
-	FSUSER_CloseArchive( &sdmcArchive);
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		FS_MediaType mtype;
+		FS_ArchiveID atype;
+		if (archive_id < 0x2000){
+			mtype = MEDIATYPE_SD;
+			atype = ARCHIVE_EXTDATA;
+		}else{
+			mtype = MEDIATYPE_NAND;
+			atype = ARCHIVE_SHARED_EXTDATA;
+		}
+		u32 main_extdata_archive_lowpathdata[3] = {mtype, archive_id, 0};
+		FS_Archive archive2 = (FS_Archive){atype, (FS_Path){PATH_BINARY, 0xC, (u8*)main_extdata_archive_lowpathdata}};
+		Result ret = FSUSER_OpenArchive( &archive2);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret!=0) return luaL_error(L, "cannot access extdata archive");
+		#endif
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_CreateDirectory(archive2,filePath, FS_ATTRIBUTE_DIRECTORY);
+		FSUSER_CloseArchive( &archive2);
+	}else{
+		FS_Archive archive2 = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenArchive( &archive2);
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_CreateDirectory(archive2,filePath, FS_ATTRIBUTE_DIRECTORY);
+		FSUSER_CloseArchive( &archive2);
+	}
 	return 0;
 }
 
 static int lua_deldir(lua_State *L) {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *path = luaL_checkstring(L, 1);
-	FS_Archive sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive( &sdmcArchive);
-	FS_Path filePath=fsMakePath(PATH_ASCII, path);
-	FSUSER_DeleteDirectory(sdmcArchive,filePath);
-	FSUSER_CloseArchive( &sdmcArchive);
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		FS_MediaType mtype;
+		FS_ArchiveID atype;
+		if (archive_id < 0x2000){
+			mtype = MEDIATYPE_SD;
+			atype = ARCHIVE_EXTDATA;
+		}else{
+			mtype = MEDIATYPE_NAND;
+			atype = ARCHIVE_SHARED_EXTDATA;
+		}
+		u32 main_extdata_archive_lowpathdata[3] = {mtype, archive_id, 0};
+		FS_Archive archive2 = (FS_Archive){atype, (FS_Path){PATH_BINARY, 0xC, (u8*)main_extdata_archive_lowpathdata}};
+		Result ret = FSUSER_OpenArchive( &archive2);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret!=0) return luaL_error(L, "cannot access extdata archive");
+		#endif
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_DeleteDirectory(archive2,filePath);
+		FSUSER_CloseArchive( &archive2);
+	}else{
+		FS_Archive archive2 = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		FSUSER_OpenArchive( &archive2);
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_DeleteDirectory(archive2,filePath);
+		FSUSER_CloseArchive( &archive2);
+	}
 	return 0;
 }
 
 static int lua_delfile(lua_State *L) {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *path = luaL_checkstring(L, 1);
-	FS_Archive sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-	FSUSER_OpenArchive( &sdmcArchive);
-	FS_Path filePath=fsMakePath(PATH_ASCII, path);
-	FSUSER_DeleteFile(sdmcArchive,filePath);
-	FSUSER_CloseArchive( &sdmcArchive);
-		return 0;
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		FS_MediaType mtype;
+		FS_ArchiveID atype;
+		if (archive_id < 0x2000){
+			mtype = MEDIATYPE_SD;
+			atype = ARCHIVE_EXTDATA;
+		}else{
+			mtype = MEDIATYPE_NAND;
+			atype = ARCHIVE_SHARED_EXTDATA;
+		}
+		u32 main_extdata_archive_lowpathdata[3] = {mtype, archive_id, 0};
+		FS_Archive archive2 = (FS_Archive){atype, (FS_Path){PATH_BINARY, 0xC, (u8*)main_extdata_archive_lowpathdata}};
+		Result ret = FSUSER_OpenArchive( &archive2);
+		#ifndef SKIP_ERROR_HANDLING
+			if(ret!=0) return luaL_error(L, "cannot access extdata archive");
+		#endif
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_DeleteFile(archive2,filePath);
+		FSUSER_CloseArchive( &archive2);
+	}else{
+		FS_Archive archive2 = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenArchive( &archive2);
+		FS_Path filePath=fsMakePath(PATH_ASCII, path);
+		FSUSER_DeleteFile(archive2,filePath);
+		FSUSER_CloseArchive( &archive2);
+	}
+	return 0;
 }
 
 static int lua_renfile(lua_State *L) {
@@ -1930,7 +2006,7 @@ static const luaL_Reg System_functions[] = {
 	{"getCpuSpeed",			lua_getcpu},
 	{"extractFromZIP",		lua_getfilefromzip},
 	{"checkSDMC",			lua_detectsd},
-	{"duplicateEntity",		lua_dup},
+	{"fork",				lua_dup},
 // I/O Module and Dofile Patch
 	{"openFile",			lua_openfile},
 	{"getFileSize",			lua_getsize},
