@@ -337,8 +337,8 @@ void Draw32bppImagePixel(int x,int y,u32 color,Bitmap* screen){
 	u8 alpha = (((color) >> 24) & 0xFF);
 	int idx = (x + (screen->height - y) * screen->width);
 	float srcA = alpha / 255.0f;
-	float outA = srcA + (screen->pixels[idx*4+3] / 255.0f) * (1 - srcA);
-	screen->pixels[(idx<<2)+0] = (((color & 0xFF) * srcA)  + (screen->pixels[idx*4] * (screen->pixels[(idx<<2)+3] / 255.0f) * (1.0 - srcA))) / outA;
+	float outA = srcA + (screen->pixels[(idx<<2)+3] / 255.0f) * (1 - srcA);
+	screen->pixels[(idx<<2)+0] = (((color & 0xFF) * srcA)  + (screen->pixels[(idx<<2)] * (screen->pixels[(idx<<2)+3] / 255.0f) * (1.0 - srcA))) / outA;
 	screen->pixels[(idx<<2)+1] = ((((color >> 8) & 0xFF) * srcA)  + (screen->pixels[(idx<<2)+1] * (screen->pixels[(idx<<2)+3] / 255.0f) * (1.0 - srcA))) / outA;
 	screen->pixels[(idx<<2)+2] = (((((color) >> 16) & 0xFF) * srcA)  + (screen->pixels[(idx<<2)+2] * (screen->pixels[(idx<<2)+3] / 255.0f) * (1.0 - srcA))) / outA;
 	screen->pixels[(idx<<2)+3] = outA * 255.0f;
