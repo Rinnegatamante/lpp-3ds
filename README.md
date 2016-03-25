@@ -69,6 +69,7 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [4Rows](https://gbatemp.net/threads/release-4rows.384352/)
 * [3DSHangman](https://gbatemp.net/threads/release-3dshangman.379285/)
 * [3DS Briscola](http://gbatemp.net/threads/3ds-briscola-briscola-card-game-for-3ds.376901/)
+* [EUCLIOD](http://gbatemp.net/threads/eucliod-a-homebrew-bullet-hell-for-the-3ds.419553/)
 
 ##### Utilities
 * [CHMM2](http://gbatemp.net/threads/release-chmm2-custom-home-menu-manager-2.397543/)
