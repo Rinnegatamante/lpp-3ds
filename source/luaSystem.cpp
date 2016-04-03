@@ -708,6 +708,7 @@ static int lua_listdir(lua_State *L){
 		}else break;
 	}
 	FSDIR_Close(dirHandle);
+	svcCloseHandle(dirHandle);
 	FSUSER_CloseArchive( &sdmcArchive);
 	return 1;
 }
