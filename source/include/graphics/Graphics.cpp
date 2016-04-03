@@ -137,6 +137,7 @@ void PrintGpuBitmap(int xp,int yp, Bitmap* result,int screen){
 	for (y = 0; y < result->height; y++){
 		for (x = 0; x < result->width; x++){
 			u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)<<2]);
+			RBswap(&color);
 			sf2d_set_pixel(((gpu_text*)screen)->tex, xp+x, yp+y, color);
 		}		
 	}
@@ -247,6 +248,7 @@ void PrintPartialGpuBitmap(int xp,int yp,int st_x,int st_y,int width,int height,
 				for (x = st_x; x < st_x + width; x++){
 					u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)*3]);
 					color = (color & 0x00FFFFFF) | (0xFF << 24);
+					RBswap(&color);
 					sf2d_set_pixel(((gpu_text*)screen)->tex,xp+x-st_x,yp+y-st_y,color);
 				}
 			}
@@ -254,6 +256,7 @@ void PrintPartialGpuBitmap(int xp,int yp,int st_x,int st_y,int width,int height,
 			for (y = st_y; y < st_y + height; y++){
 				for (x = st_x; x < st_x + width; x++){
 					u32 color = *(u32*)&(result->pixels[(x + (result->height - y - 1) * result->width)<<2]);
+					RBswap(&color);
 					sf2d_set_pixel(((gpu_text*)screen)->tex,xp+x-st_x,yp+y-st_y,color);
 				}
 			}
@@ -510,6 +513,7 @@ void DrawImageText(int x, int y, char* str, u32 color, int screen){
 }
 
 void DrawGpuText(int x, int y, char* str, u32 color, int screen){
+	RBswap(&color);
 	unsigned short* ptr;
 	unsigned short glyphsize;
 	int i, cx, cy;
@@ -663,6 +667,7 @@ void FillImageRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 }
 
 void FillGpuRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+	RBswap(&color);
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -807,6 +812,7 @@ void FillImageEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
 }
 
 void FillGpuEmptyRect(int x1,int x2,int y1,int y2,u32 color,int screen){
+	RBswap(&color);
 	if (x1 > x2){
 	int temp_x = x1;
 	x1 = x2;
@@ -1154,6 +1160,7 @@ void DrawImageLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 
 void DrawGpuLine(int x0, int y0, int x1, int y1, u32 color, int screen)
 {
+	RBswap(&color);
     int dy = y1 - y0;
     int dx = x1 - x0;
     int stepx, stepy;
@@ -1165,7 +1172,7 @@ void DrawGpuLine(int x0, int y0, int x1, int y1, u32 color, int screen)
    
     y0 *= 1;
     y1 *= 1;
-    DrawImagePixel(x0, y0, color, (Bitmap*)screen);
+    sf2d_set_pixel(((gpu_text*)screen)->tex,x0, y0, color);
     if (dx > dy) {
         int fraction = dy - (dx >> 1);
         while (x0 != x1) {

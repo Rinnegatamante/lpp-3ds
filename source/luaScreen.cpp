@@ -533,8 +533,10 @@ static int lua_pixel(lua_State *L){
 		if ((screen > 1) && (((Bitmap*)screen)->magic != 0x4C494D47) && (((gpu_text*)screen)->magic != 0x4C545854)) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (screen > 1){
-		if (((gpu_text*)screen)->magic == 0x4C545854) sf2d_set_pixel(((gpu_text*)screen)->tex,x,y,color);
-		else if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
+		if (((gpu_text*)screen)->magic == 0x4C545854){
+			RBswap(&color);
+			sf2d_set_pixel(((gpu_text*)screen)->tex,x,y,color);
+		}else if (((Bitmap*)screen)->bitperpixel == 32) Draw32bppImagePixel(x,y,color,(Bitmap*)screen);
 		else if (alpha == 255) DrawImagePixel(x,y,color,(Bitmap*)screen);
 		else DrawAlphaImagePixel(x,y,color,(Bitmap*)screen);
 	}else{

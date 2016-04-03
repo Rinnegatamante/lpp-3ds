@@ -91,6 +91,9 @@ void int2float(u32 color, float* r, float* g, float* b, float* a);
 void float2int(color* base, u32* result);
 u32 ARGB2RGBA(u32 color);
 
+// Miscellaneous images utilities
+void RBswap(u32* color);
+
 // Image to Texture conversion utilities
 u32 get_morton_offset(u32 x, u32 y, u32 bytes_per_pixel);
 u32 morton_interleave(u32 x, u32 y);

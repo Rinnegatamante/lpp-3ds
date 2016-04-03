@@ -113,6 +113,13 @@ u32 ARGB2RGBA(u32 color){
 	return a | (b << 8) | (g << 16) | (r << 24);
 }
 
+void RBswap(u32* color){
+	u8* ptr = (u8*)color;
+	u8 swap = ptr[0];
+	ptr[0] = ptr[2];
+	ptr[2] = swap;
+}
+
 // Grabbed from Citra Emulator (citra/src/video_core/utils.h)
 u32 morton_interleave(u32 x, u32 y)
 {
