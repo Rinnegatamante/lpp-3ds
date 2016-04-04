@@ -1193,7 +1193,7 @@ static int lua_openogg(lua_State *L)
 	songFile->samplerate = my_info->rate;
 	songFile->big_endian = false;
 	songFile->encoding = CSND_ENCODING_VORBIS;
-	songFile->size = ov_time_total(vf,-1) * (my_info->rate<<1);
+	songFile->size = ov_pcm_total(vf,-1)<<my_info->channels;
 	songFile->startRead = 0;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
@@ -1613,7 +1613,7 @@ static int lua_play(lua_State *L)
 		ch = 0;
 		while (audioChannels[ch]){
 			ch++;
-			if (ch > 32) return luaL_error(L, "audio device is busy");
+			if (ch >= 24) return luaL_error(L, "audio device is busy");
 		}
 		audioChannels[ch] = true;
 	}

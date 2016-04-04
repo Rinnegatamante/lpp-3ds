@@ -113,9 +113,9 @@ int main(int argc, char **argv)
 	// Init Audio-Device
 	int i = 0;
 	for (i=0;i < 32; i++){
-		audioChannels[i] = false;
-		if (!isNinjhax2 && (i < 0x08))  audioChannels[i] = true;
-		else if (csndAccess && (i < 0x08)) audioChannels[i] = true;
+		if (csndAccess && (i < 0x08)) audioChannels[i] = true;
+		else if ((!csndAccess) && i >= 24) audioChannels[i] = true;
+		else audioChannels[i] = false;
 	}
 	
 	// Set main script
