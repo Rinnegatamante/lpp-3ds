@@ -457,7 +457,7 @@ static int lua_startJPGV(lua_State *L){
 		}
 		vorbis_info* my_info = ov_info(vf,-1);
 		src->samplerate = my_info->rate;
-		src->real_audio_size = ov_time_total(vf,-1) * (my_info->rate<<1);
+		src->real_audio_size = ov_pcm_total(vf,-1)<<my_info->channels;
 		src->bytepersample = 2;
 		
 		// Decoding OGG buffer
