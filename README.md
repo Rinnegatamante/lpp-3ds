@@ -113,6 +113,6 @@ Lua Player Plus 3DS supports different flags to enables some features:<br>
 * Sean Barrett for stb_truetype
 * Jean-loup Gailly and Mark Adler for zlib
 * Everyone involved in Brahma developing
-* Everyone involved in libSu developing
+* aliaspider for svchax
 * Misledz for the Lua Player Plus 3DS logo
 * Special thanks to Aurelio and ihaveamac for testing interpreter features
