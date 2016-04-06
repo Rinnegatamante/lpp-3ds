@@ -61,22 +61,23 @@ Official support board: http://rinnegatamante.it/board/forumdisplay.php?fid=12
 Here are some 3DS homebrews made using Lua Player Plus 3DS:
 
 ##### Games
-* [Labyrinth 3D](http://gbatemp.net/threads/re-release-labyrinth-3d.409007/)
+* [Labyrinth 3D](https://rinnegatamante.it/board/showthread.php?tid=18)
 * [Blackjack 3DS](http://gbatemp.net/threads/release-blackjack-3ds.398776/)
-* [Asteroids 3D](https://gbatemp.net/threads/release-asteroids-3d.385600/)
-* [PixelRoad](http://gbatemp.net/threads/pixelroad-a-stupid-game-hb-to-test-lpp.375292/)
-* [3DSudoku](http://gbatemp.net/threads/release-3dsudoku-sudoku-game-for-3ds.388253/)
-* [WANT3D](http://gbatemp.net/threads/release-want3d.398822/)
-* [4Rows](https://gbatemp.net/threads/release-4rows.384352/)
-* [3DSHangman](https://gbatemp.net/threads/release-3dshangman.379285/)
-* [3DS Briscola](http://gbatemp.net/threads/3ds-briscola-briscola-card-game-for-3ds.376901/)
+* [Asteroids 3D](https://rinnegatamante.it/board/showthread.php?tid=25)
+* [PixelRoad](https://rinnegatamante.it/board/showthread.php?tid=11)
+* [3DSudoku](https://rinnegatamante.it/board/showthread.php?tid=19)
+* [WANT3D](http://rinnegatamante.it/board/showthread.php?tid=23)
+* [4Rows](https://rinnegatamante.it/board/showthread.php?tid=32)
+* [3DSHangman](https://rinnegatamante.it/board/showthread.php?tid=33)
+* [3DS Briscola](https://rinnegatamante.it/board/showthread.php?tid=17)
 * [EUCLIOD](http://gbatemp.net/threads/eucliod-a-homebrew-bullet-hell-for-the-3ds.419553/)
+* [RPS 3D](https://rinnegatamante.it/board/showthread.php?tid=43)
 
 ##### Utilities
-* [CHMM2](http://gbatemp.net/threads/release-chmm2-custom-home-menu-manager-2.397543/)
-* [Sunshell](http://gbatemp.net/threads/release-sunshell-a-powerfull-shell-for-3ds.382483/)
-* [ORGANIZ3D](http://gbatemp.net/threads/release-organiz3d-filebrowser-for-3ds.377783/)
-* [NASA](http://gbatemp.net/threads/release-nasa-universal-cia-manager-for-fw-4-1-10-3.409806/)
+* [CHMM2](https://rinnegatamante.it/board/showthread.php?tid=9)
+* [Sunshell](https://rinnegatamante.it/board/showthread.php?tid=8)
+* [ORGANIZ3D](https://rinnegatamante.it/board/showthread.php?tid=24)
+* [NASA](https://rinnegatamante.it/board/showthread.php?tid=16)
 * [Manga Reader](http://gbatemp.net/threads/release-manga-reader.399276/)
 * [Alarm Clock](http://gbatemp.net/threads/release-alarm-clock.397624/)
 * [SOON!](http://gbatemp.net/threads/soon-super-cool-installer-a-new-cool-legal-open-source-cia-installer.387268/)
@@ -85,11 +86,12 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [LiveScore 3DS](http://gbatemp.net/threads/release-livescore-3ds.414693/)
 * [Tinker](http://gbatemp.net/threads/tinker-shuffle-menuhax-theme-manager.407445/)
 * [MCIT](http://gbatemp.net/threads/release-miiverse-custom-image-tool.415505/)
-* [Video Channels Creator](http://gbatemp.net/threads/release-video-channels-creator-custom-cia-videos-for-everyone.415708/)
+* [Video Channels Creator](https://rinnegatamante.it/board/showthread.php?tid=10)
+* [BLEND3R](https://rinnegatamante.it/board/showthread.php?tid=26)
 
 ##### Engines & Interpreters
 * [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
-* [RayCast3D Engine](https://gbatemp.net/threads/w-i-p-lua-raycast3d-3d-game-engine-for-lpp-3ds.407381/)
+* [RayCast3D Engine](https://rinnegatamante.it/board/showthread.php?tid=5)
 * [Crimson Scripter](http://gbatemp.net/threads/crimson-scripter.415152/)
 
 # Compiling the source
