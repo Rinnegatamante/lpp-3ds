@@ -50,13 +50,22 @@ void ftp_init()
 	listenfd=-1;
 }
 
+int cmd_sock = -1;
+
 void ftp_exit()
 {
+	if (listenfd >= 0){
+		closesocket(listenfd);
+		listenfd = -1;
+	}
+	if (cmd_sock >= 0){
+		ftp_sendResponse(cmd_sock, 200, "bye bye");
+		closesocket(cmd_sock);
+		cmd_sock = -1;
+	}
 	socExit();
 	free(ftp_mem);
 }
-
-int cmd_sock = -1;
 
 int ftp_openCommandChannel()
 {
