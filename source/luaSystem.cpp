@@ -1264,6 +1264,8 @@ static int lua_listCia(lua_State *L){
 	AM_GetTitleCount(MEDIATYPE_SD, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
 	AM_GetTitleIdList(MEDIATYPE_SD, cia_nums, (u64*)TitleIDs);
+	AM_TitleEntry* entries = (AM_TitleEntry*)malloc(sizeof(AM_TitleEntry)*cia_nums);
+	AM_ListTitles(MEDIATYPE_SD, cia_nums, (u64*)TitleIDs, entries);
 	u32 i = 1;
 	lua_newtable(L);
 	while (i <= cia_nums){
@@ -1287,6 +1289,12 @@ static int lua_listCia(lua_State *L){
 		lua_pushstring(L, "access_id");
 		lua_pushinteger(L, i);
 		lua_settable(L, -3);
+		lua_pushstring(L, "version");
+		lua_pushinteger(L, entries[i-1].version);
+		lua_settable(L, -3);
+		lua_pushstring(L, "size");
+		lua_pushinteger(L, entries[i-1].size);
+		lua_settable(L, -3);
 		lua_pushstring(L, "category");
 		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushinteger(L, 4);
 		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushinteger(L, 1);
@@ -1298,10 +1306,13 @@ static int lua_listCia(lua_State *L){
 		i++;
 	}
 	free(TitleIDs);
+	free(entries);
 	u32 z = 1;
 	AM_GetTitleCount(MEDIATYPE_NAND, &cia_nums);
 	TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
 	AM_GetTitleIdList(MEDIATYPE_NAND,cia_nums,(u64*)TitleIDs);
+	entries = (AM_TitleEntry*)malloc(sizeof(AM_TitleEntry)*cia_nums);
+	AM_ListTitles(MEDIATYPE_NAND, cia_nums, (u64*)TitleIDs, entries);
 	while (z <= cia_nums){
 		lua_pushinteger(L, i);
 		lua_newtable(L);
@@ -1323,6 +1334,12 @@ static int lua_listCia(lua_State *L){
 		lua_pushstring(L, "access_id");
 		lua_pushinteger(L, z);
 		lua_settable(L, -3);
+		lua_pushstring(L, "version");
+		lua_pushinteger(L, entries[i-1].version);
+		lua_settable(L, -3);
+		lua_pushstring(L, "size");
+		lua_pushinteger(L, entries[i-1].size);
+		lua_settable(L, -3);
 		lua_pushstring(L, "category");
 		if(((TitleIDs[i-1].category) & 0x8000) == 0x8000) lua_pushinteger(L, 4);
 		else if (((TitleIDs[i-1].category) & 0x10) == 0x10) lua_pushinteger(L, 1);
@@ -1335,6 +1352,7 @@ static int lua_listCia(lua_State *L){
 		z++;
 	}
 	free(TitleIDs);
+	free(entries);
 	amExit();
 	return 1;
 }
