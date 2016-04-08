@@ -153,7 +153,7 @@ int ftp_frame(int s)
 {
 	int cmd_sock_2=accept(listenfd, (struct sockaddr*)NULL, NULL);
 	if (cmd_sock_2 >= 0){ // TODO: A proper implementation with poll could be much more better
-		sprint(shared_ftp,"received connection ! %dgreeting...",connfd);
+		sprint(shared_ftp,"received connection ! %dgreeting...",cmd_sock_2);
 		ftp_sendResponse(cmd_sock_2, 200, "hello");
 		char buffer[512];
 		memset(buffer, 0, 512);
@@ -161,7 +161,7 @@ int ftp_frame(int s)
 		ftp_processCommand(cmd_sock_2,buffer);
 		closesocket(cmd_sock);
 		cmd_sock = cmd_sock_2;
-		return 0;
+		s = cmd_sock;
 	}
 	char buffer[512];
 	memset(buffer, 0, 512);
