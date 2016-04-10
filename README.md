@@ -40,6 +40,7 @@ Official support board: http://rinnegatamante.it/board/forumdisplay.php?fid=12
 * Built-in Mail Sender system
 * Complete sockets system support
 * Built-in debug FTP server
+* SSL connections support
 
 ##### System
 

@@ -43,6 +43,7 @@
 #include <fcntl.h>
 #include "include/luaplayer.h"
 #include "include/ftp/ftp.h"
+#include "include/utils.h"
 
 extern bool ftp_state;
 static int connfd;
@@ -50,9 +51,12 @@ typedef struct
 {
 	u32 magic;
 	int sock;
-	struct sockaddr_in addrTo;
 	bool serverSocket;
+	sslcContext sslc_context;
+	bool isSSL;
 } Socket;
+
+u32 RootCertChain_contexthandle=0;
 
 static int lua_checkFTPcommand(lua_State *L){
 	int argc = lua_gettop(L);
@@ -282,10 +286,22 @@ static int lua_initSock(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
+	
+	// Init default socketing
 	ftp_init();
 	ftp_state = true;
 	sprintf(shared_ftp,"Waiting for connection...");
 	connfd = -1;
+	
+	// Init SSL support
+	sslcInit(0);
+	sslcCreateRootCertChain(&RootCertChain_contexthandle);
+	
+	// Add default certificates
+	for (int i=0x7;i<0xC;i++){
+		sslcRootCertChainAddDefaultCert(RootCertChain_contexthandle, (SSLC_DefaultRootCert)i, NULL);
+	}
+	
 	return 0;
 }
 
@@ -307,11 +323,12 @@ static int lua_createServerSocket(lua_State *L)
 
 	int rcvbuf = 32768;
 	setsockopt(my_socket->sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
-	my_socket->addrTo.sin_family = AF_INET;
-	my_socket->addrTo.sin_port = htons(port);
-	my_socket->addrTo.sin_addr.s_addr = 0;
+	struct sockaddr_in addrTo;
+	addrTo.sin_family = AF_INET;
+	addrTo.sin_port = htons(port);
+	addrTo.sin_addr.s_addr = 0;
 
-	int err = bind(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
+	int err = bind(my_socket->sock, (struct sockaddr*)&addrTo, sizeof(addrTo));
 	#ifndef SKIP_ERROR_HANDLING
 		if (err != 0) return luaL_error(L, "bind error.");
 	#endif
@@ -334,8 +351,15 @@ static int lua_shutSock(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
+	
+	// Closing default socketing
 	ftp_exit();
 	ftp_state = false;
+	
+	// Closing SSL
+	sslcDestroyRootCertChain(RootCertChain_contexthandle);
+	sslcExit();
+	
 	return 0;
 }
 
@@ -355,7 +379,9 @@ static int lua_recv(lua_State *L)
 	#endif
 
 	char* data = (char*)malloc(size);
-	int count = recv(my_socket->sock, data, size, 0);
+	int count = 0;
+	if (my_socket->isSSL) count = sslcRead(&my_socket->sslc_context, data, size, false);
+	else count = recv(my_socket->sock, data, size, 0);
 	if (count > 0) lua_pushlstring(L, data, count);
 	else lua_pushstring(L, "");
 	return 1;
@@ -378,7 +404,9 @@ static int lua_send(lua_State *L)
 		if (!text) return luaL_error(L, "Socket.send() expected a string.");
 	#endif
 	
-	int result = sendto(my_socket->sock, text, size, 0, NULL, 0);
+	int result = 0;
+	if (my_socket->isSSL) result = sslcWrite(&my_socket->sslc_context, text, size);
+	else result = sendto(my_socket->sock, text, size, 0, NULL, 0);
 	lua_pushinteger(L, result);
 	return 1;
 }
@@ -387,33 +415,118 @@ static int lua_connect(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+		if (argc != 2 && argc != 3)  return luaL_error(L, "wrong number of arguments");
 	#endif
 	
+	// Getting arguments
+	char *host = (char*)luaL_checkstring(L, 1);
+	int port = luaL_checkinteger(L, 2);
+	bool isSSL = false;
+	if (argc == 3) isSSL = lua_toboolean(L,3);
+	char port_str[8];
+	sprintf(port_str,"%i",port);
+	
+	// Allocating Socket memblock
 	Socket* my_socket = (Socket*) malloc(sizeof(Socket));
 	my_socket->serverSocket = false;
 	my_socket->magic = 0xDEADDEAD;
+	my_socket->isSSL = isSSL;
 	
-	const char *host = luaL_checkstring(L, 1);
-	int port = luaL_checkinteger(L, 2);
-	my_socket->addrTo.sin_family = AF_INET;
-	my_socket->addrTo.sin_port = htons(port);
-	my_socket->addrTo.sin_addr.s_addr = inet_addr(host);
-
+	// Creating socket
 	my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
 	#ifndef SKIP_ERROR_HANDLING
-		if (my_socket->sock < 0) return luaL_error(L, "Failed creating socket.");
+		if (my_socket->sock < 0){
+			free(my_socket);
+			return luaL_error(L, "Failed creating socket.");
+		}
 	#endif
-	fcntl(my_socket->sock, F_SETFL, O_NONBLOCK);
-
-	int err = connect(my_socket->sock, (struct sockaddr*)&my_socket->addrTo, sizeof(my_socket->addrTo));
-	if (err < 0 ){
-		free(my_socket);
-		return 0;
+	
+	// Resolving host
+	struct addrinfo hints;
+	struct addrinfo *resaddr = NULL, *resaddr_cur;	
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	getaddrinfo(host, port_str, &hints, &resaddr);
+	
+	// Connecting to the server
+	for(resaddr_cur = resaddr; resaddr_cur!=NULL; resaddr_cur = resaddr_cur->ai_next){
+		if(connect(my_socket->sock, resaddr_cur->ai_addr, resaddr_cur->ai_addrlen)==0)break;
 	}
+	
+	freeaddrinfo(resaddr);
+	#ifndef SKIP_ERROR_HANDLING
+		if(resaddr_cur==NULL){
+			closesocket(my_socket->sock);
+			free(my_socket);
+			return luaL_error(L, "Failed connecting to the server.");
+		}
+	#endif
+	
+	// Opening SSL connection
+	if (isSSL){
+		Result ret = sslcCreateContext(&my_socket->sslc_context, my_socket->sock, SSLCOPT_Default, host);
+		#ifndef SKIP_ERROR_HANDLING
+			if(R_FAILED(ret)){
+				closesocket(my_socket->sock);
+				free(my_socket);
+				return luaL_error(L, "Failed creating SSL context.");
+			}
+		#endif
+		sslcContextSetRootCertChain(&my_socket->sslc_context, RootCertChain_contexthandle);
+		ret = sslcStartConnection(&my_socket->sslc_context, NULL, NULL);
+		#ifndef SKIP_ERROR_HANDLING
+			if(R_FAILED(ret)){
+				closesocket(my_socket->sock);
+				free(my_socket);
+				return luaL_error(L, "SSL connection failed.");
+			}
+		#endif
+	}
+	
+	// Setting socket options
+	int sock_buffersize = 32768;
+	setsockopt(my_socket->sock, SOL_SOCKET, SO_RCVBUF, &sock_buffersize, sizeof(sock_buffersize));
+	int flags = fcntl(my_socket->sock, F_GETFL, 0);
+	fcntl(my_socket->sock, F_SETFL, flags | O_NONBLOCK);
 	
 	lua_pushinteger(L, (u32)my_socket);
 	return 1;
+}
+
+static int lua_addCert(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1)  return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *text = luaL_checkstring(L, 1);
+	fileStream fileHandle;
+	if (strncmp("romfs:/",text,7) == 0){
+		fileHandle.isRomfs = true;
+		FILE* handle = fopen(text,"r");
+		#ifndef SKIP_ERROR_HANDLING
+			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		#endif
+		fileHandle.handle = (u32)handle;
+	}else{
+		fileHandle.isRomfs = false;
+		FS_Path filePath = fsMakePath(PATH_ASCII, text);
+		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
+		#ifndef SKIP_ERROR_HANDLING
+			if (ret) return luaL_error(L, "file doesn't exist.");
+		#endif
+	}
+	u64 cert_size;
+	u32 bytesRead;
+	FS_GetSize(&fileHandle, &cert_size);
+	u8* cert = (u8*)malloc(cert_size);
+	FS_Read(&fileHandle, &bytesRead, 0, cert, cert_size);
+	sslcAddTrustedRootCA(RootCertChain_contexthandle, cert, cert_size, NULL);
+	free(cert);
+	FS_Close(&fileHandle);
+	return 0;
 }
 
 static int lua_accept(lua_State *L)
@@ -438,7 +551,6 @@ static int lua_accept(lua_State *L)
 	Socket* incomingSocket = (Socket*) malloc(sizeof(Socket));
 	incomingSocket->serverSocket = 0;
 	incomingSocket->sock = sockClient;
-	incomingSocket->addrTo = addrAccept;
 	incomingSocket->magic = 0xDEADDEAD;
 	int rcvbuf = 32768;
 	setsockopt(incomingSocket->sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
@@ -458,6 +570,8 @@ static int lua_closeSock(lua_State *L)
 	#ifndef SKIP_ERROR_HANDLING
 		if (my_socket->magic != 0xDEADDEAD) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
+	
+	if (my_socket->isSSL) sslcDestroyContext(&my_socket->sslc_context);
 	closesocket(my_socket->sock);
 	free(my_socket);
 	return 0;
@@ -473,6 +587,7 @@ static const luaL_Reg Network_functions[] = {
   {"downloadFile",			lua_download},
   {"requestString",			lua_downstring},
   {"sendMail",				lua_sendmail},
+  {"addCertificate",		lua_addCert},
   {0, 0}
 };
 
