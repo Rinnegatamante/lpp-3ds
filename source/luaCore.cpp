@@ -30,39 +30,149 @@
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
-
-#ifndef __LUAPLAYER_H
-#define __LUAPLAYER_H
-
 #include <stdlib.h>
-//#include <tdefs.h> //Not needed for compilation via Ubuntu (complains it's missing)
-#include "lua/lua.hpp"
+#include <string.h>
+#include <unistd.h>
+#include <3ds.h>
+#include "include/luaplayer.h"
+#include "include/utils.h"
+#include "include/syscalls_norm.h"
 
-extern void luaC_collectgarbage (lua_State *L);
+// Different kind of syscalls
+typedef Result (*func_1x)();
+typedef Result (*func_2x_type1)(u8 arg, u32 arg2);
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+// Different kind of databases for parser optimization
+typedef struct
+{
+	char* name;
+	func_1x callback;
+}func_1x_db;
+typedef struct
+{
+	char* name;
+	func_2x_type1 callback_type1; // argsize 5 (1+4)
+}func_3x_db;
 
-const char *runScript(const char* script, bool isStringBuffer);
-void luaC_collectgarbage (lua_State *L);
+// No args syscalls
+func_1x_db db_1x[]=
+{
+	{"amInit", amInit}, // 0
+	{"amExit", amExit_norm}, // 1
+};
 
-void luaScreen_init(lua_State *L);
-void luaControls_init(lua_State *L);
-void luaSystem_init(lua_State *L);
-void luaTimer_init(lua_State *L);
-void luaSound_init(lua_State *L);
-void luaVideo_init(lua_State *L);
-void luaGraphics_init(lua_State *L);
-void luaNetwork_init(lua_State *L);
-void luaCamera_init(lua_State *L);
-void luaRender_init(lua_State *L);
-void luaMic_init(lua_State *L);
-void luaCore_init(lua_State *L);
-void stackDump (lua_State *L);
+// Two args syscalls
+func_3x_db db_3x[]=
+{
+	// args size = 5 (1+4)
+	{"AM_FinishCiaInstall", (func_2x_type1)AM_FinishCiaInstall}, // 0
+	{"AM_StartCiaInstall", (func_2x_type1)AM_StartCiaInstall}, // 1
+};
 
-extern bool GW_MODE;
-extern bool CIA_MODE;
-extern bool isCSND;
-extern char cur_dir[256];
+static int lua_service(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	const char* srv = luaL_checkstring(L,1);
+	Handle tmp;
+	srvGetServiceHandle(&tmp, srv);
+	lua_pushboolean(L, tmp);
+	return 1;
+}
 
-#endif
+static int lua_execall(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc > 3 || argc < 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	const char* call = luaL_checkstring(L,1);
+	
+	// Parsing known syscalls
+	if (argc == 1){
+		u32 known_syscalls = sizeof(db_1x) / sizeof(func_1x_db);
+		for (int i=0;i<known_syscalls;i++){
+			if (strcmp(db_1x[i].name,call) == 0){
+				lua_pushinteger(L, db_1x[i].callback());
+				return 1;
+			}
+		}
+	}else if (argc == 3){
+		u32 known_syscalls = sizeof(db_3x) / sizeof(func_3x_db);
+		for (int i=0;i<known_syscalls;i++){
+			if (strcmp(db_3x[i].name,call) == 0){
+				
+				// Parsing arguments according to syscall
+				if (i <= 1){
+					u8 arg1 = luaL_checkinteger(L, 2);
+					u32 arg2 = luaL_checkinteger(L, 3);
+					lua_pushinteger(L, db_3x[i].callback_type1(arg1,arg2));
+				}
+				return 1;
+			}
+		}
+	}
+	return luaL_error(L, "unknown syscall.");
+}
+
+static int lua_readword(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u32* word = (u32*)luaL_checkinteger(L, 1);
+	lua_pushinteger(L, *word);
+	return 1;
+}
+
+static int lua_getfh(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	Handle hdl = luaL_checkinteger(L, 1);
+	fileStream* result = (fileStream*)malloc(sizeof(fileStream));
+	result->isRomfs = false;
+	result->handle = (u32)hdl;
+	result->magic = 0xBEEFDEAD;
+	lua_pushinteger(L,(u32)result);
+	return 1;
+}
+
+static int lua_alloc(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	u32 size = (u32)luaL_checkinteger(L, 1);
+	u8* memblock = (u8*)malloc(size);
+	lua_pushinteger(L, (u32)memblock);
+	return 1;
+}
+
+static int lua_free(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	void* offset = (void*)luaL_checkinteger(L, 1);
+	free(offset);
+	return 0;
+}
+
+//Register our Core Functions
+static const luaL_Reg Core_functions[] = {
+	{"checkService",		lua_service},
+	{"execCall",			lua_execall},
+	{"getHandle",			lua_getfh},
+	{"readWord",			lua_readword},
+	{"free",				lua_free},
+	{"alloc",				lua_alloc},
+	{0, 0}
+};
+
+void luaCore_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Core_functions, 0);
+	lua_setglobal(L, "Core");
+}
