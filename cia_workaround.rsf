@@ -140,7 +140,7 @@ AccessControlInfo:
    - dlp:FKCL
    - dlp:SRVR
    - dsp::DSP
-   - frd:u
+   - ssl:C
    - fs:USER
    - gsp::Gpu
    - hid:USER
