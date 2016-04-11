@@ -45,5 +45,6 @@ end
 Core.execCall("amExit")
 
 -- Freeing memory and exiting
+io.close(content)
 Core.free(cia_handle)
 System.exit()
