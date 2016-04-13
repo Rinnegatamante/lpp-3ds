@@ -99,7 +99,6 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 
 The repository will provide you a full set of all needed library. Take in mind that a lot of them are modified versions of the original ones so if you want to update them, take a look at [this repository](https://github.com/Rinnegatamante/lpp-3ds_libraries) where you can find sourcecodes of every pre-builded library used in this repository. Also take in mind that **libkhax** includes also **libSu** sourcecode. Last but not least, please note that **libjpeg.a** file is a standard compilation of libjpeg-turbo.<br><br>
 Lua Player Plus 3DS supports different flags to enables some features:<br>
-**-DUSE_MEMCHUNKHAX2** enables memchunkhax2 usage at startup for firmware between 9.3 and 10.3.<br>
 **-DCITRA3DS_COMPATIBLE** removes romFs support causing Citra3DS emulator crash.<br>
 **-DSKIP_ERROR_HANDLING** disables error handling for faster code execution (this is used for Unsafe version).<br>
 **-DFORCE_SD** forces interpreter to load main script from SD instead of romFs filesystem.<br>

@@ -42,7 +42,7 @@
 #include "include/ftp/ftp.h"
 #include "include/khax/khax.h"
 extern "C"{
-	#include "include/khax/libsvchax.h"
+	#include "include/khax/svchax.h"
 }
 #include "include/audio.h"
 
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 			isNinjhax2 = true;
 			#ifdef USE_MEMCHUNKHAX2
 				u32 fw_id = osGetKernelVersion();
-				if (fw_id >= SYSTEM_VERSION(2,48,3) && fw_id <= SYSTEM_VERSION(2,50,11)) haxInit();
+				if (fw_id >= SYSTEM_VERSION(2,48,3) && fw_id <= SYSTEM_VERSION(2,50,11)) svchax_init(true);
 			#endif
 		}
 	}
