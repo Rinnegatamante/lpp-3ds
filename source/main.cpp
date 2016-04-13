@@ -65,7 +65,8 @@ int main(int argc, char **argv)
 	gfxInitDefault();
 	acInit();
 	cfguInit();
-	httpcInit();
+	sslcInit(0);
+	httpcInit(0);
 	ptmuInit();
 	hidInit();
 	fsInit();
@@ -255,6 +256,7 @@ int main(int argc, char **argv)
 	hbExit();
 	acExit();
 	httpcExit();
+	sslcExit();
 	cfguExit();
 	gfxExit();
 	aptExit();

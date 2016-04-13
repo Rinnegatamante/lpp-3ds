@@ -119,7 +119,10 @@ static int lua_download(lua_State *L){
 	const char* file = luaL_checkstring(L,2);
 	httpcContext context;
 	u32 statuscode=0;
-	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	Result ret = httpcOpenContext(&context, HTTPC_METHOD_GET, (char*)url , 0);
+	for (int i=0x7;i<0xC;i++){
+		httpcAddDefaultCert(&context, (SSLC_DefaultRootCert)i);
+	}
 	#ifndef SKIP_ERROR_HANDLING
 		if(ret==0){
 	#endif
@@ -161,7 +164,10 @@ static int lua_downstring(lua_State *L){
 	#endif
 	const char* url = luaL_checkstring(L,1);
 	httpcContext context;
-	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	Result ret = httpcOpenContext(&context, HTTPC_METHOD_GET, (char*)url , 0);
+	for (int i=0x7;i<0xC;i++){
+		httpcAddDefaultCert(&context, (SSLC_DefaultRootCert)i);
+	}
 	#ifndef SKIP_ERROR_HANDLING
 		if(ret==0){
 	#endif
@@ -244,7 +250,7 @@ static int lua_sendmail(lua_State *L){ //BETA func
 	}
 	url_p[0] = 0;
 	httpcContext context;
-	Result ret = httpcOpenContext(&context, (char*)url , 0);
+	Result ret = httpcOpenContext(&context, HTTPC_METHOD_GET, (char*)url , 0);
 	#ifndef SKIP_ERROR_HANDLING
 		if(ret==0){
 	#endif
@@ -294,7 +300,6 @@ static int lua_initSock(lua_State *L)
 	connfd = -1;
 	
 	// Init SSL support
-	sslcInit(0);
 	sslcCreateRootCertChain(&RootCertChain_contexthandle);
 	
 	// Add default certificates
@@ -358,7 +363,6 @@ static int lua_shutSock(lua_State *L)
 	
 	// Closing SSL
 	sslcDestroyRootCertChain(RootCertChain_contexthandle);
-	sslcExit();
 	
 	return 0;
 }
