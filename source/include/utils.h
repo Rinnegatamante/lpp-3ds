@@ -1,4 +1,5 @@
 #include "ttf/Font.hpp"
+#include "lua/lua.hpp"
 #include <citro3d.h>
 
 // Old FS_dirent struct
@@ -97,3 +98,6 @@ void RBswap(u32* color);
 // Image to Texture conversion utilities
 u32 get_morton_offset(u32 x, u32 y, u32 bytes_per_pixel);
 u32 morton_interleave(u32 x, u32 y);
+
+// Utilities used by Core module for arguments parsing
+void* luaL_checkbuffer(lua_State *L, int argv);
