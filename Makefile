@@ -158,6 +158,11 @@ $(OUTPUT).elf	:	$(OFILES)
 	@echo $(notdir $<)
 	@$(bin2o)
 
+%.png.o	:	%.png
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+
 #---------------------------------------------------------------------------------
 # rules for assembling GPU shaders
 #---------------------------------------------------------------------------------
@@ -194,7 +199,7 @@ endef
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	#@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin Use this if you have only Python 3.x
-	@C:\Python31\Python.exe $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin
+	@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin
 	@bin2s ../$(notdir $<).shbin | $(PREFIX)as -o $@
 	@echo "extern const u8" `(echo $(notdir $<).shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(notdir $<).shbin | tr . _)`.h
 	@echo "extern const u8" `(echo $(notdir $<).shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(notdir $<).shbin | tr . _)`.h
