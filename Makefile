@@ -48,7 +48,7 @@ CFLAGS	:=	-g -O2 -mword-relocations \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DLODEPNG_NO_COMPILE_ENCODER -DLUA_C89_NUMBERS -DLIBCTRU_NO_DEPRECATION
+CFLAGS	+=	$(INCLUDE) $(EXT_FLAGS) -DARM11 -D_3DS -DLODEPNG_NO_COMPILE_ENCODER -DLUA_C89_NUMBERS -DLIBCTRU_NO_DEPRECATION
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive  -Wno-write-strings
 
