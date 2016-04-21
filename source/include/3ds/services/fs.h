@@ -38,6 +38,15 @@ typedef enum
 	MEDIATYPE_GAME_CARD = 2, ///< Game card.
 } FS_MediaType;
 
+/// System media types.
+typedef enum
+{
+	SYSTEM_MEDIATYPE_CTR_NAND  = 0, ///< CTR NAND.
+	SYSTEM_MEDIATYPE_TWL_NAND  = 1, ///< TWL NAND.
+	SYSTEM_MEDIATYPE_SD        = 2, ///< SD card.
+	SYSTEM_MEDIATYPE_TWL_PHOTO = 3, ///< TWL Photo.
+} FS_SystemMediaType;
+
 /// Archive IDs.
 typedef enum
 {
@@ -59,6 +68,7 @@ typedef enum
 	ARCHIVE_SAVEDATA_AND_CONTENT2    = 0x2345678E, ///< User save data and ExeFS/RomFS archive (only ExeFS for fs:LDR).
 	ARCHIVE_NAND_CTR_FS              = 0x567890AB, ///< NAND CTR FS archive.
 	ARCHIVE_TWL_PHOTO                = 0x567890AC, ///< TWL PHOTO archive.
+	ARCHIVE_TWL_SOUND                = 0x567890AD, ///< TWL SOUND archive.
 	ARCHIVE_NAND_TWL_FS              = 0x567890AE, ///< NAND TWL FS archive.
 	ARCHIVE_NAND_W_FS                = 0x567890AF, ///< NAND W FS archive.
 	ARCHIVE_GAMECARD_SAVEDATA        = 0x567890B1, ///< Game card save data archive.
@@ -689,9 +699,9 @@ Result FSUSER_GetSdmcCtrRootPath(u8* out, u32 length);
 /**
  * @brief Gets an archive's resource information.
  * @param archiveResource Pointer to output the archive resource information to.
- * @param mediaType Media type to check.
+ * @param mediaType System media type to check.
  */
-Result FSUSER_GetArchiveResource(FS_ArchiveResource* archiveResource, FS_MediaType mediaType);
+Result FSUSER_GetArchiveResource(FS_ArchiveResource* archiveResource, FS_SystemMediaType mediaType);
 
 /**
  * @brief Exports the integrity verification seed.
@@ -853,7 +863,7 @@ Result FSUSER_SwitchCleanupInvalidSaveData(bool enable);
  * @param idsSize Size of the IDs buffer.
  * @param ids Pointer to output IDs to.
  */
-Result FSUSER_EnumerateSystemSaveData(u32* idsWritten, u32 idsSize, u64* ids);
+Result FSUSER_EnumerateSystemSaveData(u32* idsWritten, u32 idsSize, u32* ids);
 
 /**
  * @brief Initializes a FSUSER session with an SDK version.

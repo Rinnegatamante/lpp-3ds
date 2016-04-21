@@ -890,17 +890,17 @@ static int lua_readsmdh(lua_State *L){
 	FS_Read(&tmp, &bytesRead, 8, buffer, 128);
 	int i = 0;
 	while (i < 129){
-	if (buffer[i<<1] == 0) break;
-	else name[i] = buffer[i<<1];
-	i++;
+		if (buffer[i<<1] == 0) break;
+		else name[i] = buffer[i<<1];
+		i++;
 	}
 	name[i] = 0;
 	FS_Read(&tmp, &bytesRead, 392, buffer, 128);
 	i = 0;
 	while (i < 129){
-	if (buffer[i<<1] == 0) break;
-	else author[i] = buffer[i<<1];
-	i++;
+		if (buffer[i<<1] == 0) break;
+		else author[i] = buffer[i<<1];
+		i++;
 	}
 	author[i] = 0;
 	free(buffer);
@@ -909,9 +909,9 @@ static int lua_readsmdh(lua_State *L){
 	FS_Read(&tmp, &bytesRead, 136, buffer, 256);
 	i = 0;
 	while (i < 257){
-	if (buffer[i<<1] == 0) break;
-	else desc[i] = buffer[i<<1];
-	i++;
+		if (buffer[i<<1] == 0) break;
+		else desc[i] = buffer[i<<1];
+		i++;
 	}
 	desc[i] = 0;
 	free(buffer);
@@ -924,8 +924,8 @@ static int lua_readsmdh(lua_State *L){
 	FS_Read(&tmp, &bytesRead, 0x24C0, icon_buffer, 0x1200);
 	FS_Close(&tmp);
 	//convert RGB565 to RGB24
-		int x=0;
-		int y=0;
+	int x=0;
+	int y=0;
 	int tile_size = 16;
 	int tile_number = 1;
 	int extra_x = 0;
@@ -1238,7 +1238,7 @@ static int lua_installCia(lua_State *L){
 			free(cia_buffer);
 		}
 	}
-	AM_FinishCiaInstall(media, &ciaHandle);
+	AM_FinishCiaInstall(ciaHandle);
 	FS_Close(&tmp);
 	amExit();
 	return 0;
@@ -1261,11 +1261,12 @@ static int lua_listCia(lua_State *L){
 		AM_InitializeExternalTitleDatabase(false);
 	}
 	u32 cia_nums;
+	u32 titlesRead;
 	AM_GetTitleCount(MEDIATYPE_SD, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleIdList(MEDIATYPE_SD, cia_nums, (u64*)TitleIDs);
+	AM_GetTitleList(&titlesRead, MEDIATYPE_SD, cia_nums, (u64*)TitleIDs);
 	AM_TitleEntry* entries = (AM_TitleEntry*)malloc(sizeof(AM_TitleEntry)*cia_nums);
-	AM_ListTitles(MEDIATYPE_SD, cia_nums, (u64*)TitleIDs, entries);
+	AM_GetTitleInfo(MEDIATYPE_SD, cia_nums, (u64*)TitleIDs, entries);
 	u32 i = 1;
 	lua_newtable(L);
 	while (i <= cia_nums){
@@ -1310,9 +1311,9 @@ static int lua_listCia(lua_State *L){
 	u32 z = 1;
 	AM_GetTitleCount(MEDIATYPE_NAND, &cia_nums);
 	TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleIdList(MEDIATYPE_NAND,cia_nums,(u64*)TitleIDs);
+	AM_GetTitleList(&titlesRead,MEDIATYPE_NAND,cia_nums,(u64*)TitleIDs);
 	entries = (AM_TitleEntry*)malloc(sizeof(AM_TitleEntry)*cia_nums);
-	AM_ListTitles(MEDIATYPE_NAND, cia_nums, (u64*)TitleIDs, entries);
+	AM_GetTitleInfo(MEDIATYPE_NAND, cia_nums, (u64*)TitleIDs, entries);
 	while (z <= cia_nums){
 		lua_pushinteger(L, i);
 		lua_newtable(L);
@@ -1373,9 +1374,10 @@ static int lua_uninstallCia(lua_State *L){
 		AM_InitializeExternalTitleDatabase(false);
 	}
 	u32 cia_nums;
+	u32 titlesRead;
 	AM_GetTitleCount(media, &cia_nums);
 	TitleId* TitleIDs = (TitleId*)malloc(cia_nums * sizeof(TitleId));
-	AM_GetTitleIdList(media,cia_nums,(u64*)TitleIDs);
+	AM_GetTitleList(&titlesRead,media,cia_nums,(u64*)TitleIDs);
 	u64 id = TitleIDs[delete_id-1].uniqueid | ((u64)TitleIDs[delete_id-1].category << 32) | ((u64)TitleIDs[delete_id-1].platform << 48);
 	AM_DeleteAppTitle(media, id);
 	AM_DeleteTitle(media, id);
@@ -1401,8 +1403,7 @@ static int lua_ciainfo(lua_State *L){
 	#endif
 	AM_TitleEntry info;
 	amInit();
-	AM_GetCiaFileInfo(1, &info, fileHandle);
-	amExit();
+	AM_GetCiaFileInfo(MEDIATYPE_SD, &info, fileHandle);
 	FSFILE_Read(fileHandle, &bytesRead, 0x3A50, title, 16);
 	lua_newtable(L);
 	lua_newtable(L);
@@ -1418,6 +1419,96 @@ static int lua_ciainfo(lua_State *L){
 	lua_settable(L, -3);
 	lua_pushstring(L, "install_size");
 	lua_pushnumber(L, info.size);
+	lua_settable(L, -3);
+	lua_pushstring(L, "icon");
+	char* smdh_data = (char*)malloc(0x36C0);
+	if (R_SUCCEEDED(AM_GetCiaIcon((void*)smdh_data, fileHandle))){
+		char name[64];
+		char desc[128];
+		char author[64];
+		char* buffer = (char*)&smdh_data[8];
+		int i = 0;
+		while (i < 129){
+			if (buffer[i<<1] == 0) break;
+			else name[i] = buffer[i<<1];
+			i++;
+		}
+		name[i] = 0;
+		buffer = (char*)&smdh_data[392];
+		i = 0;
+		while (i < 129){
+			if (buffer[i<<1] == 0) break;
+			else author[i] = buffer[i<<1];
+			i++;
+		}
+		author[i] = 0;
+		buffer = (char*)&smdh_data[136];
+		i = 0;
+		while (i < 257){
+			if (buffer[i<<1] == 0) break;
+			else desc[i] = buffer[i<<1];
+			i++;
+		}
+		desc[i] = 0;
+		buffer = (char*)&smdh_data[0x24C0];
+		u16* icon_buffer = (u16*)buffer;
+		Bitmap* bitmap = (Bitmap*)malloc(sizeof(Bitmap));
+		bitmap->width = 48;
+		bitmap->height = 48;
+		bitmap->pixels = (u8*)malloc(6912);
+		bitmap->bitperpixel = 24;
+		
+		//convert RGB565 to RGB24
+		int x=0;
+		int y=0;
+		int tile_size = 16;
+		int tile_number = 1;
+		int extra_x = 0;
+		int extra_y = 0;
+		i=0;
+		int tile_x[16] = {0,1,0,1,2,3,2,3,0,1,0,1,2,3,2,3};
+		int tile_y[16] = {0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3};
+		while (tile_number < 37){
+			while (i < (tile_size)){
+				putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)<<6)] + extra_x, tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i]);
+				putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)<<6)] + extra_x, tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+16]);
+				putPixel565(bitmap->pixels, tile_x[i-((tile_number-1)<<6)] + extra_x, 4+tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+32]);
+				putPixel565(bitmap->pixels, 4+tile_x[i-((tile_number-1)<<6)] + extra_x, 4+tile_y[i-((tile_number-1)<<6)] + extra_y, icon_buffer[i+48]);
+				i++;
+			}
+			if (tile_number % 6 == 0){
+				extra_x = 0;
+				extra_y = extra_y + 8;
+			}else extra_x = extra_x + 8;
+			tile_number++;
+			tile_size = tile_size + 64;
+			i = i + 48;
+		}
+		bitmap->magic = 0x4C494D47;
+		lua_pushinteger(L, (u32)bitmap);
+		lua_settable(L, -3);
+		lua_pushstring(L, "name");
+		lua_pushstring(L, name);
+		lua_settable(L, -3);
+		lua_pushstring(L, "desc");
+		lua_pushstring(L, desc);
+		lua_settable(L, -3);
+		lua_pushstring(L, "author");
+		lua_pushstring(L, author);
+	}else{
+		lua_pushnil(L);
+		lua_settable(L, -3);
+		lua_pushstring(L, "name");
+		lua_pushnil(L);
+		lua_settable(L, -3);
+		lua_pushstring(L, "desc");
+		lua_pushnil(L);
+		lua_settable(L, -3);
+		lua_pushstring(L, "author");
+		lua_pushnil(L);
+	}
+	amExit();
+	free(smdh_data);
 	lua_settable(L, -3);
 	FSFILE_Close(fileHandle);
 	svcCloseHandle(fileHandle);
