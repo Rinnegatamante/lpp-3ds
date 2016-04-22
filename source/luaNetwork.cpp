@@ -388,6 +388,7 @@ static int lua_recv(lua_State *L)
 	else count = recv(my_socket->sock, data, size, 0);
 	if (count > 0) lua_pushlstring(L, data, count);
 	else lua_pushstring(L, "");
+	free(data);
 	return 1;
 }
 
