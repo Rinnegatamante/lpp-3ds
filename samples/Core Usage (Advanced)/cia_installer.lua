@@ -36,15 +36,16 @@ while i < file_size do
 end
 
 -- Launching FinishCiaInstall syscall with mediatype SDMC (0x01)
-ret = Core.execCall("AM_FinishCiaInstall", 0x01, cia_handle)
+ret = Core.execCall("AM_FinishCiaInstall", cia_handle)
 if not ret == 0 then
-	error("AM_StartCiaInstall returned an error: 0x" .. string.format("%X",ret))
+	error("AM_FinishCiaInstall returned an error: 0x" .. string.format("%X",ret))
 end
 
 -- Closing AM service
 Core.execCall("amExit")
 
 -- Freeing memory and exiting
+io.close(handle)
 io.close(content)
 Core.free(cia_handle)
 System.exit()
