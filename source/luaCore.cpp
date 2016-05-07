@@ -36,6 +36,7 @@
 #include <3ds.h>
 #include "include/luaplayer.h"
 #include "include/utils.h"
+#include "include/audio.h"
 #include "include/syscalls_norm.h"
 
 // Different kind of syscalls
@@ -264,11 +265,26 @@ static int lua_free2(lua_State *L){
 	return 0;
 }
 
+static int lua_getraw(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	wav* block = (wav*)luaL_checkinteger(L, 1);
+	if (block->magic == 0x4C534E44){
+		lua_pushinteger(L, (u32)block->audiobuf);
+		if (block->audiobuf2 != NULL) lua_pushinteger(L, (u32)block->audiobuf2);
+		else lua_pushnil(L);
+	}else return luaL_error(L, "unsupported memory block type.");
+	return 2;
+}
+
 //Register our Core Functions
 static const luaL_Reg Core_functions[] = {
 	{"checkService",		lua_service},
 	{"execCall",			lua_execall},
 	{"getHandle",			lua_getfh},
+	{"getRawData",			lua_getraw},
 	{"readWord",			lua_readword},
 	{"storeWord",			lua_storeword},
 	{"free",				lua_free},
