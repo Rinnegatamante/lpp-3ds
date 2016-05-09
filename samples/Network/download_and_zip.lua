@@ -5,7 +5,7 @@ if Network.isWifiEnabled() then
 	Network.downloadFile("http://rinnegatamante.netsons.org/ORG/0.7/TEST.zip","/Downloaded.zip")
 	
 	-- Extract the file
-	System.extractZIP("/Downloaded.zip",System.currentDirectory().."/")
+	System.extractZIP("/Downloaded.zip",System.currentDirectory())
 	
 	-- Delete the temp file
 	System.deleteFile("/Downloaded.zip")
