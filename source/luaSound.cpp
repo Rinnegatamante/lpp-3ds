@@ -498,6 +498,7 @@ static int lua_openogg_old(lua_State *L)
 	// Decoding OGG buffer
 	i = 0;
 	if (my_info->channels == 1){ //Mono buffer
+		wav_file->bytepersample = 1;
 		if (mem_size){
 			wav_file->moltiplier = 1;
 			wav_file->mem_size = wav_file->size>>1;
@@ -2108,7 +2109,8 @@ int argc = lua_gettop(L);
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if ((src->encoding == CSND_ENCODING_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate>>1));
-	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size) - src->startRead) / ((src->bytepersample>>1) * src->samplerate));
+	else if (src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate * src->audiotype));
+	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample>>1) * src->samplerate));
 	else lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate));
 	return 1;
 }
@@ -2123,6 +2125,7 @@ int argc = lua_gettop(L);
 		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if ((src->encoding == CSND_ENCODING_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate>>1));
+	else if (src->encoding == CSND_ENCODING_VORBIS && src->bytepersample > 1) lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * (src->samplerate<<1)));
 	else if ((src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,((src->size) - src->startRead) / ((src->bytepersample>>1) * src->samplerate));
 	else lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate));
 	return 1;
