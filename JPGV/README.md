@@ -20,8 +20,13 @@ You can find a simple converter from various video format to JPGV in this folder
 <tr>
 <tr>
 <td>0x04</td>
-<td>4</td>
+<td>2</td>
 <td>Video framerate</td>
+</tr>
+<tr>
+<td>0x06</td>
+<td>2</td>
+<td>3D Effect setting</td>
 </tr>
 <td>0x08</td>
 <td>2</td>
