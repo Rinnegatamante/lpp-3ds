@@ -99,6 +99,12 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [RayCast3D Engine](https://rinnegatamante.it/board/showthread.php?tid=5)
 * [Crimson Scripter](http://gbatemp.net/threads/crimson-scripter.415152/)
 
+##### Updaters
+* [StarUpdater](https://gbatemp.net/threads/release-starupdater-a-luma3ds-updater.427999/)
+* [encTitleKeysUpdater](http://gbatemp.net/threads/release-enctitlekeysupdater-for-freeshop.429912/)
+* [Corbenik CFW Updater](http://rinnegatamante.it/board/showthread.php?tid=85)
+* [EasyRPG Updater](http://rinnegatamante.it/board/showthread.php?tid=61)
+
 # Compiling the source
 
 The repository will provide you a full set of all needed library. Take in mind that a lot of them are modified versions of the original ones so if you want to update them, take a look at [this repository](https://github.com/Rinnegatamante/lpp-3ds_libraries) where you can find sourcecodes of every pre-builded library used in this repository. Also take in mind that **libkhax** includes also **libSu** sourcecode. Last but not least, please note that **libjpeg.a** file is a standard compilation of libjpeg-turbo.<br><br>
