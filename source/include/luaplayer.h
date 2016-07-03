@@ -58,6 +58,7 @@ void luaCamera_init(lua_State *L);
 void luaRender_init(lua_State *L);
 void luaMic_init(lua_State *L);
 void luaCore_init(lua_State *L);
+void luaKeyboard_init(lua_State *L);
 void stackDump (lua_State *L);
 
 extern bool GW_MODE;

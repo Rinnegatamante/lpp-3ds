@@ -31,73 +31,78 @@
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <3ds.h>
 #include "include/luaplayer.h"
-#include "include/khax/khax.h"
+#include "include/graphics/Graphics.h"
+#include "include/hbkb.h"
 
-static lua_State *L;
-bool isCSND;
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+HB_Keyboard keyboard;
+u8 keystate = 0;
 
-const char *runScript(const char* script, bool isStringBuffer)
-{
-	L = luaL_newstate();
-	
-	// Standard libraries
-	luaL_openlibs(L);
-	isCSND = false;
-	
-	// Modules
-	luaSystem_init(L);
-	luaScreen_init(L);
-	luaGraphics_init(L);
-	luaControls_init(L);
-	luaNetwork_init(L);
-	luaTimer_init(L);
-	luaSound_init(L);
-	luaVideo_init(L);
-	luaCamera_init(L);
-	luaRender_init(L);
-	luaMic_init(L);
-	luaCore_init(L);
-	luaKeyboard_init(L);
-	
-	int s = 0;
-	const char *errMsg = NULL;
-	
-	//Patching dofile function & I/O module
-	char* patch = "dofile = System.dofile\n\
-			 io.open = System.openFile\n\
-			 io.write = System.writeFile\n\
-			 io.close = System.closeFile\n\
-			 io.read = System.readFile\n\
-			 io.size = System.getFileSize";
-	luaL_loadbuffer(L, patch, strlen(patch), NULL); 
-	lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
-	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
-	
-	if(!isStringBuffer) 
-		s = luaL_loadfile(L, script);
-	else 
-		s = luaL_loadbuffer(L, script, strlen(script), NULL);
-		
-	if (s == 0) 
-	{
-		s = lua_pcall(L, 0, LUA_MULTRET, 0);
-	}
-	if (s) 
-	{
-		errMsg = lua_tostring(L, -1);
-		printf("error: %s\n", lua_tostring(L, -1));
-		lua_pop(L, 1); // remove error message
-	}
-	lua_close(L);
-	
-	return errMsg;
+static int lua_show(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	touchPosition touch;
+	hidTouchRead(&touch);
+	keystate = keyboard.HBKB_CallKeyboard(touch);
+	return 0;
+}
+
+static int lua_state(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	lua_pushinteger(L, keystate);
+	return 1;
+}
+
+static int lua_input(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	if (keystate == 3) keyboard.HBKB_Clean();
+	lua_pushstring(L, keyboard.HBKB_CheckKeyboardInput().c_str());
+	return 1;
+}
+
+static int lua_clear(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	keyboard.HBKB_Clean();
+	keystate = 0;
+	return 0;
+}
+
+//Register our Keyboard Functions
+static const luaL_Reg Keyboard_functions[] = {
+	{"show",				lua_show},
+	{"getState",			lua_state},
+	{"getInput",			lua_input},
+	{"clear",				lua_clear},
+	{0, 0}
+};
+
+void luaKeyboard_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Keyboard_functions, 0);
+	lua_setglobal(L, "Keyboard");
+	u8 FINISHED = 1;
+	u8 PRESSED = 2;
+	u8 CLEANED = 3;
+	u8 NOT_PRESSED = 4;
+	VariableRegister(L, FINISHED);
+	VariableRegister(L, PRESSED);
+	VariableRegister(L, CLEANED);
+	VariableRegister(L, NOT_PRESSED);
 }
