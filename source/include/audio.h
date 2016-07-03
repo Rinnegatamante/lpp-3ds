@@ -34,7 +34,8 @@
 
 // Additional encoding
 typedef enum{
-	CSND_ENCODING_VORBIS = 4
+	CSND_ENCODING_VORBIS = 4,
+	CSND_ENCODING_MPEG
 }CSND_EXTRA_ENCODING;
 
 // Audio structs
@@ -89,7 +90,7 @@ struct wav{
 	bool streamLoop;
 	bool big_endian;
 	u8 encoding;
-	u32* thread;
+	u32* misc;
 	u32 audio_pointer;
 	u32 package_size;
 	u32 total_packages_size;

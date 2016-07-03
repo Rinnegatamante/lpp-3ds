@@ -30,7 +30,7 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source/include/lua	source source/include source/include/graphics \
-				source/include/ftp source/include/sf2d \
+				source/include/ftp source/include/sf2d source/include/audiodec \
 				source/include/lodepng/	source/include/unrar/	source/include/libjpeg \
 				source/include/ttf source/include/brahma source/include/khax
 DATA		:=	data
@@ -38,7 +38,7 @@ INCLUDES	:=	source/include
 
 APP_TITLE	:=	Lua Player Plus 3DS
 APP_AUTHOR	:=	Rinnegatamante
-APP_DESCRIPTION	:=	Lua Interpreter for 3DS
+APP_DESCRIPTION	:=	Lua interpreter for 3DS
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -48,14 +48,14 @@ CFLAGS	:=	-g -O2 -mword-relocations \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) $(EXT_FLAGS) -DARM11 -D_3DS -DLODEPNG_NO_COMPILE_ENCODER -DLUA_C89_NUMBERS -DLIBCTRU_NO_DEPRECATION
+CFLAGS	+=	$(INCLUDE) $(EXT_FLAGS) -DHAVEMPG_123 -DARM11 -D_3DS -DLODEPNG_NO_COMPILE_ENCODER -DLUA_C89_NUMBERS -DLIBCTRU_NO_DEPRECATION
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -fpermissive  -Wno-write-strings
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lbrahma -lkhax -lsf2d -lctru -lm -lz -logg -lcitro3d -llua -ljpeg
+LIBS	:= -lbrahma -lkhax -lsf2d -lctru -lm -lz -logg -lcitro3d -llua -ljpeg -lmpg123 -lhbkb
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -198,7 +198,6 @@ endef
 %.vsh.o	:	%.vsh
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	#@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin Use this if you have only Python 3.x
 	@python $(AEMSTRO)/aemstro_as.py $< ../$(notdir $<).shbin
 	@bin2s ../$(notdir $<).shbin | $(PREFIX)as -o $@
 	@echo "extern const u8" `(echo $(notdir $<).shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(notdir $<).shbin | tr . _)`.h

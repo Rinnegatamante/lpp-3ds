@@ -44,10 +44,12 @@
 #include "include/ogg/ogg.h"
 #include "include/ogg/codec.h"
 #include "include/ogg/vorbisfile.h"
+#include "include/audiodec/audio_decoder.h"
 
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define STREAM_MAX_ALLOC 524288
+#define DECODER_MAX_ALLOC 786432
 
 extern bool audioChannels[32];
 extern bool isNinjhax2;
@@ -405,6 +407,30 @@ void streamWAV_CSND(void* arg){
 		}		
 }
 
+void streamDEC_CSND(void* arg){
+	wav* src = (wav*)arg;
+	while(1) {
+		svcWaitSynchronization(updateStream, U64_MAX);
+		svcClearEvent(updateStream);
+		if(closeStream){
+			closeStream = false;
+			threadExit(0);
+		}
+		u32 control = src->samplerate * src->bytepersample * ((osGetTime() - src->tick) / 1000);
+		u32 blockmem = src->mem_size>>1;
+		if (control > src->moltiplier * blockmem){
+			src->moltiplier = src->moltiplier + 1;
+			u8 half_check = (src->moltiplier)%2;
+			AudioDecoder* audio_decoder = (AudioDecoder*)src->misc;
+			if (src->audiobuf2 == NULL){
+				audio_decoder->Decode(src->audiobuf+(half_check*blockmem), blockmem);
+			}else{
+				audio_decoder->DecodeAsMono(src->audiobuf+(half_check*blockmem), src->audiobuf2+(half_check*blockmem), blockmem);
+			}
+		}
+	}
+}
+
 static int lua_openogg_old(lua_State *L) 
 {	
     int argc = lua_gettop(L);
@@ -608,6 +634,81 @@ static int lua_openogg_old(lua_State *L)
 	
 	return 1;
 }
+
+static int lua_openmp3_old(lua_State *L) 
+{	
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *file_tbo = luaL_checkstring(L, 1); //Filename
+	
+	// Streaming support
+	bool mem_size = false;
+	if (argc == 2) mem_size = lua_toboolean(L, 2);
+	
+	// Using stdio instead of FS
+	char myFile[512];
+	if (strncmp("romfs:/",file_tbo,7) == 0) strcpy(myFile,file_tbo);
+	else{
+		strcpy(myFile,"sdmc:");
+		strcat(myFile,file_tbo);
+	}
+	sdmcInit();
+	
+	// Initializing audio decoder
+	FILE* fp = fopen(myFile,"rb");
+	if (fp == NULL) return luaL_error(L, "error opening file.");
+	AudioDecoder* audio_decoder;
+	audio_decoder = AudioDecoder::Create(fp, myFile);
+	if (audio_decoder == NULL) return luaL_error(L, "error opening audio decoder.");
+	audio_decoder->Open(fp);
+	AudioDecoder::Format int_format;
+	
+	// Allocating music info
+	int audiotype;
+	wav *wav_file = (wav*)malloc(sizeof(wav));
+	wav_file->magic = 0x4C534E44;
+	int samplerate;
+	audio_decoder->GetFormat(samplerate, int_format, audiotype);
+	if (audiotype > 2) audio_decoder->SetFormat(samplerate, AudioDecoder::Format::S16, 2);
+	wav_file->samplerate = samplerate;
+	wav_file->big_endian = false;
+	wav_file->encoding = CSND_ENCODING_MPEG;
+	wav_file->size = 0; // TODO: Add a proper size detection
+	wav_file->ch = 0xDEADBEEF;
+	wav_file->moltiplier = 1;
+	wav_file->bytepersample = audiotype<<1;
+	wav_file->misc = (u32*)audio_decoder;
+	strcpy(wav_file->author,"");
+	strcpy(wav_file->title,"");
+	
+	//Extracting metadatas
+	// TODO: Add metadatas extraction
+	
+	
+	
+	wav_file->isPlaying = false;
+	
+	// Decoding MP3 buffer
+	if (audiotype == 1){ //Mono buffer
+		wav_file->mem_size = DECODER_MAX_ALLOC;
+		wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+		wav_file->audiobuf2 = NULL;
+		audio_decoder->Decode(wav_file->audiobuf, wav_file->mem_size);
+	}else{ //Stereo buffer
+		wav_file->mem_size = DECODER_MAX_ALLOC;
+		wav_file->audiobuf = (u8*)linearAlloc(wav_file->mem_size);
+		wav_file->audiobuf2 = (u8*)linearAlloc(wav_file->mem_size);
+		audio_decoder->DecodeAsMono(wav_file->audiobuf, wav_file->audiobuf2, wav_file->mem_size);
+	}
+	
+	// Push wav struct offset to LUA stack
+	lua_pushinteger(L,(u32)wav_file);
+	
+	return 1;
+}
+
 
 static int lua_openwav_old(lua_State *L)
 {
@@ -1650,7 +1751,7 @@ static int lua_play(lua_State *L)
 		src->streamLoop = loop;
 		svcCreateEvent(&updateStream,0);
 		svcSignalEvent(updateStream);
-		threadCreate(streamFunction, src, 8192, 0x18, 0, true);
+		threadCreate(streamFunction, src, 32768, 0x18, 0, true);
 	}
 	
 	return 0;
@@ -1706,13 +1807,20 @@ static int lua_play_old(lua_State *L)
 		tmp_encode = src->encoding;
 		src->encoding = CSND_ENCODING_PCM16;
 		non_native_encode = true;
+	}else if (src->encoding == CSND_ENCODING_MPEG){
+		streamFunction = streamDEC_CSND;
+		AudioDecoder* audiodec = (AudioDecoder*)src->misc;
+		audiodec->SetLooping(loop);
+		tmp_encode = src->encoding;
+		src->encoding = CSND_ENCODING_PCM16;
+		non_native_encode = true;
 	}
 	if (src->audiobuf2 == NULL){
 		if (src->mem_size > 0){
 			src->streamLoop = loop;
 			svcCreateEvent(&updateStream,0);
 			svcSignalEvent(updateStream);
-			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
+			threadCreate(streamFunction, src, 32768, 0x18, 1, true);
 			if (interp != 0xDEADBEEF) My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
 			else My_CSND_playsound(ch, SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size, 1.0, 2.0);
 		}else{
@@ -1728,7 +1836,7 @@ static int lua_play_old(lua_State *L)
 			src->streamLoop = loop;
 			svcCreateEvent(&updateStream,0);
 			svcSignalEvent(updateStream);
-			threadCreate(streamFunction, src, 8192, 0x18, 1, true);
+			threadCreate(streamFunction, src, 32768, 0x18, 1, true);
 			if (interp != 0xDEADBEEF){
 				My_CSND_playsound(ch, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf, (u32*)(src->audiobuf), src->mem_size>>1, 1.0, -1.0);
 				My_CSND_playsound(ch2, SOUND_LINEAR_INTERP | SOUND_FORMAT(src->encoding) | SOUND_REPEAT, src->samplerate, (u32*)src->audiobuf2, (u32*)(src->audiobuf2), src->mem_size>>1, 1.0, 1.0);
@@ -1842,6 +1950,9 @@ static int lua_close_old(lua_State *L)
 			// Closing opened file
 			if (src->encoding == CSND_ENCODING_VORBIS){
 				ov_clear((OggVorbis_File*)src->sourceFile);
+				sdmcExit();
+			}else if (src->encoding == CSND_ENCODING_MPEG){
+				free(src->misc);
 				sdmcExit();
 			}else{
 				FS_Close((fileStream*)src->sourceFile);
@@ -2233,6 +2344,7 @@ static const luaL_Reg Sound_DSP_functions[] = {
 };
 
 static const luaL_Reg Sound_CSND_functions[] = {
+	{"openMp3",					lua_openmp3_old},
 	{"openOgg",					lua_openogg_old},
 	{"openWav",					lua_openwav_old},
 	{"openAiff",				lua_openaiff_old},	
