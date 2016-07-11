@@ -1,6 +1,3 @@
--- Load a texture
-texture = Graphics.loadImage("/Monkey.png")
-
 -- Init 3D Rendering
 Render.init(400, 240, Color.new(255, 255, 255, 255))
 
@@ -14,8 +11,8 @@ ambient = Render.createColor(0.2, 0.2, 0.2, 0.0)
 diffuse = Render.createColor(0.4, 0.4, 0.4, 0.0)
 specular = Render.createColor(0.8, 0.8, 0.8, 0.0)
 
--- Load a 3D Model
-mod1 = Render.loadObject("/Monkey.obj", texture, ambient, diffuse, specular, 1.0)
+-- Load a 3D Model with a proper texture
+mod1 = Render.loadObject("/Monkey.obj", "/Monkey.png", ambient, diffuse, specular, 1.0)
 
 -- Set default angle and z position
 z = -5.0
@@ -42,7 +39,6 @@ while true do
     if Controls.check(Controls.read(), KEY_START) then
         Render.unloadModel(mod1)
         Render.term()
-        Graphics.freeImage(texture)
         System.exit()
     end
    
