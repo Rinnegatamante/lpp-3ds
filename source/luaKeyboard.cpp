@@ -50,6 +50,7 @@ static int lua_show(lua_State *L){
 		if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	touchPosition touch;
+	hidScanInput();
 	hidTouchRead(&touch);
 	keystate = keyboard.HBKB_CallKeyboard(touch);
 	return 0;

@@ -81,6 +81,7 @@ static int lua_circlepad(lua_State *L)
 		if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	circlePosition cpos;
+	hidScanInput();
 	hidCircleRead(&cpos);
 	lua_pushinteger(L, cpos.dx);
 	lua_pushinteger(L, cpos.dy);
@@ -103,6 +104,7 @@ static int lua_touchpad(lua_State *L)
 		if (lua_gettop(L) != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	touchPosition cpos;
+	hidScanInput();
 	hidTouchRead(&cpos);
 	lua_pushinteger(L, cpos.px);
 	lua_pushinteger(L, cpos.py);
@@ -116,6 +118,7 @@ static int lua_gyro(lua_State *L)
        if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	angularRate cpos;
+	hidScanInput();
 	hidGyroRead(&cpos);
 	lua_pushnumber(L, cpos.x);
 	lua_pushnumber(L, cpos.y);
@@ -130,6 +133,7 @@ static int lua_accel(lua_State *L)
        if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	accelVector cpos;
+	hidScanInput();
 	hidAccelRead(&cpos);
 	lua_pushnumber(L, cpos.x);
 	lua_pushnumber(L, cpos.y);
@@ -144,6 +148,7 @@ static int lua_cstickpad(lua_State *L)
        if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	circlePosition cpos;
+	hidScanInput();
 	hidCstickRead(&cpos);
 	lua_pushinteger(L, cpos.dx);
 	lua_pushinteger(L, cpos.dy);
