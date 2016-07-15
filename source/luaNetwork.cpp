@@ -113,44 +113,98 @@ static int lua_ipaddr(lua_State *L){
 static int lua_download(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+		if (argc < 2 || argc > 5) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char* url = luaL_checkstring(L,1);
 	const char* file = luaL_checkstring(L,2);
+	const char* headers = (argc >= 3) ? luaL_checkstring(L,3) : NULL;
+	const char* method = (argc >= 4) ? luaL_checkstring(L,4) : NULL;
+	const char* postdata = (argc >= 5) ? luaL_checkstring(L,5) : NULL;
 	httpcContext context;
 	u32 statuscode=0;
-	Result ret = httpcOpenContext(&context, HTTPC_METHOD_GET, (char*)url , 0);
-	for (int i=0x7;i<0xC;i++){
-		httpcAddDefaultCert(&context, (SSLC_DefaultRootCert)i);
-	}
-	#ifndef SKIP_ERROR_HANDLING
-		if(ret==0){
-	#endif
-		httpcBeginRequest(&context);
-		/*httpcReqStatus loading;
-		httpcGetRequestState(&context, &loading);
-		while (loading == 0x5){
-			httpcGetRequestState(&context, &loading);
-		}*/
-		u32 contentsize=0;
-		httpcGetResponseStatusCode(&context, &statuscode, 0);
-		if (statuscode == 200){
-			httpcGetDownloadSizeState(&context, NULL, &contentsize);
-			u8* buf = (u8*)malloc(contentsize);
-			memset(buf, 0, contentsize);
-			httpcDownloadData(&context, buf, contentsize, NULL);
-			Handle fileHandle;
-			u32 bytesWritten;
-			FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-			FS_Path filePath=fsMakePath(PATH_ASCII, file);
-			FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
-			FSFILE_Write(fileHandle, &bytesWritten, 0, buf, contentsize,0x10001);
-			FSFILE_Close(fileHandle);
-			svcCloseHandle(fileHandle);
-			free(buf);
+	HTTPC_RequestMethod useMethod = HTTPC_METHOD_GET;
+
+	if(method != NULL){
+		if (strcmp(method, "GET") == 0){
+			useMethod = HTTPC_METHOD_GET;
+		} else if (strcmp(method, "HEAD") == 0){
+			useMethod = HTTPC_METHOD_HEAD;
+		} else if (strcmp(method, "POST") == 0){
+			useMethod = HTTPC_METHOD_POST;
+		} else {
+			useMethod = HTTPC_METHOD_GET;
 		}
+	}
+
+	do {
+		if (statuscode >= 301 && statuscode <= 308) {
+			char newurl[4096];
+			httpcGetResponseHeader(&context, (char*)"Location", &newurl[0], 4096);
+			url = &newurl[0];
+
+			httpcCloseContext(&context);
+		}
+
+		Result ret = httpcOpenContext(&context, useMethod, (char*)url, 0);
+		// Just disable SSL verification instead of loading default certs.
+		httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
+
+		if(headers != NULL){
+			char *tokenheader = (char*)malloc(strlen(headers)+1);
+			strcpy(tokenheader, headers);
+			char *toker = tokenheader;
+			char *headername = NULL;
+			char *headervalue = NULL;
+			do {
+				headername = strtok(toker, ":");
+				if (headername == NULL) break;
+				headervalue = strtok(NULL, "\n");
+				if (headervalue == NULL) break;
+				if (headervalue[0] == ' ') headervalue++;
+				httpcAddRequestHeaderField(&context, headername, headervalue);
+				toker = NULL;
+			} while (headername != NULL && headervalue != NULL);
+			free(tokenheader);
+		}
+
+		if (useMethod == HTTPC_METHOD_POST && postdata != NULL) {
+			httpcAddPostDataRaw(&context, (u32*)postdata, strlen(postdata));
+		}
+
+		#ifndef SKIP_ERROR_HANDLING
+		if(ret==0){
+		#endif
+			httpcBeginRequest(&context);
+			u32 contentsize=0;
+			httpcGetResponseStatusCode(&context, &statuscode, 0);
+			if (statuscode == 200){
+				u32 readSize = 0;
+				long int bytesWritten = 0;
+				u8* buf = (u8*)malloc(0x1000);
+				memset(buf, 0, 0x1000);
+
+				Handle fileHandle;
+				FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
+				FS_Path filePath=fsMakePath(PATH_ASCII, file);
+				FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_CREATE|FS_OPEN_WRITE, 0x00000000);
+
+				do {
+					ret = httpcDownloadData(&context, buf, 0x1000, &readSize);
+					FSFILE_Write(fileHandle, NULL, bytesWritten, buf, readSize, 0x10001);
+					bytesWritten += readSize;
+				} while (ret == (s32)HTTPC_RESULTCODE_DOWNLOADPENDING);
+
+				FSFILE_Close(fileHandle);
+				svcCloseHandle(fileHandle);
+				free(buf);
+			}
+		#ifndef SKIP_ERROR_HANDLING
+		}
+		#endif
+	} while ((statuscode >= 301 && statuscode <= 303) || (statuscode >= 307 && statuscode <= 308));
 	#ifndef SKIP_ERROR_HANDLING
-		}else luaL_error(L, "error opening url");
+	if ((statuscode < 200 && statuscode > 226) && statuscode != 304)
+		luaL_error(L, "error opening url");
 	#endif
 	httpcCloseContext(&context);
 	lua_pushinteger(L, statuscode);
@@ -160,37 +214,90 @@ static int lua_download(lua_State *L){
 static int lua_downstring(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+		if (argc < 1 || argc > 4) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char* url = luaL_checkstring(L,1);
+	const char* headers = (argc >= 2) ? luaL_checkstring(L,2) : NULL;
+	const char* method = (argc >= 3) ? luaL_checkstring(L,3) : NULL;
+	const char* postdata = (argc >= 4) ? luaL_checkstring(L,4) : NULL;
 	httpcContext context;
-	Result ret = httpcOpenContext(&context, HTTPC_METHOD_GET, (char*)url , 0);
-	for (int i=0x7;i<0xC;i++){
-		httpcAddDefaultCert(&context, (SSLC_DefaultRootCert)i);
+	HTTPC_RequestMethod useMethod = HTTPC_METHOD_GET;
+
+	if(method != NULL){
+		if (strcmp(method, "GET") == 0){
+			useMethod = HTTPC_METHOD_GET;
+		} else if (strcmp(method, "HEAD") == 0){
+			useMethod = HTTPC_METHOD_HEAD;
+		} else if (strcmp(method, "POST") == 0){
+			useMethod = HTTPC_METHOD_POST;
+		} else {
+			useMethod = HTTPC_METHOD_GET;
+		}
 	}
-	#ifndef SKIP_ERROR_HANDLING
+
+	u32 statuscode=0;
+	do {
+		if (statuscode >= 301 && statuscode <= 308) {
+			char newurl[4096];
+			httpcGetResponseHeader(&context, (char*)"Location", &newurl[0], 4096);
+			url = &newurl[0];
+
+			httpcCloseContext(&context);
+		}
+
+		Result ret = httpcOpenContext(&context, useMethod, (char*)url , 0);
+		// Lets just disable SSL verification instead of loading default certs.
+		httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
+
+		if(headers != NULL){
+			char *tokenheader = (char*)malloc(strlen(headers)+1);
+			strcpy(tokenheader, headers);
+			char *toker = tokenheader;
+			char *headername = NULL;
+			char *headervalue = NULL;
+			do {
+				headername = strtok(toker, ":");
+				if (headername == NULL) break;
+				headervalue = strtok(NULL, "\n");
+				if (headervalue == NULL) break;
+				if (headervalue[0] == ' ') headervalue++;
+				httpcAddRequestHeaderField(&context, headername, headervalue);
+				toker = NULL;
+			} while (headername != NULL && headervalue != NULL);
+			free(tokenheader);
+		}
+
+		if (useMethod == HTTPC_METHOD_POST && postdata != NULL) {
+			httpcAddPostDataRaw(&context, (u32*)postdata, strlen(postdata));
+		}
+
+		#ifndef SKIP_ERROR_HANDLING
 		if(ret==0){
-	#endif
-		httpcBeginRequest(&context);
-		/*httpcReqStatus loading;
-		httpcGetRequestState(&context, &loading);
-		while (loading == 0x5){
-			httpcGetRequestState(&context, &loading);
-		}*/
-		u32 statuscode=0;
-		u32 contentsize=0;
-		httpcGetResponseStatusCode(&context, &statuscode, 0);
-		char text[128];
-		sprintf(text,"%i",statuscode);
-		if (statuscode != 200) luaL_error(L, text);
-		httpcGetDownloadSizeState(&context, NULL, &contentsize);
-		unsigned char *buffer = (unsigned char*)malloc(contentsize+1);
-		httpcDownloadData(&context, buffer, contentsize, NULL);
-		buffer[contentsize] = 0;
-		lua_pushlstring(L,(const char*)buffer,contentsize);
-		free(buffer);
+		#endif
+			httpcBeginRequest(&context);
+			long int contentsize=0; // Crash on the += if u32. WTF?
+			u32 readSize=0;
+			httpcGetResponseStatusCode(&context, &statuscode, 0);
+			if (statuscode == 200) {
+				unsigned char *buffer = (unsigned char*)malloc(0x1000);
+				do {
+					ret = httpcDownloadData(&context, buffer+contentsize, 0x1000, &readSize);
+					contentsize += readSize;
+					if (ret == (s32)HTTPC_RESULTCODE_DOWNLOADPENDING)
+						buffer = (unsigned char*)realloc(buffer, contentsize + 0x1000);
+				} while (ret == (s32)HTTPC_RESULTCODE_DOWNLOADPENDING);
+				buffer = (unsigned char*)realloc(buffer, contentsize + 1);
+				buffer[contentsize] = 0;
+				lua_pushlstring(L,(const char*)buffer,contentsize);
+				free(buffer);
+			}
+		#ifndef SKIP_ERROR_HANDLING
+		}
+		#endif
+	} while ((statuscode >= 301 && statuscode <= 303) || (statuscode >= 307 && statuscode <= 308));
 	#ifndef SKIP_ERROR_HANDLING
-		}else luaL_error(L, "error opening url");
+	if ((statuscode < 200 && statuscode > 226) && statuscode != 304)
+		luaL_error(L, "error opening url");
 	#endif
 	httpcCloseContext(&context);
 	return 1;

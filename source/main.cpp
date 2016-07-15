@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 	acInit();
 	cfguInit();
 	sslcInit(0);
-	httpcInit(0);
+	httpcInit(0x1000);
 	ptmuInit();
 	hidInit();
 	fsInit();
