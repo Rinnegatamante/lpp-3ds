@@ -44,6 +44,8 @@
 #include "include/luaplayer.h"
 #include "include/ftp/ftp.h"
 #include "include/utils.h"
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
 extern bool ftp_state;
 static int connfd;
@@ -118,23 +120,13 @@ static int lua_download(lua_State *L){
 	const char* url = luaL_checkstring(L,1);
 	const char* file = luaL_checkstring(L,2);
 	const char* headers = (argc >= 3) ? luaL_checkstring(L,3) : NULL;
-	const char* method = (argc >= 4) ? luaL_checkstring(L,4) : NULL;
+	u8 method = (argc >= 4) ? luaL_checkinteger(L,4) : 0;
 	const char* postdata = (argc >= 5) ? luaL_checkstring(L,5) : NULL;
 	httpcContext context;
 	u32 statuscode=0;
 	HTTPC_RequestMethod useMethod = HTTPC_METHOD_GET;
 
-	if(method != NULL){
-		if (strcmp(method, "GET") == 0){
-			useMethod = HTTPC_METHOD_GET;
-		} else if (strcmp(method, "HEAD") == 0){
-			useMethod = HTTPC_METHOD_HEAD;
-		} else if (strcmp(method, "POST") == 0){
-			useMethod = HTTPC_METHOD_POST;
-		} else {
-			useMethod = HTTPC_METHOD_GET;
-		}
-	}
+	if(method <= 3 && method >= 0) useMethod = (HTTPC_RequestMethod)method;
 
 	do {
 		if (statuscode >= 301 && statuscode <= 308) {
@@ -218,22 +210,12 @@ static int lua_downstring(lua_State *L){
 	#endif
 	const char* url = luaL_checkstring(L,1);
 	const char* headers = (argc >= 2) ? luaL_checkstring(L,2) : NULL;
-	const char* method = (argc >= 3) ? luaL_checkstring(L,3) : NULL;
+	u8 method = (argc >= 3) ? luaL_checkinteger(L,3) : 0;
 	const char* postdata = (argc >= 4) ? luaL_checkstring(L,4) : NULL;
 	httpcContext context;
 	HTTPC_RequestMethod useMethod = HTTPC_METHOD_GET;
 
-	if(method != NULL){
-		if (strcmp(method, "GET") == 0){
-			useMethod = HTTPC_METHOD_GET;
-		} else if (strcmp(method, "HEAD") == 0){
-			useMethod = HTTPC_METHOD_HEAD;
-		} else if (strcmp(method, "POST") == 0){
-			useMethod = HTTPC_METHOD_POST;
-		} else {
-			useMethod = HTTPC_METHOD_GET;
-		}
-	}
+	if(method <= 3 && method >= 1) useMethod = (HTTPC_RequestMethod)method;
 
 	u32 statuscode=0;
 	do {
@@ -577,7 +559,7 @@ static int lua_connect(lua_State *L)
 	
 	// Opening SSL connection
 	if (isSSL){
-		Result ret = sslcCreateContext(&my_socket->sslc_context, my_socket->sock, SSLCOPT_Default, host);
+		Result ret = sslcCreateContext(&my_socket->sslc_context, my_socket->sock, SSLCOPT_DisableVerify, host);
 		#ifndef SKIP_ERROR_HANDLING
 			if(R_FAILED(ret)){
 				closesocket(my_socket->sock);
@@ -723,4 +705,10 @@ void luaNetwork_init(lua_State *L) {
 	lua_newtable(L);
 	luaL_setfuncs(L, Socket_functions, 0);
 	lua_setglobal(L, "Socket");
+	u8 GET_METHOD = 1;
+	u8 POST_METHOD = 2;
+	u8 HEAD_METHOD = 3;
+	VariableRegister(L,POST_METHOD);
+	VariableRegister(L,GET_METHOD);
+	VariableRegister(L,HEAD_METHOD);
 }
