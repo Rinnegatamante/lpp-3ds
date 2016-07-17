@@ -93,6 +93,7 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [MCIT](http://gbatemp.net/threads/release-miiverse-custom-image-tool.415505/)
 * [Video Channels Creator](https://rinnegatamante.it/board/showthread.php?tid=10)
 * [BLEND3R](https://rinnegatamante.it/board/showthread.php?tid=26)
+* [Homebr3w](https://github.com/Wolvan/Homebr3w)
 
 ##### Engines & Interpreters
 * [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
@@ -120,12 +121,13 @@ Lua Player Plus 3DS supports different flags to enables some features:<br>
 * Everyone involved in ctrulib creation
 * Smealum for ftpony source used for debug ftp server
 * Myria for libkhax
-* Lode Vandevenne for lodepng
 * xerpi for sf2dlib
 * fincs for citro3dlib
 * Sean Barrett for stb_truetype
-* Jean-loup Gailly and Mark Adler for zlib
+* Everyone involved in lodepng, zlib, mpg123, libogg, vorbisfile libraries
 * Everyone involved in Brahma developing
 * aliaspider for svchax
 * Misledz for the Lua Player Plus 3DS logo
+* EasyRPG Team for the AudioDecoder used for MP3 support
+* ksanislo for the network module improvements
 * Special thanks to Aurelio and ihaveamac for testing interpreter features
