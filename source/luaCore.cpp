@@ -118,6 +118,24 @@ static int lua_service(lua_State *L){
 	Handle tmp;
 	srvGetServiceHandle(&tmp, srv);
 	lua_pushboolean(L, tmp);
+	svcCloseHandle(tmp);
+	
+	// We have to manually restart a service if it's a default one of lpp-3ds
+	char* handle_list[10] = {
+		"ptm:u", "am", "cfg:u", "hid",
+		"ir:rst", "fs", "hb",
+		"apt", "srv", "ac"
+	};
+	func_1x restartService[10] = {
+		ptmuInit, amInit, cfguInit, hidInit,
+		irrstInit, fsInit, hbInit,
+		aptInit, srvInit, acInit
+		
+	};
+	for (int i=0; i<10; i++){
+		if (strstr(srv,handle_list[i]) != NULL) (restartService[i])();
+	}
+	
 	return 1;
 }
 
