@@ -126,7 +126,7 @@ static int lua_download(lua_State *L){
 	u32 statuscode=0;
 	HTTPC_RequestMethod useMethod = HTTPC_METHOD_GET;
 
-	if(method <= 3 && method >= 0) useMethod = (HTTPC_RequestMethod)method;
+	if(method <= 3 && method >= 1) useMethod = (HTTPC_RequestMethod)method;
 
 	do {
 		if (statuscode >= 301 && statuscode <= 308) {
