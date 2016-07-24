@@ -1126,7 +1126,7 @@ int ZipExtractCurrentFile(Zip *zip, int *nopath, const char *password)
 			{
 				remainingSize = remainingSize - err;
 				if (remainingSize == 0){
-					fwrite(extractBuffer, 1, buffersize, fout);
+					fwrite(buffer, 1, buffersize, fout);
 					remainingSize = buffersize;
 					extractBuffer = buffer;
 				}else extractBuffer = extractBuffer+err;
@@ -1134,7 +1134,7 @@ int ZipExtractCurrentFile(Zip *zip, int *nopath, const char *password)
 
 		} while (err > 0);
 		
-		if (remainingSize != buffersize) fwrite(extractBuffer, 1, buffersize-remainingSize, fout);
+		if (remainingSize != buffersize) fwrite(buffer, 1, buffersize-remainingSize, fout);
 		fclose(fout);
 
 		err = ZipCloseCurrentFile(zip);

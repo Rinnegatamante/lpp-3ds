@@ -149,7 +149,9 @@ static int lua_loadimg(lua_State *L)
 		FS_Close(&fileHandle);
 		bitmap = OpenJPG(text);
 	}
-	if(!bitmap) return luaL_error(L, "Error loading image");
+	#ifndef SKIP_ERROR_HANDLING
+		if(!bitmap) return luaL_error(L, "Error loading image");
+	#endif
 	bitmap->magic = 0x4C494D47;
     lua_pushinteger(L, (u32)(bitmap));
 	return 1;
