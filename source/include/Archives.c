@@ -68,6 +68,8 @@ extern "C" {
 #define zdecode(pkeys, crc32tab, c) (ZipUpdateKeys(pkeys, crc32tab, c ^= ZipDecryptByte(pkeys, crc32tab)))
 #define _ZIP_BUF_READ_COMMENT (0x400)
 
+#define TMPBUF_SIZE 1048576
+
 typedef struct
 {
 	unsigned long version;
@@ -1036,7 +1038,7 @@ int ZipExtractCurrentFile(Zip *zip, int *nopath, const char *password)
 	char *filenameWithoutPath;
 	char *p;
 	void *buffer;
-	unsigned int buffersize = 64*1024;
+	unsigned int buffersize = TMPBUF_SIZE;
 	int err = 0;
 
 	FILE *fout = NULL;
@@ -1105,10 +1107,14 @@ int ZipExtractCurrentFile(Zip *zip, int *nopath, const char *password)
 
 		if(fout == NULL)
 			printf("Error opening file\n");
-
+			
+		void* extractBuffer = buffer;
+		unsigned int remainingSize = buffersize;
+		
 		do
 		{
-			err = ZipReadCurrentFile(zip, buffer, buffersize);
+		
+			err = ZipReadCurrentFile(zip, extractBuffer, remainingSize);
 
 			if(err < 0)
 			{
@@ -1118,11 +1124,17 @@ int ZipExtractCurrentFile(Zip *zip, int *nopath, const char *password)
 
 			if(err > 0)
 			{
-				fwrite(buffer, 1, err, fout);
+				remainingSize = remainingSize - err;
+				if (remainingSize == 0){
+					fwrite(extractBuffer, 1, buffersize, fout);
+					remainingSize = buffersize;
+					extractBuffer = buffer;
+				}else extractBuffer = extractBuffer+err;
 			}
 
 		} while (err > 0);
-
+		
+		if (remainingSize != buffersize) fwrite(extractBuffer, 1, buffersize-remainingSize, fout);
 		fclose(fout);
 
 		err = ZipCloseCurrentFile(zip);
