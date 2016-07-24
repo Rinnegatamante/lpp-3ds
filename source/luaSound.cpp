@@ -472,7 +472,7 @@ static int lua_openogg_old(lua_State *L)
 	wav_file->samplerate = my_info->rate;
 	wav_file->big_endian = false;
 	wav_file->encoding = CSND_ENCODING_VORBIS;
-	wav_file->size = ov_pcm_total(vf,-1)<<my_info->channels;
+	wav_file->size = ov_time_total(vf,-1) * (my_info->rate<<1); // TODO: Find a more accurated calculation method
 	wav_file->startRead = 0;
 	wav_file->total_packages_size = 0;
 	wav_file->loop_index = 1;
@@ -1295,7 +1295,7 @@ static int lua_openogg(lua_State *L)
 	songFile->samplerate = my_info->rate;
 	songFile->big_endian = false;
 	songFile->encoding = CSND_ENCODING_VORBIS;
-	songFile->size = ov_pcm_total(vf,-1)<<my_info->channels;
+	songFile->size = ov_time_total(vf,-1) * (my_info->rate<<1); // TODO: Find a more accurated calculation method
 	songFile->startRead = 0;
 	strcpy(songFile->author,"");
 	strcpy(songFile->title,"");
