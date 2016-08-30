@@ -59,7 +59,7 @@ Official support board: http://rinnegatamante.it/board/forumdisplay.php?fid=12
 
 # Nightly Builds
 
-We offer an automated builder service for our nightly builds. Nightly builds are automatically updated every 4 hours by a server we own. To take advantage of this service, you should visit [this page](http://rinnegatamante.it/lpp-3ds.php).
+We offer an automated builder service for our nightly builds. Nightly builds are automatically updated every 4 hours by a server we own. To take advantage of this service, you should visit [this page](http://rinnegatamante.it/lpp-nightly.php).
 
 # Showcase
 
