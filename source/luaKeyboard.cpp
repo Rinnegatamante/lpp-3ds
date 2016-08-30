@@ -44,6 +44,17 @@
 HB_Keyboard keyboard;
 u8 keystate = 0;
 
+static int lua_setText(lua_State *L){
+	int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	char* text = luaL_checkstring(L, 1);
+	std::string s(text);
+	keyboard.UserInput = s;
+	return 0;
+}
+
 static int lua_show(lua_State *L){
 	int argc = lua_gettop(L);
     #ifndef SKIP_ERROR_HANDLING
@@ -87,6 +98,7 @@ static int lua_clear(lua_State *L){
 
 //Register our Keyboard Functions
 static const luaL_Reg Keyboard_functions[] = {
+	{"setText",				lua_setText},
 	{"show",				lua_show},
 	{"getState",			lua_state},
 	{"getInput",			lua_input},

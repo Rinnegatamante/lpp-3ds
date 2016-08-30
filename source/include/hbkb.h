@@ -76,6 +76,7 @@ class HB_Keyboard
 public:
 	HB_Keyboard();
 	virtual ~HB_Keyboard();
+	std::string UserInput;
 
 	// Call Keyboard
 	u8 HBKB_CallKeyboard(touchPosition TouchScreenPos);
@@ -91,7 +92,6 @@ private:
 	void ChangeString(u8 &Key);
 	void GFXBufferInteraction();
 
-	std::string UserInput;
 	bool isShift;
 	bool isCaps;
 
