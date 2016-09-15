@@ -7,6 +7,7 @@
 #include "Common.hpp"
 #include "Image.hpp"
 #include "stb_truetype.h"
+#include <cstring>
 
 class Font
 {
@@ -38,6 +39,10 @@ public:
 	void drawString(int x, int y, const std::string& str, Color color, bool top_screen = true, bool side = true);
 	
 	void drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen = true, bool side = true);
+
+	unsigned char* renderToImage(const std::string& str, Color color, int& width, int& height);
+
+	void calcDimensions(const std::string str, int& width, int& height);
 
 private:
 	stbtt_fontinfo m_info;

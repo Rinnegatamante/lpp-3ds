@@ -784,6 +784,23 @@ static int lua_fsize(lua_State *L) {
     return 0;
 }
 
+static int lua_calcDimensions(lua_State *L) {
+	int argc = lua_gettop(L);
+#ifndef SKIP_ERROR_HANDLING
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+#endif
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	char* text = (char*)(luaL_checkstring(L, 2));
+#ifndef SKIP_ERROR_HANDLING
+	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+#endif
+	int width, height;
+	font->f.calcDimensions(text, width, height);
+	lua_pushinteger(L, width);
+	lua_pushinteger(L, height);
+	return 2;
+}
+
 static int lua_unloadFont(lua_State *L) {
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -826,6 +843,34 @@ static int lua_fprint(lua_State *L) {
 	font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side);
 	gfxFlushBuffers();
     return 0;
+}
+
+static int lua_renderToImage(lua_State *L) {
+	int argc = lua_gettop(L);
+#ifndef SKIP_ERROR_HANDLING
+	if (argc != 3) return luaL_error(L, "wrong number of arguments");
+#endif
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	char* text = (char*)(luaL_checkstring(L, 2));
+	u32 color = luaL_checkinteger(L,3);
+#ifndef SKIP_ERROR_HANDLING
+	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+#endif
+	Bitmap *bitmap = (Bitmap*)malloc(sizeof(Bitmap));
+	unsigned char* pixels;
+	int width;
+	int height;
+	pixels = font->f.renderToImage(text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), width, height);
+	bitmap->width = width;
+	bitmap->height = height;
+	bitmap->pixels = pixels;
+	bitmap->magic = 0x4C494D47;
+	bitmap->bitperpixel = 32;
+#ifndef SKIP_ERROR_HANDLING
+	if(!bitmap) return luaL_error(L, "Error loading image");
+#endif
+	lua_pushinteger(L, (u32)(bitmap));
+	return 1;
 }
 
 //Register our Console Functions
@@ -882,6 +927,8 @@ static const luaL_Reg Font_functions[] = {
   {"print",					lua_fprint}, 
   {"setPixelSizes",			lua_fsize}, 
   {"unload",				lua_unloadFont}, 
+  {"calcDimensions",		lua_calcDimensions},
+  {"renderToImage",			lua_renderToImage},
   {0, 0}
 };
 
