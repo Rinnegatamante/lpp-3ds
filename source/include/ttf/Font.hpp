@@ -40,9 +40,9 @@ public:
 	
 	void drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen = true, bool side = true);
 
-	unsigned char* renderToImage(const std::string& str, Color color, int& width, int& height);
+	unsigned char* renderToImage(const std::string& str, Color color, int& width, int& height, int max_width);
 
-	void calcDimensions(const std::string str, int& width, int& height);
+	void calcDimensions(const std::string str, int& width, int& height, int max_width);
 
 private:
 	stbtt_fontinfo m_info;

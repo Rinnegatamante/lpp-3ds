@@ -787,15 +787,18 @@ static int lua_fsize(lua_State *L) {
 static int lua_calcDimensions(lua_State *L) {
 	int argc = lua_gettop(L);
 #ifndef SKIP_ERROR_HANDLING
-	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments");
 #endif
 	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
 	char* text = (char*)(luaL_checkstring(L, 2));
+	int max_width = 0;
+	if (argc == 3) 
+		max_width = luaL_checkinteger(L,3);
 #ifndef SKIP_ERROR_HANDLING
 	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
 #endif
 	int width, height;
-	font->f.calcDimensions(text, width, height);
+	font->f.calcDimensions(text, width, height, max_width);
 	lua_pushinteger(L, width);
 	lua_pushinteger(L, height);
 	return 2;
@@ -848,11 +851,14 @@ static int lua_fprint(lua_State *L) {
 static int lua_renderToImage(lua_State *L) {
 	int argc = lua_gettop(L);
 #ifndef SKIP_ERROR_HANDLING
-	if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments");
 #endif
 	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
 	char* text = (char*)(luaL_checkstring(L, 2));
 	u32 color = luaL_checkinteger(L,3);
+	int max_width = 0;
+	if (argc == 4)
+		max_width = luaL_checkinteger(L,4);
 #ifndef SKIP_ERROR_HANDLING
 	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
 #endif
@@ -860,7 +866,7 @@ static int lua_renderToImage(lua_State *L) {
 	unsigned char* pixels;
 	int width;
 	int height;
-	pixels = font->f.renderToImage(text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), width, height);
+	pixels = font->f.renderToImage(text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), width, height, max_width);
 	bitmap->width = width;
 	bitmap->height = height;
 	bitmap->pixels = pixels;

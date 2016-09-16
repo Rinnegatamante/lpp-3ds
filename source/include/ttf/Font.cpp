@@ -148,7 +148,7 @@ void Font::drawString(int x, int y, const std::string& str, Color color, bool to
 	}
 }
 
-void Font::calcDimensions(const std::string str, int& width, int& height) {
+void Font::calcDimensions(const std::string str, int& width, int& height, int max_width) {
 	if(!isLoaded())
 	{
 		return NULL;
@@ -183,6 +183,11 @@ void Font::calcDimensions(const std::string str, int& width, int& height) {
 		int cheight = bh - by;
 		int oy = ascent + by;
 
+		if(max_width > 0 && sx + cwidth > max_width) {
+			sy += ascent - descent + lineGap;
+			sx = 0;
+		}
+
 		int advance;
 		stbtt_GetCodepointHMetrics(&m_info, str[i], &advance, 0);
 		if(sy + oy + cheight > height) {
@@ -200,7 +205,7 @@ void Font::calcDimensions(const std::string str, int& width, int& height) {
 	}
 }
 
-unsigned char* Font::renderToImage(const std::string& str, Color color, int& width, int& height)
+unsigned char* Font::renderToImage(const std::string& str, Color color, int& width, int& height, int max_width)
 {
 	std::vector<unsigned char> char_raster;
 	int bx, by, bw, bh;
@@ -213,7 +218,7 @@ unsigned char* Font::renderToImage(const std::string& str, Color color, int& wid
 	descent *= m_scale;
 	lineGap *= m_scale;
 
-	this->calcDimensions(str, width, height);
+	this->calcDimensions(str, width, height, max_width);
 	Image image;
 	image.create(width, height, Color(0,0,0,0));
 	sx = 0;
@@ -233,6 +238,11 @@ unsigned char* Font::renderToImage(const std::string& str, Color color, int& wid
 		int char_width = bw - bx;
 		int char_height = bh - by;
 		int oy = ascent + by;
+
+		if(max_width > 0 && sx + char_width > max_width) {
+			sy += ascent - descent + lineGap;
+			sx = 0;
+		}
 
 		char_raster.resize(char_width * char_height);
 
