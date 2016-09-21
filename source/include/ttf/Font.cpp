@@ -26,13 +26,13 @@ void* Font::loadFromFile(const std::string& filename)
 {
 	FILE* fp = fopen(filename.c_str(), "r");
 	if (!fp)
-		return false;
+		return NULL;
 	fseek(fp, 0, SEEK_END);
 	unsigned int buffer_size = ftell(fp);
 	unsigned char* buffer = (unsigned char*)malloc(buffer_size);
 	if (!buffer) {
 		fclose(fp);
-		return false;
+		return NULL;
 	}
 	rewind(fp);
 	fread(buffer, 1, buffer_size, fp);
@@ -76,7 +76,7 @@ void Font::setSize(int pixels)
 	m_scale = stbtt_ScaleForPixelHeight(&m_info, pixels);
 }
 
-void Font::drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen, bool side)
+void Font::drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen, bool side, int max_width)
 {
 	if(!isLoaded())
 	{
@@ -109,6 +109,11 @@ void Font::drawStringUnicode(int x, int y, const std::wstring& str, Color color,
 		int width = bw - bx;
 		int height = bh - by;
 
+		if(max_width > 0 && sx + width > max_width) {
+			sy += ascent - descent + lineGap;
+			sx = 0;
+		}
+
 		int oy = ascent + by;
 
 		char_raster.resize(width * height);
@@ -139,16 +144,16 @@ void Font::drawStringUnicode(int x, int y, const std::wstring& str, Color color,
 	}
 }
 
-void Font::drawString(int x, int y, const std::string& str, Color color, bool top_screen, bool side)
+void Font::drawString(int x, int y, const std::string& str, Color color, bool top_screen, bool side, int max_width)
 {
 	if(str.length() > 0)
 	{
 		std::wstring unicode_str = std::wstring(str.begin(), str.end());
-		drawStringUnicode(x, y, unicode_str, color, top_screen, side);
+		drawStringUnicode(x, y, unicode_str, color, top_screen, side, max_width);
 	}
 }
 
-void Font::calcDimensions(const std::string str, int& width, int& height, int max_width) {
+void Font::measureText(const std::string str, int& width, int& height, int max_width) {
 	if(!isLoaded())
 	{
 		return NULL;
@@ -205,12 +210,13 @@ void Font::calcDimensions(const std::string str, int& width, int& height, int ma
 	}
 }
 
-unsigned char* Font::renderToImage(const std::string& str, Color color, int& width, int& height, int max_width)
+void Font::drawStringToBuffer(int x, int y, const std::string& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width)
 {
 	std::vector<unsigned char> char_raster;
 	int bx, by, bw, bh;
 	int ascent, descent, lineGap;
 	int sx = 0, sy = 0;
+	int width, height;
 
 	stbtt_GetFontVMetrics(&m_info, &ascent, &descent, &lineGap);
 
@@ -218,11 +224,7 @@ unsigned char* Font::renderToImage(const std::string& str, Color color, int& wid
 	descent *= m_scale;
 	lineGap *= m_scale;
 
-	this->calcDimensions(str, width, height, max_width);
-	Image image;
-	image.create(width, height, Color(0,0,0,0));
-	sx = 0;
-	sy = 0;
+	this->measureText(str, width, height, max_width);
 
 	for (unsigned int i = 0; i < str.length(); i++)
 	{
@@ -251,12 +253,53 @@ unsigned char* Font::renderToImage(const std::string& str, Color color, int& wid
 
 		for (int ix = 0; ix < char_width; ix++) {
 			for (int iy = 0; iy < char_height; iy++) {
-				if (char_raster[ix + iy * char_width] != 0)
-					image.putPixel(sx + ix, height - (sy + oy + iy) - 1, Color(color.r, color.g, color.b,
-								char_raster[ix + iy * char_width]));
+				int xpos = x + sx + ix;
+				int ypos = buffer_height - (y + sy + oy + iy) -1;
+				if (char_raster[ix + iy * char_width] != 0 && xpos < buffer_width && ypos < buffer_height) {
+					unsigned int alpha = char_raster[ix + iy * char_width];
+					unsigned int inv_alpha = 255 - alpha;
+					if (bitsperpixel == 24) {
+						unsigned char bg_r = buffer[3 * (xpos + ypos * buffer_width) + 0];
+						unsigned char bg_g = buffer[3 * (xpos + ypos * buffer_width) + 1];
+						unsigned char bg_b = buffer[3 * (xpos + ypos * buffer_width) + 2];
+
+						unsigned char r = (unsigned char)((alpha * color.r + inv_alpha * bg_r) >> 8);
+						unsigned char g = (unsigned char)((alpha * color.g + inv_alpha * bg_g) >> 8);
+						unsigned char b = (unsigned char)((alpha * color.b + inv_alpha * bg_b) >> 8);
+
+						buffer[3 * (xpos + ypos * buffer_width) + 0] = b;
+						buffer[3 * (xpos + ypos * buffer_width) + 1] = g;
+						buffer[3 * (xpos + ypos * buffer_width) + 2] = r;
+					} else {
+						unsigned char bg_r = buffer[4 * (xpos + ypos * buffer_width) + 0];
+						unsigned char bg_g = buffer[4 * (xpos + ypos * buffer_width) + 1];
+						unsigned char bg_b = buffer[4 * (xpos + ypos * buffer_width) + 2];
+						unsigned char bg_a = buffer[4 * (xpos + ypos * buffer_width) + 3];
+
+						unsigned char a;
+						if(alpha == 255 || bg_a == 255) {
+							a = 255;
+						} else {
+							a = alpha + (inv_alpha * bg_a) / 256;
+						}
+						unsigned int r,g,b;
+						if(a == 0) {
+							r = 0;
+							g = 0;
+							b = 0;
+						} else {
+							r = (alpha * color.r + (inv_alpha * bg_a * bg_r) / 256) / a;
+							b = (alpha * color.b + (inv_alpha * bg_a * bg_b) / 256) / a;
+							g = (alpha * color.g + (inv_alpha * bg_a * bg_g) / 256) / a;
+						}
+						buffer[4 * (xpos + ypos * buffer_width) + 0] = b > 255 ? 255 : b;
+						buffer[4 * (xpos + ypos * buffer_width) + 1] = g > 255 ? 255 : g;
+						buffer[4 * (xpos + ypos * buffer_width) + 2] = r > 255 ? 255 : r;
+						buffer[4 * (xpos + ypos * buffer_width) + 3] = a;
+					}
+				}
 			}
 		}
-
 		int advance;
 		stbtt_GetCodepointHMetrics(&m_info, str[i], &advance, 0);
 		sx += advance * m_scale;
@@ -264,45 +307,9 @@ unsigned char* Font::renderToImage(const std::string& str, Color color, int& wid
 		int kerning = stbtt_GetCodepointKernAdvance(&m_info, str[i], str[i + 1]);
 		sx += kerning * m_scale;
 	}
-
-	u8* field = new u8[height * width * 4];
-	std::memcpy(field, image.getPixelsPointer(), height * width * 4);
-	return field;
 }
 
 bool Font::isLoaded()
 {
 	return m_info.data != 0;
-}
-
-float Font::measureText(const std::string& text)
-{	
-	float length = 0.0f;
-	float lineLength = 0.0f;
-	
-	if(isLoaded())
-	{
-		for(unsigned int i = 0; i < text.length(); i++)
-		{
-			if(text[i] == '\n')
-			{
-				if(lineLength > length) {
-					length = lineLength;
-				}
-				
-				lineLength = 0.0f;
-				continue;
-			}
-			
-			int advance = 0;
-			stbtt_GetCodepointHMetrics(&m_info, text[i], &advance, 0);
-			
-			lineLength += advance;
-		}
-		
-		if(lineLength > length)
-			length = lineLength;
-	}
-	
-	return length;
 }

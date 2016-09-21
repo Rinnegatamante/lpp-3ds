@@ -30,19 +30,17 @@ public:
 
 	void setScale(float scale);
 	
-	float measureText(const std::string& text);
-	
 	bool isLoaded();
 
 	float getScale() const { return m_scale; }
 	
-	void drawString(int x, int y, const std::string& str, Color color, bool top_screen = true, bool side = true);
+	void drawString(int x, int y, const std::string& str, Color color, bool top_screen = true, bool side = true, int max_width = 0);
 	
-	void drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen = true, bool side = true);
+	void drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen = true, bool side = true, int max_width = 0);
 
-	unsigned char* renderToImage(const std::string& str, Color color, int& width, int& height, int max_width);
+	void drawStringToBuffer(int x, int y, const std::string& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width = 0);
 
-	void calcDimensions(const std::string str, int& width, int& height, int max_width);
+	void measureText(const std::string str, int& width, int& height, int max_width = 0);
 
 private:
 	stbtt_fontinfo m_info;
