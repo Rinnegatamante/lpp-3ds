@@ -622,7 +622,7 @@ static int lua_loadModel(lua_State *L){
 	#endif
 	luaL_checktype(L, 1, LUA_TTABLE);
 	int len = lua_rawlen(L, 1);
-	char* text = luaL_checkstring(L, 2);
+	char* text = (char*)luaL_checkstring(L, 2);
 	color* ambient = (color*)luaL_checkinteger(L, 3);
 	color* diffuse = (color*)luaL_checkinteger(L, 4);
 	color* specular = (color*)luaL_checkinteger(L, 5);
