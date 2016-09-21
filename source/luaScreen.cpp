@@ -784,6 +784,26 @@ static int lua_fsize(lua_State *L) {
     return 0;
 }
 
+static int lua_measureText(lua_State *L) {
+	int argc = lua_gettop(L);
+#ifndef SKIP_ERROR_HANDLING
+	if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments");
+#endif
+	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
+	char* text = (char*)(luaL_checkstring(L, 2));
+	int max_width = 0;
+	if (argc == 3) 
+		max_width = luaL_checkinteger(L,3);
+#ifndef SKIP_ERROR_HANDLING
+	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
+#endif
+	int width, height;
+	font->f.measureText(text, width, height, max_width);
+	lua_pushinteger(L, width);
+	lua_pushinteger(L, height);
+	return 2;
+}
+
 static int lua_unloadFont(lua_State *L) {
     int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -799,33 +819,40 @@ static int lua_unloadFont(lua_State *L) {
 }
 
 static int lua_fprint(lua_State *L) {
-    int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 6 && argc != 7) return luaL_error(L, "wrong number of arguments");
+		if (argc != 6 && argc != 7 && argc != 8) return luaL_error(L, "wrong number of arguments");
 	#endif
 	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
 	int x = luaL_checkinteger(L, 2);
-    int y = luaL_checkinteger(L, 3);
+	int y = luaL_checkinteger(L, 3);
 	char* text = (char*)(luaL_checkstring(L, 4));
 	u32 color = luaL_checkinteger(L,5);
 	int screen = luaL_checkinteger(L,6);
 	int side=0;
-	if (argc == 7) side = luaL_checkinteger(L,7);
+	if (argc >= 7) side = luaL_checkinteger(L,7);
+	int max_width = 0;
+	if (argc == 8) max_width = luaL_checkinteger(L,8);
 	#ifndef SKIP_ERROR_HANDLING
 		if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
 		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if (screen < 0) return luaL_error(L, "wrong SCREEN value");
 		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen <= 1) && (y > 227)) return luaL_error(L, "out of framebuffer bounds");
-		if (screen != 0 && screen != 1) return luaL_error(L, "wrong SCREEN value");
+		if (screen > 1 && ((Bitmap*)screen)->magic != 0x4C494D47) return luaL_error(L, "attempt to access wrong memory block type");
+		if (screen > 1 && ((Bitmap*)screen)->bitperpixel != 32 && ((Bitmap*)screen)->bitperpixel != 24) return luaL_error(L, "Bitmap has to be 24 or 32 bits per pixel");
 	#endif
-	bool left_side = false;
-	bool top_screen = false;
-	if (screen == 0) top_screen = true;
-	if (side == 0) left_side = true;
-	font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side);
-	gfxFlushBuffers();
-    return 0;
+	if (screen > 1) {
+		Bitmap* canvas = (Bitmap*) screen;
+		font->f.drawStringToBuffer(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), canvas->pixels, canvas->width, canvas->height, canvas->bitperpixel, max_width);
+	} else {
+		bool left_side = (bool) 1 - side;
+		bool top_screen = (bool) 1 - screen;
+		font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side, max_width);
+		gfxFlushBuffers();
+	}
+	return 0;
 }
 
 //Register our Console Functions
@@ -882,6 +909,7 @@ static const luaL_Reg Font_functions[] = {
   {"print",					lua_fprint}, 
   {"setPixelSizes",			lua_fsize}, 
   {"unload",				lua_unloadFont}, 
+  {"measureText",			lua_measureText},
   {0, 0}
 };
 
