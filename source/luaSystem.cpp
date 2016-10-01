@@ -239,6 +239,20 @@ static int lua_checkbuild(lua_State *L)
 	return 1;
 }
 
+static int lua_checksvc(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	Handle testsvcHandle;
+	const char *service = luaL_checkstring(L, 1);
+	srvGetServiceHandleDirect(&testsvcHandle, service);
+	lua_pushboolean(L, testsvcHandle);
+	svcCloseHandle(testsvcHandle);
+	return 1;
+}
+
 static int lua_getRegion(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1955,6 +1969,7 @@ static const luaL_Reg System_functions[] = {
 	{"takeScreenshot",		lua_screenshot},
 	{"currentDirectory",	lua_curdir},
 	{"checkBuild",			lua_checkbuild},
+	{"checkSVC",			lua_checksvc},
 	{"renameDirectory",		lua_rendir},
 	{"createDirectory",		lua_createdir},
 	{"deleteDirectory",		lua_deldir},
