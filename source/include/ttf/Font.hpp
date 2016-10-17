@@ -38,9 +38,11 @@ public:
 	
 	void drawStringUnicode(int x, int y, const std::wstring& str, Color color, bool top_screen = true, bool side = true, int max_width = 0);
 
-	void drawStringToBuffer(int x, int y, const std::string& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width = 0);
+	void drawStringToBuffer(int x, int y, const std::wstring& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width = 0);
 
-	void measureText(const std::string str, int& width, int& height, int max_width = 0);
+	void measureText(const std::wstring str, int& width, int& height, int max_width = 0);
+
+	static std::wstring utf8_to_UCS2(char * code);
 
 private:
 	stbtt_fontinfo m_info;
