@@ -153,7 +153,7 @@ void Font::drawString(int x, int y, const std::string& str, Color color, bool to
 	}
 }
 
-void Font::measureText(const std::string str, int& width, int& height, int max_width) {
+void Font::measureText(const std::wstring str, int& width, int& height, int max_width) {
 	if(!isLoaded())
 	{
 		return NULL;
@@ -210,7 +210,7 @@ void Font::measureText(const std::string str, int& width, int& height, int max_w
 	}
 }
 
-void Font::drawStringToBuffer(int x, int y, const std::string& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width)
+void Font::drawStringToBuffer(int x, int y, const std::wstring& str, Color color, unsigned char* buffer, int buffer_width, int buffer_height, int bitsperpixel, int max_width)
 {
 	std::vector<unsigned char> char_raster;
 	int bx, by, bw, bh;
@@ -312,4 +312,75 @@ void Font::drawStringToBuffer(int x, int y, const std::string& str, Color color,
 bool Font::isLoaded()
 {
 	return m_info.data != 0;
+}
+
+std::wstring Font::utf8_to_UCS2(char* code)
+{
+	int size = strlen(code);
+	int *a;
+	std::wstring ucs2;
+	short int com = 1 << 7;
+	for (int x = 0; x <= size; ++x)
+	{
+		char utf = code[x];
+		int size = 0;
+		int i = 0;
+		int index = (utf & com) != 0;
+		short int binary[16];
+		if (index == 0)///0xxxxxxx ==> 00000000 0xxxxxxxx
+		{
+			for (; i < 8; ++i)
+			{
+				binary[i] = 0;
+			}
+			for (; i < 16; ++i)
+			{
+				binary[i] = (utf & 1 << (15 - i)) != 0;//
+			}
+		}
+		else if (utf&(1 << 5) == 0)// 110xxxxx 10yyyyyy ==> 00000xxx xxyyyyyy
+		{
+			for (; i < 5; ++i)
+			{
+				binary[i] = 0;
+			}
+			for (; i < 10; ++i)
+			{
+				binary[i] = (utf&(1 << (9 - i))) != 0;
+			}
+			x += 1;
+			utf = code[x];
+			for (; i < 16; ++i)
+			{
+				binary[i] = (utf&(1 << (15 - i))) != 0;
+			}
+		}
+		else//1110xxxx 10yyyyyy 10zzzzzz ==> xxxxyyyy yyzzzzzz
+		{
+			for (; i < 4; ++i)
+			{
+				binary[i] = (utf & 1 << (3 - i)) != 0;
+			}
+			x += 1;
+			utf = code[x];
+			for (; i < 10; ++i)
+			{
+				binary[i] = (utf & 1 << (9 - i)) != 0;
+			}
+			x += 1;
+			utf = code[x];
+			for (; i < 16; ++i)
+			{
+				binary[i] = (utf & 1 << (15 - i)) != 0;
+			}
+		}
+		wchar_t ch = 0;
+		for (i = 0; i <16; i++)
+		{
+			ch <<= 1;
+			ch |= binary[i];
+		}
+		ucs2 += ch;
+	}
+	return ucs2;
 }

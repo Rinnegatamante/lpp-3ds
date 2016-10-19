@@ -45,6 +45,7 @@
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
+
 static int lua_print(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -791,6 +792,7 @@ static int lua_measureText(lua_State *L) {
 #endif
 	ttf* font = (ttf*)(luaL_checkinteger(L, 1));
 	char* text = (char*)(luaL_checkstring(L, 2));
+	std::wstring ucs2 = Font::utf8_to_UCS2(text);
 	int max_width = 0;
 	if (argc == 3) 
 		max_width = luaL_checkinteger(L,3);
@@ -798,7 +800,7 @@ static int lua_measureText(lua_State *L) {
 	if (font->magic != 0x4C464E54) return luaL_error(L, "attempt to access wrong memory block type");
 #endif
 	int width, height;
-	font->f.measureText(text, width, height, max_width);
+	font->f.measureText(ucs2, width, height, max_width);
 	lua_pushinteger(L, width);
 	lua_pushinteger(L, height);
 	return 2;
@@ -827,6 +829,7 @@ static int lua_fprint(lua_State *L) {
 	int x = luaL_checkinteger(L, 2);
 	int y = luaL_checkinteger(L, 3);
 	char* text = (char*)(luaL_checkstring(L, 4));
+	std::wstring w_text = Font::utf8_to_UCS2(text);
 	u32 color = luaL_checkinteger(L,5);
 	int screen = luaL_checkinteger(L,6);
 	int side=0;
@@ -845,11 +848,11 @@ static int lua_fprint(lua_State *L) {
 	#endif
 	if (screen > 1) {
 		Bitmap* canvas = (Bitmap*) screen;
-		font->f.drawStringToBuffer(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), canvas->pixels, canvas->width, canvas->height, canvas->bitperpixel, max_width);
+		font->f.drawStringToBuffer(x, y, w_text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), canvas->pixels, canvas->width, canvas->height, canvas->bitperpixel, max_width);
 	} else {
 		bool left_side = (bool) 1 - side;
 		bool top_screen = (bool) 1 - screen;
-		font->f.drawString(x, y, text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side, max_width);
+		font->f.drawStringUnicode(x, y, w_text, Color((color >> 16) & 0xFF, (color >> 8) & 0xFF, (color) & 0xFF), top_screen, left_side, max_width);
 		gfxFlushBuffers();
 	}
 	return 0;
@@ -897,9 +900,9 @@ static const luaL_Reg Screen_functions[] = {
   {"createImage",					lua_newBitmap},
   {"saveImage",						lua_saveimg},
   {"getImageWidth",					lua_getWidth},
-  {"getImageHeight",				lua_getHeight},  
-  {"drawPartialImage",				lua_partial},  
-  {"drawLine",						lua_drawline},  
+  {"getImageHeight",				lua_getHeight},
+  {"drawPartialImage",				lua_partial},
+  {"drawLine",						lua_drawline},
   {0, 0}
 };
 
