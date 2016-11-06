@@ -403,14 +403,17 @@ static int lua_createServerSocket(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "Socket.createServerSocket(port) takes one argument.");
+		if (argc != 1 && argc != 2) return luaL_error(L, "Socket.createServerSocket(port) takes one argument.");
 	#endif
 	int port = luaL_checkinteger(L, 1);
-
+	int type = IPPROTO_TCP;
+	if (argc == 2) type = luaL_checkinteger(L, 2);
+	
 	Socket* my_socket = (Socket*) malloc(sizeof(Socket));
 	my_socket->serverSocket = true;
 
-	my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (type == IPPROTO_TCP) my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
+	else my_socket->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	#ifndef SKIP_ERROR_HANDLING
 		if (my_socket->sock <= 0) return luaL_error(L, "invalid socket.");
 	#endif
@@ -420,7 +423,8 @@ static int lua_createServerSocket(lua_State *L)
 	struct sockaddr_in addrTo;
 	addrTo.sin_family = AF_INET;
 	addrTo.sin_port = htons(port);
-	addrTo.sin_addr.s_addr = 0;
+	if (type == IPPROTO_TCP) addrTo.sin_addr.s_addr = 0;
+	else addrTo.sin_addr.s_addr = gethostid();
 
 	int err = bind(my_socket->sock, (struct sockaddr*)&addrTo, sizeof(addrTo));
 	#ifndef SKIP_ERROR_HANDLING
@@ -428,11 +432,13 @@ static int lua_createServerSocket(lua_State *L)
 	#endif
 
 	fcntl(my_socket->sock, F_SETFL, O_NONBLOCK);
-
-	err = listen(my_socket->sock, 1);
-	#ifndef SKIP_ERROR_HANDLING
-		if (err != 0) return luaL_error(L, "listen error.");
-	#endif
+	
+	if (type == IPPROTO_TCP){
+		err = listen(my_socket->sock, 1);
+		#ifndef SKIP_ERROR_HANDLING
+			if (err != 0) return luaL_error(L, "listen error.");
+		#endif
+	}
 	
 	my_socket->magic = 0xDEADDEAD;
 	lua_pushinteger(L,(u32)my_socket);
@@ -509,14 +515,16 @@ static int lua_connect(lua_State *L)
 {
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2 && argc != 3)  return luaL_error(L, "wrong number of arguments");
+		if (argc != 2 && argc != 4 && argc != 3)  return luaL_error(L, "wrong number of arguments");
 	#endif
 	
 	// Getting arguments
 	char *host = (char*)luaL_checkstring(L, 1);
 	int port = luaL_checkinteger(L, 2);
 	bool isSSL = false;
-	if (argc == 3) isSSL = lua_toboolean(L,3);
+	if (argc >= 3) isSSL = lua_toboolean(L,3);
+	int type = IPPROTO_TCP;
+	if (argc == 4) type = luaL_checkinteger(L, 4);
 	char port_str[8];
 	sprintf(port_str,"%i",port);
 	
@@ -527,7 +535,8 @@ static int lua_connect(lua_State *L)
 	my_socket->isSSL = isSSL;
 	
 	// Creating socket
-	my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (type == IPPROTO_TCP) my_socket->sock = socket(AF_INET, SOCK_STREAM, 0);
+	else my_socket->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	#ifndef SKIP_ERROR_HANDLING
 		if (my_socket->sock < 0){
 			free(my_socket);
@@ -708,6 +717,8 @@ void luaNetwork_init(lua_State *L) {
 	u8 GET_METHOD = 1;
 	u8 POST_METHOD = 2;
 	u8 HEAD_METHOD = 3;
+	VariableRegister(L,IPPROTO_UDP);
+	VariableRegister(L,IPPROTO_TCP);
 	VariableRegister(L,POST_METHOD);
 	VariableRegister(L,GET_METHOD);
 	VariableRegister(L,HEAD_METHOD);
