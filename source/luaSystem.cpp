@@ -216,13 +216,32 @@ static int lua_checkexist(lua_State *L)
 		else fclose(Handle);
 		lua_pushboolean(L,res);
 	}else{
+		// check if the path exists as a file
 		Handle fileHandle;
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		if (!ret) FSFILE_Close(fileHandle);
+
 		svcCloseHandle(fileHandle);
-		lua_pushboolean(L,!ret);
+		if (!ret) {
+			lua_pushboolean(L,!ret);
+			return 1;
+		}
+
+		// check if the path exists as a directory
+		Handle dirHandle;
+		ret = FSUSER_OpenArchive(&sdmcArchive);
+		ret = FSUSER_OpenDirectory(&dirHandle, sdmcArchive, filePath);
+
+		if (!ret) {
+			FSDIR_Close(dirHandle);
+			FSUSER_CloseArchive(&sdmcArchive);
+		}
+
+		svcCloseHandle(dirHandle);
+		lua_pushboolean(L, !ret);
 	}
 	return 1;
 }
@@ -1968,7 +1987,7 @@ static const luaL_Reg System_functions[] = {
 	{"deleteDirectory",		lua_deldir},
 	{"renameFile",			lua_renfile},
 	{"deleteFile",			lua_delfile},
-	{"doesFileExist",		lua_checkexist},
+	{"doesPathExist",		lua_checkexist},
 	{"listDirectory",		lua_listdir},
 	{"getBatteryLife",		lua_batterylv},
 	{"isBatteryCharging",	lua_batterycharge},
