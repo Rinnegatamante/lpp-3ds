@@ -77,6 +77,8 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [3DS Briscola](https://rinnegatamante.it/board/showthread.php?tid=17)
 * [EUCLIOD](http://gbatemp.net/threads/eucliod-a-homebrew-bullet-hell-for-the-3ds.419553/)
 * [RPS 3D](https://rinnegatamante.it/board/showthread.php?tid=43)
+* [Cookie Clicker](http://gbatemp.net/threads/w-i-p-cookie-clicker-for-3ds.460836/)
+* [TriaAl](https://gbatemp.net/threads/release-triaal-deemo-clone-for-nintendo-3ds.430308/)
 
 ##### Utilities
 * [CHMM2](https://rinnegatamante.it/board/showthread.php?tid=9)
