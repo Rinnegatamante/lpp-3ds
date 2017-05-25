@@ -97,6 +97,7 @@ Here are some 3DS homebrews made using Lua Player Plus 3DS:
 * [BLEND3R](https://rinnegatamante.it/board/showthread.php?tid=26)
 * [Homebr3w](https://github.com/Wolvan/Homebr3w)
 * [luaIrc](http://rinnegatamante.it/board/showthread.php?tid=136)
+* [FileKong](https://gbatemp.net/threads/release-filekong-ftp-client-for-3ds.429071/)
 
 ##### Engines & Interpreters
 * [VN3DS](http://gbatemp.net/threads/w-i-p-vn3ds-visual-novel-interpreter-for-3ds-homebrew.396564/)
