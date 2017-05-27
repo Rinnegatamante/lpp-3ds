@@ -219,8 +219,10 @@ static int lua_checkexist(lua_State *L)
 		Handle fileHandle;
 		FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
+
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		if (!ret) FSFILE_Close(fileHandle);
+
 		svcCloseHandle(fileHandle);
 		lua_pushboolean(L,!ret);
 	}
@@ -1946,6 +1948,14 @@ static int lua_dup(lua_State *L){ // TODO: Add Music and wav struct support
 	return 1;
 }
 
+static int lua_mainLoop(lua_State *L) {
+	bool loop;
+	loop = aptMainLoop();
+
+	lua_pushboolean(L, loop);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
 	{"exit",				lua_exit},
@@ -1996,6 +2006,7 @@ static const luaL_Reg System_functions[] = {
 	{"extractFromZIP",		lua_getfilefromzip},
 	{"checkSDMC",			lua_detectsd},
 	{"fork",				lua_dup},
+	{"mainLoop",			lua_mainLoop},
 // I/O Module and Dofile Patch
 	{"openFile",			lua_openfile},
 	{"getFileSize",			lua_getsize},
