@@ -67,142 +67,144 @@ void streamOGG_CSND(void* arg){
 		svcClearEvent(updateStream);
 		u32 bytesRead;
 		
-			if(closeStream){
-				closeStream = false;
-				threadExit(0);
-			}
+		if(closeStream){
+			closeStream = false;
+			threadExit(0);
+		}
 			
-			// Initializing libogg and vorbisfile
-			int eof=0;
-			static int current_section;
+		// Initializing libogg and vorbisfile
+		int eof=0;
+		static int current_section;
 	
-			u32 control;
-			u32 total = src->size;
-			u32 block_size;
-			u32 package_max_size;
-			if (src->package_size == 0){
-				block_size = src->mem_size>>3;
-				package_max_size = block_size;
-			}else{
-				block_size = src->total_packages_size / (src->moltiplier - 1);
-				package_max_size = src->mem_size>>3;
-			}
-			if (src->audiobuf2 == NULL) control = (src->samplerate<<1) * ((osGetTime() - src->tick) / 1000);
-			else{
-				control = (src->samplerate<<2) * ((osGetTime() - src->tick) / 1000);
-				total = total<<1;
-			}
-			if ((src->streamLoop) && (control >= total * src->loop_index)) src->loop_index = src->loop_index + 1;
-			if ((control >= total) && (src->isPlaying) && (!src->streamLoop)){
-					src->isPlaying = false;
-					src->tick = (osGetTime()-src->tick);
-					CSND_SetPlayState(src->ch, 0);
-					if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
-					CSND_UpdateInfo(0);
-					ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-					if (src->audiobuf2 == NULL){ //Mono file
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) {
-		
-							// EOF
-							eof=1;
-				
-						} else {
-					
-							// Copying decoded block to PCM16 audiobuffer
-							memcpy(&src->audiobuf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;
-						}
-					}
-				}else{ //Stereo file
-					int i = 0;
-					while(!eof){
-						long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-						if (ret == 0) eof=1;
-						else {
-		
-							// Copying decoded block to PCM16 audiobuffer
-							memcpy(&tmp_buf[i],pcmout,ret);
-							i = i + ret;
-							if (i >= src->mem_size) break;	
-						}
-					}
-				
-						// Separating left and right channels
-					int z;
-					int j = 0;
-					for (z=0; z < src->mem_size; z=z+4){
-						src->audiobuf[j] = tmp_buf[z];
-						src->audiobuf[j+1] = tmp_buf[z+1];
-						src->audiobuf2[j] = tmp_buf[z+2];
-						src->audiobuf2[j+1] = tmp_buf[z+3];
-						j=j+2;
-						if (j >= src->mem_size>>1) j = 0;
+		u32 control;
+		u32 total = src->size;
+		u32 block_size;
+		u32 package_max_size;
+		if (src->package_size == 0){
+			block_size = src->mem_size>>3;
+			package_max_size = block_size;
+		}else{
+			block_size = src->total_packages_size / (src->moltiplier - 1);
+			package_max_size = src->mem_size>>3;
+		}
+		if (src->audiobuf2 == NULL) control = (src->samplerate<<1) * ((osGetTime() - src->tick) / 1000);
+		else{
+			control = (src->samplerate<<2) * ((osGetTime() - src->tick) / 1000);
+			total = total<<1;
+		}
+		if ((src->streamLoop) && (control >= total * src->loop_index)) src->loop_index = src->loop_index + 1;
+		if ((control >= total) && (src->isPlaying) && (!src->streamLoop)){
+			src->isPlaying = false;
+			src->tick = (osGetTime()-src->tick);
+			CSND_SetPlayState(src->ch, 0);
+			if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
+			CSND_UpdateInfo(0);
+			ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+			if (src->audiobuf2 == NULL){ //Mono file
+				int i = 0;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) {
+
+						// EOF
+						eof=1;
+
+					}else{
+
+						// Copying decoded block to PCM16 audiobuffer
+						memcpy(&src->audiobuf[i],pcmout,ret);
+						i = i + ret;
+						if (i >= src->mem_size) break;
+
 					}
 				}
-				src->moltiplier = 1;
-			}
-			if ((control >= (block_size * src->moltiplier)) && (src->isPlaying)){
-				if (src->audiobuf2 == NULL){ //Mono file
-						int i = 0;
-						int j = src->audio_pointer;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								if (!src->streamLoop) eof=1;
-								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-								src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
-						}
-						if (j + src->package_size >= src->mem_size){
-							u32 frag_size = src->mem_size - j;
-							u32 frag2_size = src->package_size-frag_size;
-							memcpy(&src->audiobuf[j],tmp_buf,frag_size);
-							memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
-							src->audio_pointer = frag2_size;
-						}else{
-							memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
-							src->audio_pointer = j + src->package_size;
-						}
-						src->total_packages_size = src->total_packages_size + src->package_size;
-					}else{ //Stereo file
-						int i = 0;
-						while(!eof){
-							long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
-							if (ret == 0) {
-								if (!src->streamLoop) eof=1;
-								else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
-							} else {
-								memcpy(&tmp_buf[i],pcmout,ret);
-								i = i + ret;
-							    src->package_size = i;
-								if (i >= (package_max_size)) break;
-							}
-						}
-				
-						// Separating left and right channels
-						int z;
-						int j = src->audio_pointer;
-						for (z=0; z < src->package_size; z=z+4){
-							src->audiobuf[j] = tmp_buf[z];
-							src->audiobuf[j+1] = tmp_buf[z+1];
-							src->audiobuf2[j] = tmp_buf[z+2];
-							src->audiobuf2[j+1] = tmp_buf[z+3];
-							j=j+2;
-							if (j >= src->mem_size>>1) j = 0;
-						}
-						src->audio_pointer = j;
-						src->total_packages_size = src->total_packages_size + src->package_size;
+			}else{ //Stereo file
+				int i = 0;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) eof=1;
+					else{
+
+						// Copying decoded block to PCM16 audiobuffer
+						memcpy(&tmp_buf[i],pcmout,ret);
+						i = i + ret;
+						if (i >= src->mem_size) break;	
+
 					}
-					src->moltiplier = src->moltiplier + 1;
+				}
+
+				// Separating left and right channels
+				int z;
+				int j = 0;
+				for (z=0; z < src->mem_size; z=z+4){
+					src->audiobuf[j] = tmp_buf[z];
+					src->audiobuf[j+1] = tmp_buf[z+1];
+					src->audiobuf2[j] = tmp_buf[z+2];
+					src->audiobuf2[j+1] = tmp_buf[z+3];
+					j=j+2;
+					if (j >= src->mem_size>>1) j = 0;
+				}
 			}
+			src->moltiplier = 1;
+		}
+		if ((control >= (block_size * src->moltiplier)) && (src->isPlaying)){
+			if (src->audiobuf2 == NULL){ //Mono file
+				int i = 0;
+				int j = src->audio_pointer;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) {
+						if (!src->streamLoop) eof=1;
+						else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+					}else{
+						memcpy(&tmp_buf[i],pcmout,ret);
+						i = i + ret;
+						src->package_size = i;
+						if (i >= (package_max_size)) break;
+					}
+				}
+				if (j + src->package_size >= src->mem_size){
+					u32 frag_size = src->mem_size - j;
+					u32 frag2_size = src->package_size-frag_size;
+					memcpy(&src->audiobuf[j],tmp_buf,frag_size);
+					memcpy(src->audiobuf,&tmp_buf[frag_size],frag2_size);
+					src->audio_pointer = frag2_size;
+				}else{
+					memcpy(&src->audiobuf[j],tmp_buf,src->package_size);
+					src->audio_pointer = j + src->package_size;
+				}
+				src->total_packages_size = src->total_packages_size + src->package_size;
+			}else{ //Stereo file
+				int i = 0;
+				while(!eof){
+					long ret=ov_read((OggVorbis_File*)src->sourceFile,pcmout,sizeof(pcmout),0,2,1,&current_section);
+					if (ret == 0) {
+						if (!src->streamLoop) eof=1;
+						else ov_raw_seek((OggVorbis_File*)src->sourceFile,0);
+					}else{
+						memcpy(&tmp_buf[i],pcmout,ret);
+						i = i + ret;
+						src->package_size = i;
+						if (i >= (package_max_size)) break;
+					}
+				}
+
+				// Separating left and right channels
+				int z;
+				int j = src->audio_pointer;
+				for (z=0; z < src->package_size; z=z+4){
+					src->audiobuf[j] = tmp_buf[z];
+					src->audiobuf[j+1] = tmp_buf[z+1];
+					src->audiobuf2[j] = tmp_buf[z+2];
+					src->audiobuf2[j+1] = tmp_buf[z+3];
+					j=j+2;
+					if (j >= src->mem_size>>1) j = 0;
+				}
+				src->audio_pointer = j;
+				src->total_packages_size = src->total_packages_size + src->package_size;
+			}
+			src->moltiplier = src->moltiplier + 1;
+		}
 	}
 }
 
@@ -245,8 +247,75 @@ void streamWAV_CSND(void* arg){
 					}
 				}
 			}else{
-					FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, src->mem_size);
-					u32 size_tbp = src->mem_size;
+				FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, src->mem_size);
+				u32 size_tbp = src->mem_size;
+				u32 off=0;
+				u32 i=0;
+				u16 z;
+				if (src->big_endian){
+					while (i < size_tbp){
+						z=0;
+						while (z < half_bps){
+							src->audiobuf[off+z] = tmp_buf[i+half_bps-z-1];
+							src->audiobuf2[off+z] = tmp_buf[i+half_bps-z-1];
+							z++;
+						}
+						i=i+src->bytepersample;
+						off=off+half_bps;
+					}
+				}else{
+					while (i < size_tbp){
+						z=0;
+						while (z < half_bps){
+							src->audiobuf[off+z] = tmp_buf[i+z];
+							src->audiobuf2[off+z] = tmp_buf[i+z+half_bps];
+							z++;
+						}
+						i=i+src->bytepersample;
+						off=off+half_bps;
+					}
+				}
+			}
+		}else if (((control) > (half_mem * src->moltiplier)) && (src->isPlaying)){
+			if ((src->moltiplier % 2) == 1){
+				//Update and flush first half-buffer
+				if (src->audiobuf2 == NULL){
+					if (src->encoding == CSND_ENCODING_ADPCM){ //ADPCM Decoding TODO
+						u32 buffer_headers_num = half_mem / src->bytepersample;
+						u8* tmp_audiobuf = tmp_buf;
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), tmp_audiobuf, half_mem);
+						int z=0,i=0;
+						while (i < half_mem){
+							src->audiobuf[z] = tmp_audiobuf[i];
+							z++;
+							i++;
+							if ((i % src->bytepersample) == 0) i=i+4;
+						}
+					}else{ //PCM-16 Decoding
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), src->audiobuf, half_mem);
+						u64 i = 0;
+						if (bytesRead != half_mem){
+							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, src->audiobuf, half_mem);
+							src->moltiplier = src->moltiplier + 1;
+						}
+						if (src->big_endian){
+							while (i < half_mem){
+								u8 tmp = src->audiobuf[i];
+								src->audiobuf[i] = src->audiobuf[i+1];
+								src->audiobuf[i+1] = tmp;
+								i=i+2;
+							}
+						}
+					}
+					src->moltiplier = src->moltiplier + 1;
+				}else{
+					FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+half_mem*(src->moltiplier + 1), tmp_buf, half_mem);
+					if (bytesRead != half_mem){
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, half_mem);
+						src->moltiplier = src->moltiplier + 1;
+					}
+					src->moltiplier = src->moltiplier + 1;
+					u32 size_tbp = half_mem;
 					u32 off=0;
 					u32 i=0;
 					u16 z;
@@ -255,7 +324,7 @@ void streamWAV_CSND(void* arg){
 							z=0;
 							while (z < half_bps){
 								src->audiobuf[off+z] = tmp_buf[i+half_bps-z-1];
-								src->audiobuf2[off+z] = tmp_buf[i+half_bps-z-1];
+								src->audiobuf2[off+z] = tmp_buf[i+(src->bytepersample)-z-1];
 								z++;
 							}
 							i=i+src->bytepersample;
@@ -274,137 +343,70 @@ void streamWAV_CSND(void* arg){
 						}
 					}
 				}
-			}else if (((control) > (half_mem * src->moltiplier)) && (src->isPlaying)){
-				if ((src->moltiplier % 2) == 1){
-					//Update and flush first half-buffer
-					if (src->audiobuf2 == NULL){
-						if (src->encoding == CSND_ENCODING_ADPCM){ //ADPCM Decoding TODO
-							u32 buffer_headers_num = half_mem / src->bytepersample;
-							u8* tmp_audiobuf = tmp_buf;
-							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), tmp_audiobuf, half_mem);
-							int z=0,i=0;
-							while (i < half_mem){
-								src->audiobuf[z] = tmp_audiobuf[i];
-								z++;
-								i++;
-								if ((i % src->bytepersample) == 0) i=i+4;
-							}
-						}else{ //PCM-16 Decoding
-							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), src->audiobuf, half_mem);
-							u64 i = 0;
-							if (bytesRead != half_mem){
-								FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, src->audiobuf, half_mem);
-								src->moltiplier = src->moltiplier + 1;
-							}
-							if (src->big_endian){
-								while (i < half_mem){
-									u8 tmp = src->audiobuf[i];
-									src->audiobuf[i] = src->audiobuf[i+1];
-									src->audiobuf[i+1] = tmp;
-									i=i+2;
-								}
-							}
+			}else{
+				u32 bytesRead;
+				//Update and flush second half-buffer
+				if (src->audiobuf2 == NULL){
+					if (src->encoding == CSND_ENCODING_ADPCM){ // ADPCM Decoding TODO
+						u32 buffer_headers_num = half_mem / src->bytepersample;
+						u8* tmp_audiobuf = tmp_buf;
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), tmp_audiobuf, half_mem);
+						int z=0,i=0;
+						while (i < half_mem){
+							src->audiobuf[z+half_mem] = tmp_audiobuf[i];
+							z++;
+							i++;
+							if ((i % src->bytepersample) == 0) i=i+4;
 						}
-						src->moltiplier = src->moltiplier + 1;
-					}else{
-						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+half_mem*(src->moltiplier + 1), tmp_buf, half_mem);
-						if (bytesRead != half_mem){
-							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead, tmp_buf, half_mem);
-							src->moltiplier = src->moltiplier + 1;
-						}
-						src->moltiplier = src->moltiplier + 1;
-						u32 size_tbp = half_mem;
-						u32 off=0;
-						u32 i=0;
-						u16 z;
+					}else{ // PCM-16 Decoding
+						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
 						if (src->big_endian){
-							while (i < size_tbp){
-								z=0;
-								while (z < half_bps){
-									src->audiobuf[off+z] = tmp_buf[i+half_bps-z-1];
-									src->audiobuf2[off+z] = tmp_buf[i+(src->bytepersample)-z-1];
-									z++;
-								}
-								i=i+src->bytepersample;
-								off=off+half_bps;
-							}
-						}else{
-							while (i < size_tbp){
-								z=0;
-								while (z < half_bps){
-									src->audiobuf[off+z] = tmp_buf[i+z];
-									src->audiobuf2[off+z] = tmp_buf[i+z+half_bps];
-									z++;
-								}
-								i=i+src->bytepersample;
-								off=off+half_bps;
+							u64 i = 0;
+							while (i < ((src->mem_size)/2)){
+								u8 tmp = src->audiobuf[i+half_mem];
+								src->audiobuf[i+half_mem] = src->audiobuf[i+half_mem+1];
+								src->audiobuf[i+half_mem+1] = tmp;
+								i=i+2;
 							}
 						}
 					}
+					src->moltiplier = src->moltiplier + 1;
 				}else{
-					u32 bytesRead;
-					//Update and flush second half-buffer
-					if (src->audiobuf2 == NULL){
-						if (src->encoding == CSND_ENCODING_ADPCM){ // ADPCM Decoding TODO
-							u32 buffer_headers_num = half_mem / src->bytepersample;
-							u8* tmp_audiobuf = tmp_buf;
-							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(half_mem*(src->moltiplier + 1)), tmp_audiobuf, half_mem);
-							int z=0,i=0;
-							while (i < half_mem){
-								src->audiobuf[z+half_mem] = tmp_audiobuf[i];
+					int quart_mem = half_mem >> 1;
+					FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+half_mem*(src->moltiplier + 1), tmp_buf, half_mem);
+					src->moltiplier = src->moltiplier + 1;
+					u32 size_tbp = half_mem;
+					u32 off=0;
+					u32 i=0;
+					u16 z;
+					if (src->big_endian){
+						while (i < size_tbp){
+							z=0;
+							while (z < half_bps){
+								src->audiobuf[quart_mem+off+z] = tmp_buf[i+half_bps-z-1];
+								src->audiobuf2[quart_mem+off+z] = tmp_buf[i+(src->bytepersample)-z-1];
 								z++;
-								i++;
-								if ((i % src->bytepersample) == 0) i=i+4;
 							}
-						}else{ // PCM-16 Decoding
-							FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+(((src->mem_size)/2)*(src->moltiplier + 1)), src->audiobuf+((src->mem_size)/2), (src->mem_size)/2);
-							if (src->big_endian){
-								u64 i = 0;
-								while (i < ((src->mem_size)/2)){
-									u8 tmp = src->audiobuf[i+half_mem];
-									src->audiobuf[i+half_mem] = src->audiobuf[i+half_mem+1];
-									src->audiobuf[i+half_mem+1] = tmp;
-									i=i+2;
-								}
-							}
+							z=0;
+							i=i+src->bytepersample;
+							off=off+half_bps;
 						}
-						src->moltiplier = src->moltiplier + 1;
 					}else{
-						int quart_mem = half_mem >> 1;
-						FS_Read((fileStream*)src->sourceFile, &bytesRead, src->startRead+half_mem*(src->moltiplier + 1), tmp_buf, half_mem);
-						src->moltiplier = src->moltiplier + 1;
-						u32 size_tbp = half_mem;
-						u32 off=0;
-						u32 i=0;
-						u16 z;
-						if (src->big_endian){
-							while (i < size_tbp){
-								z=0;
-								while (z < half_bps){
-									src->audiobuf[quart_mem+off+z] = tmp_buf[i+half_bps-z-1];
-									src->audiobuf2[quart_mem+off+z] = tmp_buf[i+(src->bytepersample)-z-1];
-									z++;
-								}
-								z=0;
-								i=i+src->bytepersample;
-								off=off+half_bps;
+						while (i < size_tbp){
+							z=0;
+							while (z < half_bps){
+								src->audiobuf[quart_mem+off+z] = tmp_buf[i+z];
+								src->audiobuf2[quart_mem+off+z] = tmp_buf[i+z+half_bps];
+								z++;
 							}
-						}else{
-							while (i < size_tbp){
-								z=0;
-								while (z < half_bps){
-									src->audiobuf[quart_mem+off+z] = tmp_buf[i+z];
-									src->audiobuf2[quart_mem+off+z] = tmp_buf[i+z+half_bps];
-									z++;
-								}
-								i=i+src->bytepersample;
-								off=off+half_bps;
-							}
+							i=i+src->bytepersample;
+							off=off+half_bps;
 						}
 					}
 				}
 			}
-		}		
+		}
+	}		
 }
 
 void streamDEC_CSND(void* arg){
@@ -431,11 +433,10 @@ void streamDEC_CSND(void* arg){
 	}
 }
 
-static int lua_openogg_old(lua_State *L) 
-{	
-    int argc = lua_gettop(L);
+static int lua_openogg_old(lua_State *L) {	
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1); //Filename
 	
@@ -547,9 +548,9 @@ static int lua_openogg_old(lua_State *L)
 			} else if (ret < 0) {
 			
 				// Error handling
-				if(ret==OV_EBADLINK){
-					return luaL_error(L, "corrupt bitstream section.");
-				}
+				#ifndef SKIP_ERROR_HANDLING
+				if(ret==OV_EBADLINK) return luaL_error(L, "corrupt bitstream section.");
+				#endif
 				
 			} else {
 			
@@ -593,9 +594,9 @@ static int lua_openogg_old(lua_State *L)
 			} else if (ret < 0) {
 			
 				// Error handling
-				if(ret==OV_EBADLINK){
-					return luaL_error(L, "corrupt bitstream section.");
-				}
+				#ifndef SKIP_ERROR_HANDLING
+				if(ret==OV_EBADLINK) return luaL_error(L, "corrupt bitstream section.");
+				#endif
 				
 			} else {
 			
@@ -635,11 +636,10 @@ static int lua_openogg_old(lua_State *L)
 	return 1;
 }
 
-static int lua_openmp3_old(lua_State *L) 
-{	
-    int argc = lua_gettop(L);
+static int lua_openmp3_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1); //Filename
 	
@@ -685,9 +685,7 @@ static int lua_openmp3_old(lua_State *L)
 	
 	//Extracting metadatas
 	// TODO: Add metadatas extraction
-	
-	
-	
+		
 	wav_file->isPlaying = false;
 	
 	// Decoding MP3 buffer
@@ -710,11 +708,10 @@ static int lua_openmp3_old(lua_State *L)
 }
 
 
-static int lua_openwav_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_openwav_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	bool mem_size = false;
@@ -724,7 +721,7 @@ static int lua_openwav_old(lua_State *L)
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"rb");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
@@ -732,7 +729,7 @@ static int lua_openwav_old(lua_State *L)
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly(&fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if(ret) return luaL_error(L, "error opening file");
+		if(ret) return luaL_error(L, "error opening file");
 		#endif
 	}
 	u32 magic,samplerate,bytesRead,jump,chunk=0x00000000;
@@ -911,9 +908,7 @@ static int lua_openwav_old(lua_State *L)
 		wav_file->magic = 0x4C534E44;
 		lua_pushinteger(L,(u32)wav_file);
 	}
-	if (!mem_size){
-		FS_Close(fileHandle);
-	}
+	if (!mem_size) FS_Close(fileHandle);
 	return 1;
 }
 
@@ -1007,11 +1002,10 @@ void streamOGG_DSP(void* arg){
 	}
 }
 
-static int lua_openaiff_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_openaiff_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	bool mem_size = false;
@@ -1021,7 +1015,7 @@ static int lua_openaiff_old(lua_State *L)
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
@@ -1030,7 +1024,7 @@ static int lua_openaiff_old(lua_State *L)
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly(&fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "error opening file.");
+		if (ret) return luaL_error(L, "error opening file.");
 		#endif
 	}
 	u32 magic,bytesRead,jump,chunk=0x00000000;
@@ -1255,9 +1249,9 @@ static int lua_openogg(lua_State *L)
 {	
 	
 	// Init function
-    int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1); //Filename
 	
@@ -1394,13 +1388,12 @@ static int lua_openogg(lua_State *L)
 	return 1;
 }
 
-static int lua_openwav(lua_State *L)
-{
+static int lua_openwav(lua_State *L){
 
 	// Init function
-    int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	
@@ -1414,7 +1407,7 @@ static int lua_openwav(lua_State *L)
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
@@ -1423,7 +1416,7 @@ static int lua_openwav(lua_State *L)
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "error opening file.");
+		if (ret) return luaL_error(L, "error opening file.");
 		#endif
 	}
 	
@@ -1541,13 +1534,12 @@ static int lua_openwav(lua_State *L)
 	return 1;
 }
 
-static int lua_openaiff(lua_State *L)
-{
+static int lua_openaiff(lua_State *L){
 	
 	// Init function
-    int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+	if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	
@@ -1561,7 +1553,7 @@ static int lua_openaiff(lua_State *L)
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
@@ -1674,11 +1666,10 @@ static int lua_openaiff(lua_State *L)
 	return 1;
 }
 
-static int lua_soundinit(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_soundinit(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	if (!isCSND){
 		if (csndAccess){
@@ -1692,17 +1683,16 @@ static int lua_soundinit(lua_State *L)
 	return 0;
 }
 
-static int lua_play(lua_State *L)
-{
+static int lua_play(lua_State *L){
 	
 	// Init Function
-    int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2 && argc != 3)	return luaL_error(L, "wrong number of arguments");
+	if (argc != 2 && argc != 3)	return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	closeStream = false;
 	bool loop = lua_toboolean(L, 2);
@@ -1757,15 +1747,14 @@ static int lua_play(lua_State *L)
 	return 0;
 }
 
-static int lua_play_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_play_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 2) && (argc != 3))	return luaL_error(L, "wrong number of arguments");
+	if ((argc != 2) && (argc != 3))	return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	closeStream = false;
 	bool loop = lua_toboolean(L, 2);
@@ -1867,17 +1856,16 @@ static int lua_play_old(lua_State *L)
 }
 
 
-static int lua_closesong(lua_State *L)
-{
+static int lua_closesong(lua_State *L){
 	
 	// Init function
-    int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Checking if streaming feature is used
@@ -1916,15 +1904,14 @@ static int lua_closesong(lua_State *L)
 	return 0;
 }
 
-static int lua_close_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_close_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Checking if audio playback started at least once
@@ -1973,15 +1960,14 @@ static int lua_close_old(lua_State *L)
 	return 0;
 }
 
-static int lua_pause_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_pause_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	CSND_SetPlayState(src->ch, 0);
 	if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 0);
@@ -1991,15 +1977,14 @@ static int lua_pause_old(lua_State *L)
 	return 0;
 }
 
-static int lua_resume_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_resume_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	CSND_SetPlayState(src->ch, 1);
 	if (src->audiobuf2 != NULL) CSND_SetPlayState(src->ch2, 1);
@@ -2009,15 +1994,14 @@ static int lua_resume_old(lua_State *L)
 	return 0;
 }
 
-static int lua_pause(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_pause(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
 		ndspChnSetPaused(src->ch, true);
@@ -2027,15 +2011,14 @@ static int lua_pause(lua_State *L)
 	return 0;
 }
 
-static int lua_resume(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_resume(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (!src->isPlaying){
 		ndspChnSetPaused(src->ch, false);
@@ -2047,24 +2030,23 @@ static int lua_resume(lua_State *L)
 }
 
 static int lua_wisPlaying(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (csndAccess) lua_pushboolean(L, ((wav*)src)->isPlaying);
 	else lua_pushboolean(L, src->isPlaying);
 	return 1;
 }
 
-static int lua_soundend(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_soundend(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	if (isCSND){
 		if (csndAccess) csndExit();
@@ -2074,15 +2056,14 @@ static int lua_soundend(lua_State *L)
 	return 0;
 }
 
-static int lua_save(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_save(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->mem_size != 0) return luaL_error(L, "cannot save a stream");
 	const char* file = luaL_checkstring(L, 2);
@@ -2118,15 +2099,14 @@ static int lua_save(lua_State *L)
 	return 0;
 }
 
-static int lua_save_old(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_save_old(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->mem_size != 0) return luaL_error(L, "cannot save a stream");
 	if (src->audiobuf2 != NULL) return luaL_error(L, "csnd:SND system cannot save stereo files");
@@ -2164,13 +2144,13 @@ static int lua_save_old(lua_State *L)
 }
 
 static int lua_getSrate(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (csndAccess) lua_pushinteger(L, ((wav*)src)->samplerate);
 	else lua_pushinteger(L, src->samplerate);
@@ -2178,13 +2158,13 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getTime(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying) lua_pushinteger(L, (osGetTime() - src->tick) / 1000);
 	else lua_pushinteger(L, src->tick / 1000);
@@ -2192,13 +2172,13 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getTime_old(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
 		if (src->streamLoop && src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L, ((osGetTime() - src->tick) / 1000) / src->loop_index);
@@ -2211,13 +2191,13 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getTotalTime(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if ((src->encoding == CSND_ENCODING_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate>>1));
 	else if (src->encoding == CSND_ENCODING_VORBIS) lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * src->samplerate * src->audiotype));
@@ -2227,13 +2207,13 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getTotalTime_old(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if ((src->encoding == CSND_ENCODING_ADPCM) && (src->audiobuf2 != NULL) && (src->mem_size == 0)) lua_pushinteger(L,(src->size - src->startRead) / (src->samplerate>>1));
 	else if (src->encoding == CSND_ENCODING_VORBIS && src->bytepersample > 1) lua_pushinteger(L,(src->size - src->startRead) / ((src->bytepersample) * (src->samplerate<<1)));
@@ -2244,13 +2224,13 @@ int argc = lua_gettop(L);
 
 
 static int lua_getTitle(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (csndAccess) lua_pushstring(L, ((wav*)src)->title);
 	else lua_pushstring(L, src->title);
@@ -2258,13 +2238,13 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getAuthor(lua_State *L){
-int argc = lua_gettop(L);
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (csndAccess) lua_pushstring(L, ((wav*)src)->author);
 	else lua_pushstring(L, src->author);
@@ -2272,26 +2252,26 @@ int argc = lua_gettop(L);
 }
 
 static int lua_getType(lua_State *L){
-int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	Music* src = (Music*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushinteger(L, src->audiotype);
 	return 1;
 }
 
 static int lua_getType_old(lua_State *L){
-int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	wav* src = (wav*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->audiobuf2 == NULL) lua_pushinteger(L, 1);
 	else lua_pushinteger(L, 2);
@@ -2301,7 +2281,7 @@ int argc = lua_gettop(L);
 static int lua_updatestream(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	svcSignalEvent(updateStream);
 	return 0;
@@ -2310,7 +2290,7 @@ static int lua_updatestream(lua_State *L){
 static int lua_service(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	char srv[9];
 	if (csndAccess) sprintf(srv,"csnd:SND");
@@ -2321,49 +2301,49 @@ static int lua_service(lua_State *L){
 
 //Register our Sound Functions
 static const luaL_Reg Sound_DSP_functions[] = {
-	{"openOgg",					lua_openogg},
-	{"openWav",					lua_openwav},
-	{"openAiff",				lua_openaiff},	
-	{"close",					lua_closesong},
-	{"play",					lua_play},
-	{"init",					lua_soundinit},
-	{"term",					lua_soundend},
-	{"pause",					lua_pause},
-	{"getSrate",				lua_getSrate},
-	{"getTime",					lua_getTime},
-	{"getTitle",				lua_getTitle},
-	{"getAuthor",				lua_getAuthor},
-	{"getType",					lua_getType},  
-	{"getTotalTime",			lua_getTotalTime},
-	{"resume",					lua_resume},
-	{"isPlaying",				lua_wisPlaying},
-	{"updateStream",			lua_updatestream},
-	{"saveWav",					lua_save},
-	{"getService",				lua_service},
+	{"openOgg",           lua_openogg},
+	{"openWav",           lua_openwav},
+	{"openAiff",          lua_openaiff},	
+	{"close",             lua_closesong},
+	{"play",              lua_play},
+	{"init",              lua_soundinit},
+	{"term",              lua_soundend},
+	{"pause",             lua_pause},
+	{"getSrate",          lua_getSrate},
+	{"getTime",           lua_getTime},
+	{"getTitle",          lua_getTitle},
+	{"getAuthor",         lua_getAuthor},
+	{"getType",           lua_getType},  
+	{"getTotalTime",      lua_getTotalTime},
+	{"resume",            lua_resume},
+	{"isPlaying",         lua_wisPlaying},
+	{"updateStream",      lua_updatestream},
+	{"saveWav",           lua_save},
+	{"getService",        lua_service},
 	{0, 0}
 };
 
 static const luaL_Reg Sound_CSND_functions[] = {
-	{"openMp3",					lua_openmp3_old},
-	{"openOgg",					lua_openogg_old},
-	{"openWav",					lua_openwav_old},
-	{"openAiff",				lua_openaiff_old},	
-	{"close",					lua_close_old},
-	{"play",					lua_play_old},
-	{"init",					lua_soundinit},
-	{"term",					lua_soundend},
-	{"pause",					lua_pause_old},
-	{"getSrate",				lua_getSrate},
-	{"getTime",					lua_getTime_old},
-	{"getTitle",				lua_getTitle},
-	{"getAuthor",				lua_getAuthor},
-	{"getType",					lua_getType_old},  
-	{"getTotalTime",			lua_getTotalTime_old},
-	{"resume",					lua_resume_old},
-	{"isPlaying",				lua_wisPlaying},
-	{"updateStream",			lua_updatestream},
-	{"saveWav",					lua_save_old},
-	{"getService",				lua_service},
+	{"openMp3",           lua_openmp3_old},
+	{"openOgg",           lua_openogg_old},
+	{"openWav",           lua_openwav_old},
+	{"openAiff",          lua_openaiff_old},	
+	{"close",             lua_close_old},
+	{"play",              lua_play_old},
+	{"init",              lua_soundinit},
+	{"term",              lua_soundend},
+	{"pause",             lua_pause_old},
+	{"getSrate",          lua_getSrate},
+	{"getTime",           lua_getTime_old},
+	{"getTitle",          lua_getTitle},
+	{"getAuthor",         lua_getAuthor},
+	{"getType",           lua_getType_old},  
+	{"getTotalTime",      lua_getTotalTime_old},
+	{"resume",            lua_resume_old},
+	{"isPlaying",         lua_wisPlaying},
+	{"updateStream",      lua_updatestream},
+	{"saveWav",           lua_save_old},
+	{"getService",        lua_service},
 	{0, 0}
 };
 

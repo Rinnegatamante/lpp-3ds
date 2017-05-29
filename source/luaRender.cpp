@@ -28,8 +28,8 @@
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
+#- xerpi for sf2dlib ---------------------------------------------------------------------------------------------------#
 #- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
-#- fincs for citro3D ---------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------*/
 #include <3ds.h>
 #include <string.h>
@@ -61,8 +61,8 @@ static C3D_RenderTarget* targets[3];
 
 static int lua_newVertex(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 8) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 8) return luaL_error(L, "wrong number of arguments");
 	#endif
 	vertex* res = (vertex*)malloc(sizeof(vertex));
 	res->x = luaL_checknumber(L, 1);
@@ -79,8 +79,8 @@ static int lua_newVertex(lua_State *L){
 
 static int lua_loadobj(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 6) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1); //Model filename
 	const char* text = luaL_checkstring(L, 2); // Texture filename
@@ -88,9 +88,9 @@ static int lua_loadobj(lua_State *L){
 	color* diffuse = (color*)luaL_checkinteger(L, 4);
 	color* specular = (color*)luaL_checkinteger(L, 5);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	float emission = luaL_checknumber(L, 6);
 	
@@ -103,7 +103,7 @@ static int lua_loadobj(lua_State *L){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(text,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
@@ -112,7 +112,7 @@ static int lua_loadobj(lua_State *L){
 		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "file doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 		#endif
 	}
 	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
@@ -129,7 +129,7 @@ static int lua_loadobj(lua_State *L){
 		bitmap = decodeJPGfile(text);
 	}
 	#ifndef SKIP_ERROR_HANDLING
-		if(!bitmap) return luaL_error(L, "Error loading image");
+	if(!bitmap) return luaL_error(L, "Error loading image");
 	#endif
 	
 	// Flipping texture
@@ -176,7 +176,7 @@ static int lua_loadobj(lua_State *L){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
@@ -185,7 +185,7 @@ static int lua_loadobj(lua_State *L){
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly(&fileHandle.handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if(ret) return luaL_error(L, "error opening file");
+		if(ret) return luaL_error(L, "error opening file");
 		#endif
 	}
 	
@@ -433,8 +433,8 @@ static int lua_loadobj(lua_State *L){
 
 static int lua_init(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 w = luaL_checkinteger(L, 1);
 	u32 h = luaL_checkinteger(L, 2);
@@ -462,11 +462,11 @@ static int lua_init(lua_State *L){
 	
 	// Get the location of the uniforms
 	uLoc_projection   = shaderInstanceGetUniformLocation(program.vertexShader, "projection");
-	uLoc_modelView    = shaderInstanceGetUniformLocation(program.vertexShader, "modelView");
-	uLoc_lightVec     = shaderInstanceGetUniformLocation(program.vertexShader, "lightVec");
+	uLoc_modelView	= shaderInstanceGetUniformLocation(program.vertexShader, "modelView");
+	uLoc_lightVec	 = shaderInstanceGetUniformLocation(program.vertexShader, "lightVec");
 	uLoc_lightHalfVec = shaderInstanceGetUniformLocation(program.vertexShader, "lightHalfVec");
-	uLoc_lightClr     = shaderInstanceGetUniformLocation(program.vertexShader, "lightClr");
-	uLoc_material     = shaderInstanceGetUniformLocation(program.vertexShader, "material");
+	uLoc_lightClr	 = shaderInstanceGetUniformLocation(program.vertexShader, "lightClr");
+	uLoc_material	 = shaderInstanceGetUniformLocation(program.vertexShader, "material");
 	
 	// Configure attributes for use with the vertex shader
 	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
@@ -483,21 +483,21 @@ static int lua_init(lua_State *L){
 
 static int lua_useMaterial(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 5) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 5) return luaL_error(L, "wrong number of arguments");
 	#endif
 	model* mdl = (model*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (mdl->magic != 0xC00FFEEE) return luaL_error(L, "wrong number of arguments");
+	if (mdl->magic != 0xC00FFEEE) return luaL_error(L, "wrong number of arguments");
 	#endif
 	color* ambient = (color*)luaL_checkinteger(L, 2);
 	color* diffuse = (color*)luaL_checkinteger(L, 3);
 	color* specular = (color*)luaL_checkinteger(L, 4);
 	float emission = luaL_checknumber(L, 5);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Set object material attributes
@@ -515,12 +515,12 @@ static int lua_useMaterial(lua_State *L){
 
 static int lua_useTexture(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	model* mdl = (model*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (mdl->magic != 0xC00FFEEE) return luaL_error(L, "wrong number of arguments");
+	if (mdl->magic != 0xC00FFEEE) return luaL_error(L, "wrong number of arguments");
 	#endif
 	char* text = (char*)luaL_checkstring(L, 2);
 	
@@ -536,7 +536,7 @@ static int lua_useTexture(lua_State *L){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(text,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
@@ -545,7 +545,7 @@ static int lua_useTexture(lua_State *L){
 		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "file doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 		#endif
 	}
 	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
@@ -562,7 +562,7 @@ static int lua_useTexture(lua_State *L){
 		bitmap = decodeJPGfile(text);
 	}
 	#ifndef SKIP_ERROR_HANDLING
-		if(!bitmap) return luaL_error(L, "Error loading image");
+	if(!bitmap) return luaL_error(L, "Error loading image");
 	#endif
 	
 	// Flipping texture
@@ -617,8 +617,8 @@ static int lua_useTexture(lua_State *L){
 
 static int lua_loadModel(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 6) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
 	luaL_checktype(L, 1, LUA_TTABLE);
 	int len = lua_rawlen(L, 1);
@@ -628,9 +628,9 @@ static int lua_loadModel(lua_State *L){
 	color* specular = (color*)luaL_checkinteger(L, 5);
 	float emission = luaL_checknumber(L, 6);
 	#ifndef SKIP_ERROR_HANDLING
-		if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
-		if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (ambient->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (diffuse->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (specular->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Opening texture file
@@ -642,7 +642,7 @@ static int lua_loadModel(lua_State *L){
 		fileHandle.isRomfs = true;
 		FILE* handle = fopen(text,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle.handle = (u32)handle;
 	}else{
@@ -651,7 +651,7 @@ static int lua_loadModel(lua_State *L){
 		FS_Archive script=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
 		Result ret = FSUSER_OpenFileDirectly( &fileHandle.handle, script, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if (ret) return luaL_error(L, "file doesn't exist.");
+		if (ret) return luaL_error(L, "file doesn't exist.");
 		#endif
 	}
 	FS_Read(&fileHandle, &bytesRead, 0, &magic, 2);
@@ -668,7 +668,7 @@ static int lua_loadModel(lua_State *L){
 		bitmap = decodeJPGfile(text);
 	}
 	#ifndef SKIP_ERROR_HANDLING
-		if(!bitmap) return luaL_error(L, "Error loading image");
+	if(!bitmap) return luaL_error(L, "Error loading image");
 	#endif
 	
 	// Flipping texture
@@ -755,8 +755,8 @@ static int lua_loadModel(lua_State *L){
 
 static int lua_initblend(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2 && argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 2 && argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 screen = luaL_checkinteger(L, 1);
 	u32 side = 0;
@@ -769,7 +769,7 @@ static int lua_initblend(lua_State *L){
 	
 	// Update the uniforms
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightVec,     light_x, light_y, light_z, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightVec,	 light_x, light_y, light_z, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightHalfVec, light_x, light_y, light_z, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_lightClr, light_r, light_g, light_b, light_a);
 	
@@ -778,8 +778,8 @@ static int lua_initblend(lua_State *L){
 
 static int lua_lightdir(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	#endif
 	float x = luaL_checknumber(L, 1);
 	float y = luaL_checknumber(L, 2);
@@ -792,8 +792,8 @@ static int lua_lightdir(lua_State *L){
 
 static int lua_termblend(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	C3D_FrameEnd(0);
 	return 0;
@@ -801,12 +801,12 @@ static int lua_termblend(lua_State *L){
 
 static int lua_unloadModel(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	model* object = (model*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
+	if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	linearFree(object->vbo_data);
 	C3D_TexDelete(object->texture);
@@ -818,12 +818,12 @@ static int lua_unloadModel(lua_State *L){
 
 static int lua_blend(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 6) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 6) return luaL_error(L, "wrong number of arguments");
 	#endif
 	model* object = (model*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
+	if (object->magic != 0xC00FFEEE) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
@@ -865,8 +865,8 @@ static int lua_blend(lua_State *L){
 
 static int lua_term(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 
 	// Free the shader program
@@ -881,8 +881,8 @@ static int lua_term(lua_State *L){
 
 static int lua_newcolor(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 4) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 4) return luaL_error(L, "wrong number of arguments");
 	#endif
 	float r = luaL_checknumber(L, 1);
 	float g = luaL_checknumber(L, 2);
@@ -901,12 +901,12 @@ static int lua_newcolor(lua_State *L){
 
 static int lua_setlightc(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	color* colour = (color*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (colour->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
+	if (colour->magic != 0xC0C0C0C0) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	light_r = colour->r;
 	light_g = colour->g;
@@ -917,8 +917,8 @@ static int lua_setlightc(lua_State *L){
 
 static int lua_convert(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u32 colour = luaL_checkinteger(L, 1);
 	color* res = (color*)malloc(sizeof(color));
@@ -930,21 +930,21 @@ static int lua_convert(lua_State *L){
 	
 //Register our Render Functions
 static const luaL_Reg Render_functions[] = {
-	{"createVertex", 	lua_newVertex},
-	{"loadModel", 		lua_loadModel},
-	{"loadObject", 		lua_loadobj},
-	{"unloadModel", 	lua_unloadModel},
-	{"init", 			lua_init},
-	{"drawModel", 		lua_blend},
-	{"initBlend", 		lua_initblend},
-	{"useTexture", 		lua_useTexture},
-	{"useMaterial", 	lua_useMaterial},
-	{"termBlend", 		lua_termblend},
-	{"setLightColor", 	lua_setlightc},
-	{"setLightSource", 	lua_lightdir},
-	{"createColor", 	lua_newcolor},
+	{"createVertex",    lua_newVertex},
+	{"loadModel",       lua_loadModel},
+	{"loadObject",      lua_loadobj},
+	{"unloadModel",     lua_unloadModel},
+	{"init",            lua_init},
+	{"drawModel",       lua_blend},
+	{"initBlend",       lua_initblend},
+	{"useTexture",      lua_useTexture},
+	{"useMaterial",     lua_useMaterial},
+	{"termBlend",       lua_termblend},
+	{"setLightColor",   lua_setlightc},
+	{"setLightSource",  lua_lightdir},
+	{"createColor",     lua_newcolor},
 	{"convertColorFrom",lua_convert},
-	{"term", 			lua_term},
+	{"term",            lua_term},
 	{0, 0}
 };
 	

@@ -47,24 +47,22 @@ typedef Result (*func_3x_type2)(u8 arg, u64 arg2);
 typedef Result (*func_9x_type1)(int arg, u32 arg2, u32 arg3, float arg4, float arg5, void* arg6, void* arg7, u32 arg8);
 
 // Different kind of databases for parser optimization
-typedef struct
-{
+typedef struct{
 	char* name;
 	func_1x callback;
 }func_1x_db;
-typedef struct
-{
+
+typedef struct{
 	char* name;
 	func_2x_type1 callback;
 }func_2x_db;
-typedef struct
-{
+
+typedef struct{
 	char* name;
 	func_3x_type1 callback_type1; // argsize 5 (1+4)
 	func_3x_type2 callback_type2; // argsize 9 (1+4(pointer)) since Lua doesn't support 64bit integers natively
 }func_3x_db;
-typedef struct
-{
+typedef struct{
 	char* name;
 	func_9x_type1 callback_type1; // csndPlaysound-like calls
 }func_9x_db;
@@ -72,8 +70,7 @@ typedef struct
 
 
 // No args syscalls
-func_1x_db db_1x[]=
-{
+func_1x_db db_1x[]={
 	{"amInit", amInit},
 	{"amExit", amExit_norm},
 	{"csndInit", csndInit},
@@ -83,16 +80,14 @@ func_1x_db db_1x[]=
 };
 
 // One arg syscall
-func_2x_db db_2x[]=
-{
+func_2x_db db_2x[]={
 	// args size = 4
 	{"AM_CancelCIAInstall", (func_2x_type1)AM_CancelCIAInstall}, // 0
 	{"AM_FinishCiaInstall", (func_2x_type1)AM_FinishCiaInstall}, // 1
 };
 
 // Two args syscalls
-func_3x_db db_3x[]=
-{
+func_3x_db db_3x[]={
 	// type 1
 	{"AM_StartCiaInstall", (func_3x_type1)AM_StartCiaInstall}, // 0
 	{"AM_GetTitleCount", (func_3x_type1)AM_GetTitleCount}, // 1
@@ -103,8 +98,7 @@ func_3x_db db_3x[]=
 
 
 // Two args syscalls
-func_9x_db db_9x[]=
-{
+func_9x_db db_9x[]={
 	// type 1
 	{"csndPlaysound", (func_9x_type1)csndPlaySound}, // 0
 }; 
@@ -112,7 +106,7 @@ func_9x_db db_9x[]=
 static int lua_service(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	const char* srv = luaL_checkstring(L,1);
 	Handle tmp;
@@ -142,7 +136,7 @@ static int lua_service(lua_State *L){
 static int lua_execall(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc == 0) return luaL_error(L, "wrong number of arguments.");
+	if(argc == 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	const char* call = luaL_checkstring(L,1);
 	
@@ -209,7 +203,7 @@ static int lua_execall(lua_State *L){
 static int lua_readword(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	u32* word = (u32*)luaL_checkinteger(L, 1);
 	lua_pushinteger(L, *word);
@@ -219,7 +213,7 @@ static int lua_readword(lua_State *L){
 static int lua_storeword(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 2) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 2) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	u32* offs = (u32*)luaL_checkinteger(L, 1);
 	u32 word = (u32)luaL_checkinteger(L, 2);
@@ -230,7 +224,7 @@ static int lua_storeword(lua_State *L){
 static int lua_getfh(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	Handle hdl = luaL_checkinteger(L, 1);
 	fileStream* result = (fileStream*)malloc(sizeof(fileStream));
@@ -244,7 +238,7 @@ static int lua_getfh(lua_State *L){
 static int lua_alloc(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	u32 size = (u32)luaL_checkinteger(L, 1);
 	u8* memblock = (u8*)malloc(size);
@@ -255,7 +249,7 @@ static int lua_alloc(lua_State *L){
 static int lua_alloc2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	u32 size = (u32)luaL_checkinteger(L, 1);
 	u8* memblock = (u8*)linearAlloc(size);
@@ -266,7 +260,7 @@ static int lua_alloc2(lua_State *L){
 static int lua_free(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	void* offset = (void*)luaL_checkinteger(L, 1);
 	free(offset);
@@ -276,7 +270,7 @@ static int lua_free(lua_State *L){
 static int lua_free2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	void* offset = (void*)luaL_checkinteger(L, 1);
 	linearFree(offset);
@@ -286,7 +280,7 @@ static int lua_free2(lua_State *L){
 static int lua_getraw(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if(argc != 1) return luaL_error(L, "wrong number of arguments.");
+	if(argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	wav* block = (wav*)luaL_checkinteger(L, 1);
 	if (block->magic == 0x4C534E44){
@@ -299,16 +293,16 @@ static int lua_getraw(lua_State *L){
 
 //Register our Core Functions
 static const luaL_Reg Core_functions[] = {
-	{"checkService",		lua_service},
-	{"execCall",			lua_execall},
-	{"getHandle",			lua_getfh},
-	{"getRawData",			lua_getraw},
-	{"readWord",			lua_readword},
-	{"storeWord",			lua_storeword},
-	{"free",				lua_free},
-	{"alloc",				lua_alloc},
-	{"linearFree",			lua_free2},
-	{"linearAlloc",			lua_alloc2},
+	{"checkService",        lua_service},
+	{"execCall",            lua_execall},
+	{"getHandle",           lua_getfh},
+	{"getRawData",          lua_getraw},
+	{"readWord",            lua_readword},
+	{"storeWord",           lua_storeword},
+	{"free",                lua_free},
+	{"alloc",               lua_alloc},
+	{"linearFree",          lua_free2},
+	{"linearAlloc",         lua_alloc2},
 	{0, 0}
 };
 

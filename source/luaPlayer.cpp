@@ -45,8 +45,7 @@
 static lua_State *L;
 bool isCSND;
 
-const char *runScript(const char* script, bool isStringBuffer)
-{
+const char *runScript(const char* script, bool isStringBuffer){
 	L = luaL_newstate();
 	
 	// Standard libraries
@@ -82,17 +81,12 @@ const char *runScript(const char* script, bool isStringBuffer)
 	lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
 	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
 	
-	if(!isStringBuffer) 
-		s = luaL_loadfile(L, script);
-	else 
-		s = luaL_loadbuffer(L, script, strlen(script), NULL);
+	if(!isStringBuffer) s = luaL_loadfile(L, script);
+	else s = luaL_loadbuffer(L, script, strlen(script), NULL);
 		
-	if (s == 0) 
-	{
-		s = lua_pcall(L, 0, LUA_MULTRET, 0);
-	}
-	if (s) 
-	{
+	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);
+	
+	if (s){
 		errMsg = lua_tostring(L, -1);
 		printf("error: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1); // remove error message

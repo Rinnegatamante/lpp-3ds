@@ -100,11 +100,10 @@ void initCam(CAMU_Size res, bool enable3D, bool isVideo){
 	}
 }
 
-static int lua_caminit(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_caminit(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments.");
+	if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	int screen = luaL_checkinteger(L,1);
 	cam_type = luaL_checkinteger(L,2);
@@ -131,11 +130,10 @@ static int lua_caminit(lua_State *L)
 	return 0;
 }
 
-static int lua_camoutput(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_camoutput(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	Handle camReceiveEvent = 0;
 	Handle camReceiveEvent2 = 0;
@@ -155,11 +153,10 @@ static int lua_camoutput(lua_State *L)
 	return 0;
 }
 
-static int lua_camimage(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_camimage(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	Bitmap* result = (Bitmap*)malloc(sizeof(Bitmap));
 	if (SCREEN_SIZE == 153600) result->width = 320;
@@ -189,11 +186,10 @@ static int lua_camimage(lua_State *L)
 	return 1;
 }
 
-static int lua_camshot(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_camshot(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments.");
+	if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	const char *screenpath = luaL_checkstring(L, 1);
 	CAMU_Size res = (CAMU_Size)luaL_checkinteger(L, 2);
@@ -309,11 +305,10 @@ static int lua_camshot(lua_State *L)
 	return 0;
 }
 
-static int lua_camexit(lua_State *L)
-{
-    int argc = lua_gettop(L);
+static int lua_camexit(lua_State *L){
+	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	if (argc != 0) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	if (is3D) CAMU_StopCapture(PORT_BOTH);
 	else CAMU_StopCapture(PORT_CAM1);
@@ -325,11 +320,11 @@ static int lua_camexit(lua_State *L)
 
 //Register our Camera Functions
 static const luaL_Reg Camera_functions[] = {
-	{"init",					lua_caminit},
-	{"getOutput",				lua_camoutput},
-	{"takePhoto",				lua_camshot},
-	{"takeImage",				lua_camimage},
-	{"term",					lua_camexit},
+	{"init",       lua_caminit},
+	{"getOutput",  lua_camoutput},
+	{"takePhoto",  lua_camshot},
+	{"takeImage",  lua_camimage},
+	{"term",       lua_camexit},
 	{0, 0}
 };
 

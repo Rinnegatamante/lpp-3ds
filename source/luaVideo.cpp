@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------------------------------------------------------#
 #- Credits : -----------------------------------------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib -------------------------------------------------------------------------------------------------#
+#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
 #- StapleButter for debug font -----------------------------------------------------------------------------------------#
 #- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
 #- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
@@ -101,9 +101,9 @@ int jpgv_sk(void *datasource, ogg_int64_t offset, int whence){
 	}else return fseek((FILE*)datasource,offset,whence);
 }
 
- int jpgv_cl(void *datasource){
+int jpgv_cl(void *datasource){
 	return fclose((FILE*)datasource);
- }
+}
 
 long jpgv_tl(void *datasource){
 	return ftell((FILE*)datasource);
@@ -341,9 +341,9 @@ static void streamOGG(void* arg){
 
 static int lua_loadJPGV(lua_State *L) // TODO: Fix looping feature for Vorbis audiocodec (related to system hangs while exiting?)
 {
-    int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-       if (argc != 1) return luaL_error(L, "wrong number of arguments.");
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments.");
 	#endif
 	const char *file_tbo = luaL_checkstring(L, 1);
 	fileStream* fileHandle = (fileStream*)malloc(sizeof(fileStream));
@@ -351,7 +351,7 @@ static int lua_loadJPGV(lua_State *L) // TODO: Fix looping feature for Vorbis au
 		fileHandle->isRomfs = true;
 		FILE* handle = fopen(file_tbo,"r");
 		#ifndef SKIP_ERROR_HANDLING
-			if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
 		#endif
 		fileHandle->handle = (u32)handle;
 	}else{
@@ -360,7 +360,7 @@ static int lua_loadJPGV(lua_State *L) // TODO: Fix looping feature for Vorbis au
 		FS_Path filePath=fsMakePath(PATH_ASCII, file_tbo);
 		Result ret=FSUSER_OpenFileDirectly( &fileHandle->handle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
 		#ifndef SKIP_ERROR_HANDLING
-			if(ret) return luaL_error(L, "file doesn't exist.");
+		if(ret) return luaL_error(L, "file doesn't exist.");
 		#endif
 	}
 	u32 magic,bytesRead;
@@ -405,12 +405,12 @@ static int lua_loadJPGV(lua_State *L) // TODO: Fix looping feature for Vorbis au
 
 static int lua_startJPGV(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	bool loop = lua_toboolean(L, 2);
 	
@@ -482,9 +482,9 @@ static int lua_startJPGV(lua_State *L){
 			
 					// Error handling
 					#ifndef SKIP_ERROR_HANDLING
-						if(ret==OV_EBADLINK){
-							return luaL_error(L, "corrupt bitstream section.");
-						}
+					if(ret==OV_EBADLINK){
+						return luaL_error(L, "corrupt bitstream section.");
+					}
 					#endif
 				
 				} else {
@@ -523,9 +523,9 @@ static int lua_startJPGV(lua_State *L){
 			
 					// Error handling
 					#ifndef SKIP_ERROR_HANDLING
-						if(ret==OV_EBADLINK){
-							return luaL_error(L, "corrupt bitstream section.");
-						}
+					if(ret==OV_EBADLINK){
+						return luaL_error(L, "corrupt bitstream section.");
+					}
 					#endif
 				
 				} else {
@@ -765,7 +765,7 @@ void draw3DJPGVfast(JPGV* src, u8* framebuf, bool use3D){
 static int lua_drawJPGVfast(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 2) && (argc != 3)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	u32 bytesRead;
@@ -774,7 +774,7 @@ static int lua_drawJPGVfast(lua_State *L){
 	else framebuf = BottomFB;
 	bool use3D = false;
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	svcSignalEvent(updateStream);
 	if (argc == 3) use3D = lua_toboolean(L,3);
@@ -838,7 +838,7 @@ static int lua_drawJPGVfast(lua_State *L){
 static int lua_drawJPGV(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
+	if ((argc != 4) && (argc != 5)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	int x = luaL_checkinteger(L, 1);
 	int y = luaL_checkinteger(L, 2);
@@ -847,8 +847,8 @@ static int lua_drawJPGV(lua_State *L){
 	int screen = luaL_checkinteger(L, 4);
 	bool use3D = false;
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
-		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
 	#endif
 	svcSignalEvent(updateStream);
 	if (argc == 5) use3D = lua_toboolean(L,5);
@@ -886,9 +886,9 @@ static int lua_drawJPGV(lua_State *L){
 				src->framebuf = decodeJpg(frame, size);
 				free(frame);
 				#ifndef SKIP_ERROR_HANDLING
-					if ((screen <= 1) && (y+src->framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
-					if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
-					if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
+				if ((screen <= 1) && (y+src->framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
+				if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
+				if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 				#endif
 				if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
 				if (use3D) RAW2FB(x,y,src->framebuf,screen,1);
@@ -914,9 +914,9 @@ static int lua_drawJPGV(lua_State *L){
 			src->framebuf = decodeJpg(frame, size);
 			free(frame);
 			#ifndef SKIP_ERROR_HANDLING
-				if ((screen <= 1) && (y+src->framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
-				if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
-				if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
+			if ((screen <= 1) && (y+src->framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
+			if ((screen == 0) && (x+src->framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
+			if ((screen == 1) && (x+src->framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 			#endif
 			if (screen == 1 || screen == 0) RAW2FB(x,y,src->framebuf,screen,0);
 			free(src->framebuf->pixels);
@@ -961,8 +961,8 @@ void draw3DJPGVFrame(u16 x,u16 y,JPGV* src,u32 frame_index,u8 screen,bool is3D){
 
 static int lua_JPGVshowFrame(lua_State *L){
 int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if ((argc != 5) && (argc != 6)) return luaL_error(L, "wrong number of arguments");
 	#endif
 	u16 x = luaL_checkinteger(L, 1);
 	u16 y = luaL_checkinteger(L, 2);
@@ -970,9 +970,9 @@ int argc = lua_gettop(L);
 	u32 frame_index = luaL_checkinteger(L, 4);
 	u8 screen = luaL_checkinteger(L, 5);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
-		if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
-		if (frame_index > src->tot_frame) return luaL_error(L, "out of video file bounds");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if ((x < 0) || (y < 0)) return luaL_error(L,"out of bounds");
+	if (frame_index > src->tot_frame) return luaL_error(L, "out of video file bounds");
 	#endif
 	bool is3D = false;
 	if (argc == 6){
@@ -994,9 +994,9 @@ int argc = lua_gettop(L);
 	Bitmap* tmp_framebuf = decodeJpg(frame, size);
 	free(frame);
 	#ifndef SKIP_ERROR_HANDLING
-		if ((screen <= 1) && (y+tmp_framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 0) && (x+tmp_framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
-		if ((screen == 1) && (x+tmp_framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
+	if ((screen <= 1) && (y+tmp_framebuf->width > 240)) return luaL_error(L,"out of framebuffer bounds");
+	if ((screen == 0) && (x+tmp_framebuf->height > 400)) return luaL_error(L,"out of framebuffer bounds");
+	if ((screen == 1) && (x+tmp_framebuf->height > 320)) return luaL_error(L,"out of framebuffer bounds");
 	#endif
 	RAW2FB(x,y,tmp_framebuf,screen,0);
 	if (is3D) RAW2FB(x,y,tmp_framebuf,screen,1);
@@ -1008,11 +1008,11 @@ int argc = lua_gettop(L);
 static int lua_getFPS2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushinteger(L, src->framerate);
 	return 1;
@@ -1021,11 +1021,11 @@ static int lua_getFPS2(lua_State *L){
 static int lua_getCF2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushinteger(L, src->currentFrame);
 	return 1;
@@ -1034,11 +1034,11 @@ static int lua_getCF2(lua_State *L){
 static int lua_getSize2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushinteger(L, src->tot_frame);
 	return 1;
@@ -1047,11 +1047,11 @@ static int lua_getSize2(lua_State *L){
 static int lua_getSrate2(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushinteger(L, src->samplerate);
 	return 1;
@@ -1059,12 +1059,12 @@ static int lua_getSrate2(lua_State *L){
 
 static int lua_isPlaying2(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	lua_pushboolean(L, src->isPlaying);
 	return 1;
@@ -1072,12 +1072,12 @@ static int lua_isPlaying2(lua_State *L){
 
 static int lua_unloadJPGV(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	
 	// Freeing audio-device channels
@@ -1118,12 +1118,12 @@ static int lua_unloadJPGV(lua_State *L){
 
 static int lua_pauseJPGV(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
 		src->isPlaying = false;
@@ -1139,12 +1139,12 @@ static int lua_pauseJPGV(lua_State *L){
 
 static int lua_resumeJPGV(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	JPGV* src = (JPGV*)luaL_checkinteger(L, 1);
 	#ifndef SKIP_ERROR_HANDLING
-		if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
+	if (src->magic != 0x4C4A5056) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (!src->isPlaying){
 		src->isPlaying = true;
@@ -1160,41 +1160,41 @@ static int lua_resumeJPGV(lua_State *L){
 
 static int lua_dummy(lua_State *L){
 	int argc = lua_gettop(L);
-    return luaL_error(L, "JPGV module unavailable with dsp::DSP service.");
+	return luaL_error(L, "JPGV module unavailable with dsp::DSP service.");
 }
 
 //Register our JPGV Functions
 static const luaL_Reg JPGV_functions[] = {
-  {"load",				lua_loadJPGV},
-  {"start",				lua_startJPGV},
-  {"draw",				lua_drawJPGV},
-  {"drawFast",			lua_drawJPGVfast},
-  {"unload",			lua_unloadJPGV},
-  {"getFPS",			lua_getFPS2},
-  {"getFrame",			lua_getCF2},
-  {"showFrame",			lua_JPGVshowFrame},
-  {"getSize",			lua_getSize2},
-  {"getSrate",			lua_getSrate2},
-  {"isPlaying",			lua_isPlaying2},
-  {"resume",			lua_resumeJPGV},
-  {"pause",				lua_pauseJPGV},
+  {"load",       lua_loadJPGV},
+  {"start",      lua_startJPGV},
+  {"draw",       lua_drawJPGV},
+  {"drawFast",   lua_drawJPGVfast},
+  {"unload",     lua_unloadJPGV},
+  {"getFPS",     lua_getFPS2},
+  {"getFrame",   lua_getCF2},
+  {"showFrame",  lua_JPGVshowFrame},
+  {"getSize",    lua_getSize2},
+  {"getSrate",   lua_getSrate2},
+  {"isPlaying",  lua_isPlaying2},
+  {"resume",     lua_resumeJPGV},
+  {"pause",      lua_pauseJPGV},
   {0, 0}
 };
 
 //Register our JPGV (Dummy) Functions for dsp::DSP service
 static const luaL_Reg Dummy_functions[] = {
-  {"load",				lua_dummy},
-  {"start",				lua_dummy},
-  {"draw",				lua_dummy},
-  {"unload",			lua_dummy},
-  {"getFPS",			lua_dummy},
-  {"getFrame",			lua_dummy},
-  {"showFrame",			lua_dummy},
-  {"getSize",			lua_dummy},
-  {"getSrate",			lua_dummy},
-  {"isPlaying",			lua_dummy},
-  {"resume",			lua_dummy},
-  {"pause",				lua_dummy},
+  {"load",       lua_dummy},
+  {"start",      lua_dummy},
+  {"draw",       lua_dummy},
+  {"unload",     lua_dummy},
+  {"getFPS",     lua_dummy},
+  {"getFrame",   lua_dummy},
+  {"showFrame",  lua_dummy},
+  {"getSize",    lua_dummy},
+  {"getSrate",   lua_dummy},
+  {"isPlaying",  lua_dummy},
+  {"resume",     lua_dummy},
+  {"pause",      lua_dummy},
   {0, 0}
 };
 

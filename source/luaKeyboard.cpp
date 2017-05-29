@@ -46,8 +46,8 @@ u8 keystate = 0;
 
 static int lua_setText(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	char* text = luaL_checkstring(L, 1);
 	std::string s(text);
@@ -57,8 +57,8 @@ static int lua_setText(lua_State *L){
 
 static int lua_show(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	touchPosition touch;
 	hidScanInput();
@@ -69,8 +69,8 @@ static int lua_show(lua_State *L){
 
 static int lua_state(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	lua_pushinteger(L, keystate);
 	return 1;
@@ -78,8 +78,8 @@ static int lua_state(lua_State *L){
 
 static int lua_input(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	if (keystate == 3) keyboard.HBKB_Clean();
 	lua_pushstring(L, keyboard.HBKB_CheckKeyboardInput().c_str());
@@ -88,8 +88,8 @@ static int lua_input(lua_State *L){
 
 static int lua_clear(lua_State *L){
 	int argc = lua_gettop(L);
-    #ifndef SKIP_ERROR_HANDLING
-		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#ifndef SKIP_ERROR_HANDLING
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	#endif
 	keyboard.HBKB_Clean();
 	keystate = 0;
@@ -98,11 +98,11 @@ static int lua_clear(lua_State *L){
 
 //Register our Keyboard Functions
 static const luaL_Reg Keyboard_functions[] = {
-	{"setText",				lua_setText},
-	{"show",				lua_show},
-	{"getState",			lua_state},
-	{"getInput",			lua_input},
-	{"clear",				lua_clear},
+	{"setText",    lua_setText},
+	{"show",       lua_show},
+	{"getState",   lua_state},
+	{"getInput",   lua_input},
+	{"clear",      lua_clear},
 	{0, 0}
 };
 

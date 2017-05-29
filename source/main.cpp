@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 	hidInit();
 	fsInit();
 	#ifndef CITRA3DS_COMPATIBLE
-		romfsInit();
+	romfsInit();
 	#endif
 	irrstInit();
 	aptOpenSession();
@@ -97,18 +97,18 @@ int main(int argc, char **argv)
 		else{
 			isNinjhax2 = true;
 			#ifdef USE_MEMCHUNKHAX2
-				u32 fw_id = osGetKernelVersion();
-				if (fw_id >= SYSTEM_VERSION(2,48,3) && fw_id <= SYSTEM_VERSION(2,50,11)) svchax_init(true);
+			u32 fw_id = osGetKernelVersion();
+			if (fw_id >= SYSTEM_VERSION(2,48,3) && fw_id <= SYSTEM_VERSION(2,50,11)) svchax_init(true);
 			#endif
 		}
 	}
 	
 	// Select Audio System (csnd:SND preferred)
 	#ifndef FORCE_DSP
-		if (csndInit() == 0){
-			csndAccess = true;
-			csndExit();
-		}
+	if (csndInit() == 0){
+		csndAccess = true;
+		csndExit();
+	}
 	#endif
 	
 	// Init Audio-Device
